@@ -189,7 +189,7 @@ def PINN_model(all_params, x_batch, model_fns, verbose=True):
     logger.debug("u")
     logger.debug(str_tensor(u))
 
-    # then apply constraining operator
+    # then a2pply constraining operator
     u = constraining_fn(all_params, x_batch, u)
 
     return u, u_raw
@@ -213,7 +213,9 @@ def PINN_forward(all_params, x_batch, model_fns, jmaps):
 def _get_ujs(x_batch, jmaps, u):
 
     nodes, leaves, jac_is = jmaps
+    #: 这里从参数 jmaps 中解包了三个值，分别赋给了 nodes、leaves 和 jac_is。这些变量可能是与计算雅可比矩阵相关的节点、叶子和索引的信息。
     vs = jnp.tile(jnp.eye(x_batch.shape[1]), (x_batch.shape[0],1,1))
+    #这行代码创建了一个张量 vs，用于表示单位矩阵的重复。这个张量的维度是 (x_batch.shape[0], x_batch.shape[1], x_batch.shape[1])，它将用于存储雅可比矩阵的相关信息。
 
     # chain required jacobian functions
     fs = [u]
@@ -946,26 +948,112 @@ class PINNTrainer(_Trainer):
 
 if __name__ == "__main__":
 
-    from fbpinns.constants import Constants
-    from fbpinns.problems import HarmonicOscillator1D, HarmonicOscillator1DHardBC, HarmonicOscillator1DInverse
+    # from fbpinns.constants import Constants
+    # from fbpinns.problems import HarmonicOscillator1D, HarmonicOscillator1DHardBC, HarmonicOscillator1DInverse
+    #
+    # logger.setLevel("DEBUG")
+    #
+    # c = Constants(
+    #     run="test",
+    #     problem=HarmonicOscillator1D,
+    #     # problem=HarmonicOscillator1DHardBC,
+    #     # problem=HarmonicOscillator1DInverse,
+    #     network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
+    #     )
+    #
+    # # run = FBPINNTrainer(c)
+    # run = PINNTrainer(c)
+    #
+    # all_params = run.train()
+    # print(all_params["static"]["problem"])
+    # if "problem" in all_params["trainable"]:
+    #     print(all_params["trainable"]["problem"])
 
-    logger.setLevel("DEBUG")
 
+    #2D
+    # import numpy as np
+    # from fbpinns.domains import RectangularDomainND
+    # from fbpinns.problems import BurgersEquation2D
+    # from fbpinns.decompositions import RectangularDecompositionND
+    # from fbpinns.networks import FCN
+    # from fbpinns.schedulers import AllActiveSchedulerND
+    # from fbpinns.constants import Constants, get_subdomain_ws
+    # from fbpinns.trainers import FBPINNTrainer
+    #
+    # subdomain_xs = [np.linspace(-1, 1, 4), np.linspace(0, 1, 2)]
+    # c = Constants(
+    #     domain=RectangularDomainND,
+    #     domain_init_kwargs=dict(
+    #         xmin=np.array([-1, 0.]),
+    #         xmax=np.array([1., 1.])
+    #     ),
+    #     problem=BurgersEquation2D,
+    #     problem_init_kwargs=dict(),
+    #     decomposition=RectangularDecompositionND,
+    #     decomposition_init_kwargs=dict(
+    #         subdomain_xs=subdomain_xs,
+    #         # subdomain_ws=get_subdomain_ws(subdomain_xs, 2.9),
+    #         subdomain_ws=[0.9 * np.ones(4), 1.1 * np.ones(2)],
+    #         unnorm=(0., 1.),
+    #     ),
+    #     network=FCN,
+    #     network_init_kwargs=dict(
+    #         layer_sizes=(2, 16, 1),
+    #     ),
+    #     scheduler = AllActiveSchedulerND,
+    #     scheduler_kwargs = dict(),
+    #     ns=((200, 200),),
+    #     n_test=(400, 400),
+    #     n_steps=50000,
+    #     clear_output=True,
+    # )
+    #
+    # run = FBPINNTrainer(c)
+    # all_params = run.train()
+
+    #3D
+    import numpy as np
+    from fbpinns.domains import RectangularDomainND
+    from fbpinns.problems import WaveEquationConstantVelocity3D
+    from fbpinns.decompositions import RectangularDecompositionND
+    from fbpinns.networks import FCN
+    from fbpinns.schedulers import PlaneSchedulerRectangularND
+    from fbpinns.constants import Constants, get_subdomain_ws
+    from fbpinns.trainers import FBPINNTrainer
+
+
+
+    subdomain_xs = [np.array([-10, -3.33, 3.33, 10]), np.array([-10, -3.33, 3.33, 10]), np.array([0, 2.5, 5, 7.5, 10])]
     c = Constants(
-        run="test",
-        #problem=HarmonicOscillator1D,
-        #problem=HarmonicOscillator1DHardBC,
-        problem=HarmonicOscillator1DInverse,
-        network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
-        )
+        domain=RectangularDomainND,
+        domain_init_kwargs=dict(
+            xmin=np.array([-10, -10, 0.]),
+            xmax=np.array([10., 10., 10.])
+        ),
+        problem=WaveEquationConstantVelocity3D,
+        problem_init_kwargs=dict(),
+        decomposition=RectangularDecompositionND,
+        decomposition_init_kwargs=dict(
+            subdomain_xs=subdomain_xs,
+            # subdomain_ws=get_subdomain_ws(subdomain_xs, 2.9),
+            subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9),
+            unnorm=(0., 1.),
+        ),
+        network=FCN,
+        network_init_kwargs=dict(
+            layer_sizes=(3,64,64,64, 1),
+        ),
+        scheduler=PlaneSchedulerRectangularND,
+        scheduler_kwargs=dict( point=[0.], iaxes=[0,1],),
+
+        ns=((58, 58, 10),),
+        n_test=(100, 100, 10),
+        n_steps=150000,
+        clear_output=True,
+    )
 
     run = FBPINNTrainer(c)
-    #run = PINNTrainer(c)
-
     all_params = run.train()
-    print(all_params["static"]["problem"])
-    if "problem" in all_params["trainable"]:
-        print(all_params["trainable"]["problem"])
 
 
 

@@ -22,6 +22,7 @@ def get_subdomain_ws(subdomain_xs, width):
     return [width*np.min(np.diff(x))*np.ones_like(x) for x in subdomain_xs]
 
 
+
 # main constants class
 
 class Constants(ConstantsBase):
