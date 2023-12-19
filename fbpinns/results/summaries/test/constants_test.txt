@@ -1,0 +1,28 @@
+RUN: test
+P: <problems.WaveEquation3D object at 0x000001FCFF7E0510>
+SUBDOMAIN_XS: [array([-10.  ,  -3.33,   3.33,  10.  ]), array([-10.  ,  -3.33,   3.33,  10.  ]), array([ 0. ,  2.5,  5. ,  7.5, 10. ])]
+SUBDOMAIN_WS: [array([5.994, 5.994, 5.994, 5.994]), array([5.994, 5.994, 5.994, 5.994]), array([2.25, 2.25, 2.25, 2.25, 2.25])]
+BOUNDARY_N: (0.3,)
+Y_N: (0, 1)
+ACTIVE_SCHEDULER: <class 'active_schedulers.PlaneActiveSchedulerND'>
+ACTIVE_SCHEDULER_ARGS: (array([0]), [0, 1])
+DEVICE: 0
+MODEL: <class 'models.FCN'>
+N_HIDDEN: 64
+N_LAYERS: 4
+BATCH_SIZE: (58, 58, 58)
+RANDOM: True
+LRATE: 0.001
+N_STEPS: 150000
+SEED: 123
+BATCH_SIZE_TEST: (100, 100, 10)
+PLOT_LIMS: (1, False)
+SUMMARY_FREQ: 250
+TEST_FREQ: 1000
+MODEL_SAVE_FREQ: 10000
+SHOW_FIGURES: True
+SAVE_FIGURES: False
+CLEAR_OUTPUT: False
+SUMMARY_OUT_DIR: results/summaries/test/
+MODEL_OUT_DIR: results/models/test/
+HOSTNAME: desktop-29p5efh

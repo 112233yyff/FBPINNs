@@ -1,0 +1,28 @@
+RUN: final_FBPINN_WaveEquation3D_s0.2c1_16h_2l_30b_r_0.9w_All
+P: <problems.WaveEquation3D object at 0x000002830B4C28D0>
+SUBDOMAIN_XS: [array([-1.  , -0.33,  0.33,  1.  ]), array([-1.  , -0.33,  0.33,  1.  ]), array([0. , 0.5, 1. ])]
+SUBDOMAIN_WS: [array([0.594, 0.594, 0.594, 0.594]), array([0.594, 0.594, 0.594, 0.594]), array([0.45, 0.45, 0.45])]
+BOUNDARY_N: (0.2,)
+Y_N: (0, 1)
+ACTIVE_SCHEDULER: <class 'active_schedulers.AllActiveSchedulerND'>
+ACTIVE_SCHEDULER_ARGS: ()
+DEVICE: 3
+MODEL: <class 'models.FCN'>
+N_HIDDEN: 16
+N_LAYERS: 2
+BATCH_SIZE: (30, 30, 30)
+RANDOM: True
+LRATE: 0.001
+N_STEPS: 25000
+SEED: 123
+BATCH_SIZE_TEST: (100, 100, 10)
+PLOT_LIMS: (0.4, True)
+SUMMARY_FREQ: 250
+TEST_FREQ: 5000
+MODEL_SAVE_FREQ: 10000
+SHOW_FIGURES: False
+SAVE_FIGURES: False
+CLEAR_OUTPUT: False
+SUMMARY_OUT_DIR: results/summaries/final_FBPINN_WaveEquation3D_s0.2c1_16h_2l_30b_r_0.9w_All/
+MODEL_OUT_DIR: results/models/final_FBPINN_WaveEquation3D_s0.2c1_16h_2l_30b_r_0.9w_All/
+HOSTNAME: desktop-29p5efh
