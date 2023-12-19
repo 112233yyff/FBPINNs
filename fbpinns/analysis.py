@@ -1,120 +1,99 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Defines helper functions for loading and running saved FBPINN / PINN models
+Created on Sun May  9 00:21:36 2021
+
+@author: bmoseley
 """
+
+# This module defines helper functions for loading saved FBPINN / PINN models
+
+# This module is used by Paper plots.ipynb
+
+#这个模块定义了用于加载已保存的 FBPINN / PINN 模型的辅助函数。
+# 该模块在 Paper plots.ipynb 中使用。
 
 import os
 import pickle
 
-import jax
-import jax.numpy as jnp
 import numpy as np
+import torch
 
-from fbpinns.util.logger import logger
-from fbpinns.util.other import DictToObj
-from fbpinns.trainers import get_inputs, FBPINN_model, PINN_model
-from fbpinns import networks
+import domains
+
+import sys
+sys.path.insert(0, '../shared_modules/')
+from helper import DictToObj
 
 
-def load_model(run, i=None, rootdir="results/"):
-    """load a model, its supplements and constants object from rootdir.
+def _restore_model(file, c):
+    "restores an individual model from file"
+    
+    model = c.MODEL(c.P.d[0], c.P.d[1], c.N_HIDDEN, c.N_LAYERS)# initialise model ! uses current code (pickle only saves name of class)
+    cp = torch.load(file, map_location=torch.device('cpu'))# remaps tensors from gpu to cpu if needed
+    model.load_state_dict(cp['model_state_dict'])
+    model.eval()
+    
+    return model
+
+def load_model(RUN, i=None, rootdir="results/", verbose=False):
+    """load a model, its constants object and supplement files from rootdir.
     If i is specified, load the model at that timestep, otherwise
-    load the model at the largest timestep"""
-
-    # get model_dir and summary_dir
-    model_dir = rootdir+f"models/{run}/"
-    summary_dir = rootdir+f"summaries/{run}/"
-
-    # load constants dictionary, convert to object
-    with open(summary_dir+f"constants_{run}.pickle", "rb") as f:
-        c_dict = pickle.load(f)
-    c = DictToObj(**c_dict, copy=True)
-
-    # get last timestep to load
+    load the model with the latest timestep."""
+    
+    # 1. parse MODEL_DIR and SUMMARY_DIR
+    MODEL_DIR = rootdir+"models/%s/"%(RUN)
+    SUMMARY_DIR = rootdir+"summaries/%s/"%(RUN)
+    
+    # 2. load constants dictionary
+    c_dict = pickle.load(open(SUMMARY_DIR+"constants_%s.pickle"%(RUN), "rb"))
+    c = DictToObj(**c_dict, copy=True)# convert to object
+    
+    # 3. get specific timestep to load
     if i is None:
-        last_file = sorted(os.listdir(model_dir))[-1]
+        last_file = sorted(os.listdir(MODEL_DIR))[-1]
         i = int(os.path.splitext(last_file)[0].split("_")[1])
+    
+    # 4. get and load model files
+    if "FBPINN" in RUN:
+        N_MODELS = np.prod([len(x)-1 for x in c.SUBDOMAIN_XS])# number of models in FBPINN
+        files = [MODEL_DIR+"model_%.8i_%.8i.torch"%(i, im) for im in range(N_MODELS)]
+        if verbose: print("Loading models from:\n%s%s%s"%(files[0], ", ..." if len(files)>2 else "", "\n"+files[-1] if len(files)>1 else ""))
+        models = [_restore_model(file, c) for file in files]
+        supplement = [np.load(MODEL_DIR+"loss_%.8i.npy"%(i,)), np.load(MODEL_DIR+"active_%.8i.npy"%(i,))]
+    elif "PINN" in RUN:
+        file = MODEL_DIR+"model_%.8i.torch"%(i)
+        if verbose: print("Loading model from:\n%s"%(file))
+        models = _restore_model(file, c)
+        supplement = [np.load(MODEL_DIR+"loss_%.8i.npy"%(i,))]
+    else:
+        raise Exception("ERROR: could not recognise run! (%s)"%(RUN))
+    
+    return models, c, supplement
 
-    # load model
-    file = model_dir+f"model_{i:08d}.jax"
-    logger.info(f"Loading model from:\n{file}")
-    with open(file, "rb") as f:
-        model = pickle.load(f)
-
-    # convert np arrays to jax
-    model = jax.tree_map(lambda x: jnp.array(x) if isinstance(x, np.ndarray) else x, model)
-
-    return c, model
-
-
-def FBPINN_solution(c, all_params, active, x_batch):
-    "Runs trained FBPINN on a batch of points"
-
-    problem, decomposition, network = c.problem, c.decomposition, c.network
-    model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
-    takes, _, (_, _, _, cut_all, _) = get_inputs(x_batch, active, all_params, decomposition)
-    all_params_cut = {"static":cut_all(all_params["static"]),
-                      "trainable":cut_all(all_params["trainable"])}
-    u, *_ = FBPINN_model(all_params_cut, x_batch, takes, model_fns)
-    return u
-
-def PINN_solution(c, all_params, x_batch):
-    "Runs trained PINN on a batch of points"
-
-    domain, problem, network = c.domain, c.problem, c.network
-
-    # define unnorm function
-    mu_, sd_ = c.decomposition_init_kwargs["unnorm"]
-    unnorm_fn = lambda u: networks.unnorm(mu_, sd_, u)
-    model_fns = (domain.norm_fn, network.network_fn, unnorm_fn, problem.constraining_fn)
-
-    u, *_ = PINN_model(all_params, x_batch, model_fns)
-    return u
-
-
+def load_domain(c, active=None, device=None):
+    "Return instantiated problem domain given a constants object"
+    
+    D = domains.ActiveRectangularDomainND(c.SUBDOMAIN_XS, c.SUBDOMAIN_WS, device=device)
+    D.update_sampler(c.BATCH_SIZE, c.RANDOM)
+    D.update_active(active)
+    
+    return D
 
 
 if __name__ == "__main__":
 
-    import matplotlib.pyplot as plt
-
-
-    x_batch = jnp.linspace(0,1,100).reshape((-1,1))
-
-    plt.figure(figsize=(12,4))
-
-    c, model = load_model(run="FBPINN", i=10000, rootdir="../test/results/")
-    i, all_params, all_opt_states, active, u_test_losses = model
-    u = FBPINN_solution(c, all_params, active, x_batch)
-
-    print(len(model))
+    models, c, supplement = load_model("t2_FBPINN_Cos1D_1_w15_16h_2l_0.5w_All", rootdir="server/e2/", verbose=True)
+    print(len(models))
     print(c)
-    print(i)
-    plt.subplot(1,3,1)
-    plt.plot(u_test_losses[:,0], u_test_losses[:,-1], label=c.run)# steps
-    plt.subplot(1,3,2)
-    plt.plot(u_test_losses[:,2], u_test_losses[:,-1], label=c.run)# flops
-    plt.subplot(1,3,3)
-    plt.plot(x_batch, u)
-
-    c, model = load_model(run="PINN", i=10000, rootdir="../test/results/")
-    i, all_params, all_opt_states, u_test_losses = model
-    u = PINN_solution(c, all_params, x_batch)
-
-    print(len(model))
+    
+    models, c, supplement = load_model("t2_FBPINN_Cos1D_1_w15_16h_2l_0.5w_All", i=20000, rootdir="server/e2/", verbose=True)
+    print(len(models))
     print(c)
-    print(i)
-    plt.subplot(1,3,1)
-    plt.plot(u_test_losses[:,0], u_test_losses[:,-1], label=c.run)# steps
-    plt.subplot(1,3,2)
-    plt.plot(u_test_losses[:,2], u_test_losses[:,-1], label=c.run)# flops
-    plt.subplot(1,3,3)
-    plt.plot(x_batch, u)
-
-    plt.subplot(1,3,1)
-    plt.yscale("log")
-    plt.legend()
-    plt.subplot(1,3,1)
-    plt.yscale("log")
-    plt.legend()
-    plt.show()
-
+    
+    model, c, supplement = load_model("t2_PINN_Cos1D_1_w15_32h_3l", rootdir="server/e2/", verbose=True)
+    print(c)
+    
+    model, c, supplement = load_model("t2_PINN_Cos1D_1_w15_32h_3l", i=20000, rootdir="server/e2/", verbose=True)
+    print(c)
+    

@@ -1,143 +1,107 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Defines the window functions which are applied to the output of each subdomain network
+Created on Wed Mar 10 15:10:09 2021
 
-This module is used by decompositions.py
+@author: bmoseley
 """
 
-import jax.nn
-import jax.numpy as jnp
+# This module defines the window functions which are applied to the output of each subdomain neural network
+# note the windows are defined using torch such that we can autodiff through them during training
+
+# This module is used by domain.py
+
+import torch
 
 
-def sigmoid(xmin, xmax, wmin, wmax, x, tol=1e-8):
-    "window function, for a SINGLE point with shape (xdim)"
-
-    t = jnp.log((1-tol)/tol)
-    mu_min, sd_min = xmin + wmin/2, wmin/(2*t)
-    mu_max, sd_max = xmax - wmax/2, wmax/(2*t)
-    ws = jax.nn.sigmoid((x-mu_min)/sd_min)*jax.nn.sigmoid((mu_max-x)/sd_max)
-
-    # multiply kernels together
-    w = jnp.prod(ws, axis=0, keepdims=True)
-
-    return w
-
-
-def cosine(xmin, xmax, x):
-    "window function, for a SINGLE point with shape (xdim)"
-
-    mu, sd = (xmin+xmax)/2, (xmax-xmin)/2
-    ws = ((1+jnp.cos(jnp.pi*(x-mu)/sd))/2)**2
-    ws = jnp.heaviside(x-xmin,1)*jnp.heaviside(xmax-x,1)*ws
-
-    # multiply kernels together
-    w = jnp.prod(ws, axis=0, keepdims=True)
-
-    return w
+def _create_kernel(xmin,xmax,smin,smax):
+    "Creates a 1D kernel function"
+    
+    tol = 1e-10# for numerical stability when evaluating gradients
+    clamp = lambda x: torch.clamp(x, min=tol)
+    
+    if xmax is None and xmin is None:
+        kernel = lambda x: torch.ones_like(x)
+    elif xmax is None:
+        if smin <= 0: raise Exception("ERROR smin <= 0 (%s)!"%(smin))
+        kernel = lambda x: clamp(torch.sigmoid((x-xmin)/smin))
+    elif xmin is None:
+        if smax <= 0: raise Exception("ERROR smax <= 0 (%s)!"%(smax))
+        kernel = lambda x: clamp(torch.sigmoid((xmax-x)/smax))
+    else:
+        if xmin>xmax: raise Exception("ERROR: xmin (%s) > xmax (%s)!"%(xmin, xmax))
+        if smin <= 0: raise Exception("ERROR smin <= 0 (%s)!"%(smin))
+        if smax <= 0: raise Exception("ERROR smax <= 0 (%s)!"%(smax))
+        kernel = lambda x: clamp(clamp(torch.sigmoid((x-xmin)/smin))*clamp(torch.sigmoid((xmax-x)/smax)))
+        
+    return kernel
 
 
-def bump(xmin, xmax, x):
-    "window function, for a SINGLE point with shape (xdim)"
-
-    mu, sd = (xmin+xmax)/2, (xmax-xmin)/2
-    ws = jnp.exp(3/(((x-mu)/sd)**2-1.001))/jnp.exp(-3)
-
-    # multiply kernels together
-    w = jnp.prod(ws, axis=0, keepdims=True)
-
-    return w
-
-def wendland(xmin, xmax, x):
-    "window function, for a SINGLE point with shape (xdim)"
-
-    mu, sd = (xmin+xmax)/2, (xmax-xmin)/2
-    r = jnp.abs((x-mu)/sd)
-    ws = ((1-r)**4)*(4*r+1)
-    ws = jnp.heaviside(x-xmin,1)*jnp.heaviside(xmax-x,1)*ws
-
-    # multiply kernels together
-    w = jnp.prod(ws, axis=0, keepdims=True)
-
-    return w
-
-def rbf(xmin, xmax, x):
-    "window function, for a SINGLE point with shape (xdim)"
-
-    mu, sd = (xmin+xmax)/2, (xmax-xmin)/2
-    w = jnp.exp(-0.5*jnp.sum(((x-mu)/(0.25*sd))**2, keepdims=True))
-
-    return w
-
+def construct_window_function_ND(xs_min, xs_max, scales_min, scales_max):
+    "Constructs a ND window function"
+    
+    if not (len(xs_min) == len(xs_max) == len(scales_min) == len(scales_max)):
+        raise Exception("ERROR input lengths do not match!")
+    
+    kernels = [_create_kernel(*args) for args in zip(xs_min,xs_max,scales_min,scales_max)]
+    nd = len(xs_min)
+    
+    def window_function(x):
+        
+        if x.ndim != 2: raise Exception("ERROR!: x.ndim (%s) != 2!"%(x.shape,))
+        if x.shape[-1] != nd: raise Exception("ERROR!: x.shape[1] (%s) != nd (%s)"%(x.shape[1], nd))
+        
+        xs = x.unbind(-1)# separate out dims
+        ws = [kernels[i](x) for i,x in enumerate(xs)]
+        w = torch.stack(ws, -1)
+        w = torch.prod(w, keepdim=True, dim=-1)# get product of windows over each dimension
+        
+        return w
+    
+    return window_function
+    
 
 
 if __name__ == "__main__":
 
-    from jax import vmap
     import numpy as np
     import matplotlib.pyplot as plt
-
-
-    def run_windows(xmin, xmax, wmin, wmax):
-
-        # get test points (2 corners)
-        x_test = np.stack([xmin, xmin+wmin, xmax, xmax-wmax], axis=0)# (4, xd)
-
-        # get plot grid
-        n = 100
-        xd = xmin.shape[0]
-        xs = [np.linspace(mi, ma, n) for mi,ma in zip(xmin, xmax)]
-        xxs = np.stack(np.meshgrid(*xs, indexing="ij"), 0)# (xd, nm)
-        x = xxs.reshape((xd, n**xd)).T# (n, xd)
-
-        # run window functions
-        windows = [
-                (sigmoid, (xmin, xmax, wmin, wmax)),
-                (cosine, (xmin, xmax)),
-                (bump, (xmin, xmax)),
-                (wendland, (xmin, xmax)),
-                (rbf, (xmin, xmax)),
-                ]
-        wws, w_tests = [],[]
-        for window_fn, params in windows:
-
-            w_fn = vmap(window_fn, in_axes=([None,]*len(params)+[0]))
-            wws.append(w_fn(*params, x).reshape((n,)*xd))# (nm)
-            w_tests.append(w_fn(*params, x_test))# (4)
-
-        return windows, x_test, w_tests, xxs, wws
-
+    
     ## 1D test
-    xmin, xmax = np.array([-5.5]), np.array([4])
-    wmin, wmax = np.array([3]), np.array([4])
-    windows, x_test, w_tests, xxs, wws = run_windows(xmin, xmax, wmin, wmax)
-    for ww, w_test, (window_fn, _) in zip(wws, w_tests, windows):
-        plt.figure()
-        plt.title(window_fn.__name__)
-        plt.plot(xxs[0,:], ww[:])
-        for t in x_test:
-            plt.axvline(t[0], color="tab:grey", alpha=0.2)
-        plt.axhline(0, color="tab:grey", alpha=0.2)
-        plt.show()
-        print(x_test.T)
-        print(w_test.T, w_test.shape)
-
+    
+    x = np.expand_dims(np.arange(-10,10, 0.1), -1).astype(np.float32)
+    x = torch.from_numpy(x)
+    
+    window_function = construct_window_function_ND([-1], [6], [1.2], [0.5])
+    w1 = window_function(x)
+    
+    window_function = construct_window_function_ND([None], [-1], [0.5], [0.5])
+    w2 = window_function(x)
+    
+    window_function = construct_window_function_ND([6], [None], [0.1], [0.1])
+    w3 = window_function(x)
+    
+    plt.figure()
+    plt.plot(x, w1)
+    plt.plot(x, w2)
+    plt.plot(x, w3)
+    plt.plot(x, w1 + w2 + w3, color="k", alpha=0.4)
+    plt.show()
+    
+    
     ## 2D test
-    xmin, xmax = np.array([-9,-8]), np.array([9,8])
-    wmin, wmax = np.array([10,3]), np.array([4,7])
-    windows, x_test, w_tests, xxs, wws = run_windows(xmin, xmax, wmin, wmax)
-    for ww, w_test, (window_fn, _) in zip(wws, w_tests, windows):
-        plt.figure()
-        plt.title(window_fn.__name__)
-        plt.imshow(ww.T,# transpose as jnp.meshgrid uses indexing="ij"
-                   origin="lower", extent=(xmin[0], xmax[0], xmin[1], xmax[1]),
-                   cmap="viridis")
-        plt.colorbar()
-        for t in x_test:
-            plt.scatter(t[0], t[1], color="tab:red")
-        plt.gca().set_aspect("equal")
-        plt.show()
-        print(x_test.T)
-        print(w_test.T, w_test.shape)
-
-
-
-
+    
+    x = np.linspace(-20,20,220)
+    y = np.linspace(-15,18,200)
+    xx = np.stack(np.meshgrid(x,y,indexing="ij"), -1)
+    x = xx.reshape((220*200,-1))
+    
+    window_function = construct_window_function_ND([0, -10], [15, -5], [4, 1], [0.2, 0.4])
+    w1 = window_function(torch.from_numpy(x))
+    w1 = w1.reshape((220,200))
+    
+    plt.figure()
+    plt.imshow(w1.T, origin="lower", extent=(x.min(), x.max(), y.min(), y.max()))
+    plt.colorbar()
+    plt.show()
+    
