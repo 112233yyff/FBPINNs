@@ -38,10 +38,14 @@ class _Trainer:
         print(c)
         
         # get device/ set threads
+        # print(c.DEVICE)
+        # print(torch.cuda.is_available())
+        # device = torch.device("cuda:0")
         if c.DEVICE != "cpu" and torch.cuda.is_available():
-            device = torch.device("cuda:%i"%(c.DEVICE))
+            device = torch.device("cuda:0")
+            # device = torch.device("cuda:%i"%(c.DEVICE))
             torch.cuda.set_device(c.DEVICE)# stops weird memory being allocated on cuda:0 even if c.DEVICE != 0
-        else: 
+        else:
             device = torch.device("cpu")
         print("Device: %s"%(device))
         torch.backends.cudnn.benchmark = False#let cudnn find the best algorithm to use for your hardware (not good for dynamic nets)

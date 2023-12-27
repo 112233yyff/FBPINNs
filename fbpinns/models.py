@@ -18,10 +18,14 @@ import torch.nn as nn
 
 total_params = lambda model: sum(p.numel() for p in model.parameters())
 
+#这个类是一个继承自 PyTorch 的 nn.Module 类的自定义神经网络模型。
+
 
 class FCN(nn.Module):
     "Fully connected network"
-    
+
+    # 在 __init__ 方法中，它定义了神经网络的结构，包括输入层、多个隐藏层和输出层。每个隐藏层都是由线性层和激活函数组成的序列。
+    # forward 方法定义了数据在网络中的传播过程，即数据从输入层经过隐藏层最终到达输出层。
     def __init__(self, N_INPUT, N_OUTPUT, N_HIDDEN, N_LAYERS):
         super().__init__()
         
@@ -58,7 +62,8 @@ class FCN(nn.Module):
     
 
 if __name__ == "__main__":
-    
+    # 在__main__部分进行了简单的测试，包括创建一个输入数据张量x，构建一个FCN模型，并对输入数据进行前向传播得到输出y。
+    # 打印了模型的结构、输出形状、参数数量和浮点运算次数。
     import numpy as np
     
     x = np.arange(100).reshape((25,4)).astype(np.float32)

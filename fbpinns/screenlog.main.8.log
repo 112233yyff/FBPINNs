@@ -3173,3 +3173,130 @@ torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
 [i: 5000/50000] loss: 98.5987 rate: 186.6 elapsed: 0.01 hr 2023-12-18 07:39:05 final_PINN_Cos_multi1D_1_w1w15_16h_2l_3000b_m
 
 torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+RUN: final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+P: <problems.Cos1D_1 object at 0x000001DA881B98D0>
+SUBDOMAIN_XS: [array([-6.28318531, -5.86430629, -5.44542727, -5.02654825, -4.60766923,
+       -4.1887902 , -3.76991118, -3.35103216, -2.93215314, -2.51327412,
+       -2.0943951 , -1.67551608, -1.25663706, -0.83775804, -0.41887902,
+        0.        ,  0.41887902,  0.83775804,  1.25663706,  1.67551608,
+        2.0943951 ,  2.51327412,  2.93215314,  3.35103216,  3.76991118,
+        4.1887902 ,  4.60766923,  5.02654825,  5.44542727,  5.86430629,
+        6.28318531])]
+SUBDOMAIN_WS: [array([5.994, 5.994, 5.994, 5.994]), array([5.994, 5.994, 5.994, 5.994]), array([2.25, 2.25, 2.25, 2.25, 2.25])]
+BOUNDARY_N: (0.06666666666666667,)
+Y_N: (0, 0.06666666666666667)
+ACTIVE_SCHEDULER: <class 'active_schedulers.PlaneActiveSchedulerND'>
+ACTIVE_SCHEDULER_ARGS: (array([0]), [0, 1])
+DEVICE: cpu
+MODEL: <class 'models.FCN'>
+N_HIDDEN: 128
+N_LAYERS: 5
+BATCH_SIZE: (3000,)
+RANDOM: False
+LRATE: 0.001
+N_STEPS: 50000
+SEED: 123
+BATCH_SIZE_TEST: (5000,)
+PLOT_LIMS: (1.1, False)
+SUMMARY_FREQ: 250
+TEST_FREQ: 5000
+MODEL_SAVE_FREQ: 10000
+SHOW_FIGURES: False
+SAVE_FIGURES: False
+CLEAR_OUTPUT: False
+SUMMARY_OUT_DIR: results/summaries/final_PINN_Cos1D_1_w15_128h_5l_3000b_m/
+MODEL_OUT_DIR: results/models/final_PINN_Cos1D_1_w15_128h_5l_3000b_m/
+HOSTNAME: desktop-29p5efh
+
+Device: cpu
+Main thread ID: 27392
+Torch seed:  123
+tensor([0.]) tensor([6.2832]) torch.Size([1]) torch.Size([1])
+D:\an\envs\fbpinn\Lib\site-packages\torch\functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at C:\cb\pytorch_1000000000000\work\aten\src\ATen\native\TensorShape.cpp:3527.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 250/50000] loss: 0.4928 rate: 11.5 elapsed: 0.01 hr 2023-12-21 06:06:52 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 500/50000] loss: 0.4928 rate: 9.7 elapsed: 0.01 hr 2023-12-21 06:07:18 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 750/50000] loss: 0.4364 rate: 9.8 elapsed: 0.02 hr 2023-12-21 06:07:44 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 1000/50000] loss: 0.3717 rate: 9.5 elapsed: 0.03 hr 2023-12-21 06:08:10 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 1250/50000] loss: 0.3384 rate: 9.8 elapsed: 0.03 hr 2023-12-21 06:08:36 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 1500/50000] loss: 0.3239 rate: 9.7 elapsed: 0.04 hr 2023-12-21 06:09:02 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 1750/50000] loss: 0.3034 rate: 9.2 elapsed: 0.05 hr 2023-12-21 06:09:29 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 2000/50000] loss: 0.2905 rate: 9.7 elapsed: 0.06 hr 2023-12-21 06:09:55 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 2250/50000] loss: 0.2706 rate: 9.6 elapsed: 0.06 hr 2023-12-21 06:10:21 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 2500/50000] loss: 0.2563 rate: 9.5 elapsed: 0.07 hr 2023-12-21 06:10:47 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 2750/50000] loss: 0.2431 rate: 9.8 elapsed: 0.08 hr 2023-12-21 06:11:13 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+[i: 3000/50000] loss: 0.2239 rate: 9.6 elapsed: 0.09 hr 2023-12-21 06:11:39 final_PINN_Cos1D_1_w15_128h_5l_3000b_m
+
+torch.Size([5000, 1]) torch.Size([5000, 1]) torch.Size([5000, 1])
+torch.Size([3000, 1]) torch.Size([3000, 1]) torch.Size([3000, 1])
+Exception in thread Thread-1:
+Process Process-9:1:
+Traceback (most recent call last):
+  File "D:\an\envs\fbpinn\Lib\threading.py", line 1038, in _bootstrap_inner
+    self.run()
+  File "D:\an\envs\fbpinn\Lib\site-packages\tensorboardX\event_file_writer.py", line 202, in run
+    data = self._queue.get(True, queue_wait_duration)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\queues.py", line 113, in get
+    if not self._poll(timeout):
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\connection.py", line 256, in poll
+Traceback (most recent call last):
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\dell\Desktop\科研\FBPINNs-pytorch\fbpinns\trainersBase.py", line 111, in train_models_multiprocess
+    run.train()
+  File "C:\Users\dell\Desktop\科研\FBPINNs-pytorch\fbpinns\main.py", line 386, in train
+    x, yj, loss = self._train_step(model, optimizer, c, i, mu, sd, device)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\科研\FBPINNs-pytorch\fbpinns\main.py", line 321, in _train_step
+    loss.backward()
+  File "D:\an\envs\fbpinn\Lib\site-packages\torch\_tensor.py", line 492, in backward
+    torch.autograd.backward(
+  File "D:\an\envs\fbpinn\Lib\site-packages\torch\autograd\__init__.py", line 251, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+KeyboardInterrupt
+    return self._poll(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\connection.py", line 329, in _poll
+    return bool(wait([self], timeout))
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\connection.py", line 882, in wait
+    ov.cancel()
+OSError: [WinError 6] 句柄无效。

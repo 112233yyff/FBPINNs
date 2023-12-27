@@ -7627,3 +7627,845 @@ torch.Size([170, 1]) torch.Size([170, 1]) torch.Size([170, 1])
 torch.Size([170, 1]) torch.Size([170, 1]) torch.Size([170, 1])
 torch.Size([170, 1]) torch.Size([170, 1])
 torch.Size([170, 1]) torch.Size([170, 1])
+RUN: final_PINN_Sin1D_2_w1_16h_2l_200b_m
+P: <problems.Sin1D_2 object at 0x000001FFBAA4D8D0>
+SUBDOMAIN_XS: [array([-6.28318531, -4.48798951, -1.7951958 ,  0.        ,  3.5903916 ,
+        6.28318531])]
+SUBDOMAIN_WS: [array([5.994, 5.994, 5.994, 5.994]), array([5.994, 5.994, 5.994, 5.994]), array([2.25, 2.25, 2.25, 2.25, 2.25])]
+BOUNDARY_N: (1.0,)
+Y_N: (0, 1.0)
+ACTIVE_SCHEDULER: <class 'active_schedulers.PlaneActiveSchedulerND'>
+ACTIVE_SCHEDULER_ARGS: (array([0]), [0, 1])
+DEVICE: cpu
+MODEL: <class 'models.FCN'>
+N_HIDDEN: 16
+N_LAYERS: 2
+BATCH_SIZE: (200,)
+RANDOM: False
+LRATE: 0.001
+N_STEPS: 50000
+SEED: 123
+BATCH_SIZE_TEST: (1000,)
+PLOT_LIMS: (1.1, False)
+SUMMARY_FREQ: 250
+TEST_FREQ: 5000
+MODEL_SAVE_FREQ: 10000
+SHOW_FIGURES: False
+SAVE_FIGURES: False
+CLEAR_OUTPUT: False
+SUMMARY_OUT_DIR: results/summaries/final_PINN_Sin1D_2_w1_16h_2l_200b_m/
+MODEL_OUT_DIR: results/models/final_PINN_Sin1D_2_w1_16h_2l_200b_m/
+HOSTNAME: desktop-29p5efh
+
+Device: cpu
+Main thread ID: 28620
+Torch seed:  123
+tensor([0.]) tensor([6.2832]) torch.Size([1]) torch.Size([1])
+D:\an\envs\fbpinn\Lib\site-packages\torch\functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at C:\cb\pytorch_1000000000000\work\aten\src\ATen\native\TensorShape.cpp:3527.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 250/50000] loss: 0.3519 rate: 250.4 elapsed: 0.00 hr 2023-12-21 06:06:43 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 500/50000] loss: 0.0844 rate: 259.7 elapsed: 0.00 hr 2023-12-21 06:06:44 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 750/50000] loss: 0.0007 rate: 263.4 elapsed: 0.00 hr 2023-12-21 06:06:45 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 1000/50000] loss: 0.0002 rate: 171.0 elapsed: 0.00 hr 2023-12-21 06:06:46 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 1250/50000] loss: 0.0001 rate: 150.7 elapsed: 0.00 hr 2023-12-21 06:06:48 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 1500/50000] loss: 0.0000 rate: 169.0 elapsed: 0.00 hr 2023-12-21 06:06:49 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 1750/50000] loss: 0.0000 rate: 201.9 elapsed: 0.00 hr 2023-12-21 06:06:51 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 2000/50000] loss: 0.0000 rate: 194.8 elapsed: 0.00 hr 2023-12-21 06:06:52 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 2250/50000] loss: 0.0000 rate: 207.2 elapsed: 0.00 hr 2023-12-21 06:06:53 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 2500/50000] loss: 0.0000 rate: 227.7 elapsed: 0.00 hr 2023-12-21 06:06:54 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 2750/50000] loss: 0.0000 rate: 155.6 elapsed: 0.00 hr 2023-12-21 06:06:56 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 3000/50000] loss: 0.0000 rate: 171.2 elapsed: 0.00 hr 2023-12-21 06:06:57 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 3250/50000] loss: 0.0000 rate: 166.1 elapsed: 0.00 hr 2023-12-21 06:06:59 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 3500/50000] loss: 0.0000 rate: 191.3 elapsed: 0.01 hr 2023-12-21 06:07:00 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 3750/50000] loss: 0.0000 rate: 193.7 elapsed: 0.01 hr 2023-12-21 06:07:01 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 4000/50000] loss: 0.0000 rate: 178.7 elapsed: 0.01 hr 2023-12-21 06:07:03 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 4250/50000] loss: 0.0000 rate: 189.0 elapsed: 0.01 hr 2023-12-21 06:07:04 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 4500/50000] loss: 0.0000 rate: 137.3 elapsed: 0.01 hr 2023-12-21 06:07:06 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 4750/50000] loss: 0.0000 rate: 138.6 elapsed: 0.01 hr 2023-12-21 06:07:08 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 5000/50000] loss: 0.0000 rate: 155.0 elapsed: 0.01 hr 2023-12-21 06:07:09 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 5250/50000] loss: 0.0000 rate: 180.9 elapsed: 0.01 hr 2023-12-21 06:07:13 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 5500/50000] loss: 0.0000 rate: 167.1 elapsed: 0.01 hr 2023-12-21 06:07:15 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 5750/50000] loss: 0.0000 rate: 137.7 elapsed: 0.01 hr 2023-12-21 06:07:17 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 6000/50000] loss: 0.0000 rate: 146.4 elapsed: 0.01 hr 2023-12-21 06:07:19 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 6250/50000] loss: 0.0000 rate: 160.4 elapsed: 0.01 hr 2023-12-21 06:07:20 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 6500/50000] loss: 0.0000 rate: 163.7 elapsed: 0.01 hr 2023-12-21 06:07:22 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 6750/50000] loss: 0.0000 rate: 177.9 elapsed: 0.01 hr 2023-12-21 06:07:23 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 7000/50000] loss: 0.0000 rate: 203.1 elapsed: 0.01 hr 2023-12-21 06:07:24 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 7250/50000] loss: 0.0000 rate: 134.3 elapsed: 0.01 hr 2023-12-21 06:07:26 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 7500/50000] loss: 0.0000 rate: 171.9 elapsed: 0.01 hr 2023-12-21 06:07:28 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 7750/50000] loss: 0.0000 rate: 157.6 elapsed: 0.01 hr 2023-12-21 06:07:29 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 8000/50000] loss: 0.0000 rate: 164.7 elapsed: 0.01 hr 2023-12-21 06:07:31 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 8250/50000] loss: 0.0000 rate: 167.9 elapsed: 0.01 hr 2023-12-21 06:07:32 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 8500/50000] loss: 0.0000 rate: 192.3 elapsed: 0.01 hr 2023-12-21 06:07:33 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 8750/50000] loss: 0.0000 rate: 168.6 elapsed: 0.01 hr 2023-12-21 06:07:35 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 9000/50000] loss: 0.0000 rate: 134.2 elapsed: 0.02 hr 2023-12-21 06:07:37 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 9250/50000] loss: 0.0000 rate: 158.1 elapsed: 0.02 hr 2023-12-21 06:07:38 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 9500/50000] loss: 0.0000 rate: 158.1 elapsed: 0.02 hr 2023-12-21 06:07:40 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 9750/50000] loss: 0.0000 rate: 156.5 elapsed: 0.02 hr 2023-12-21 06:07:42 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 10000/50000] loss: 0.0000 rate: 198.7 elapsed: 0.02 hr 2023-12-21 06:07:43 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 10250/50000] loss: 0.0000 rate: 150.3 elapsed: 0.02 hr 2023-12-21 06:07:46 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 10500/50000] loss: 0.0000 rate: 148.5 elapsed: 0.02 hr 2023-12-21 06:07:48 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 10750/50000] loss: 0.0000 rate: 162.3 elapsed: 0.02 hr 2023-12-21 06:07:49 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 11000/50000] loss: 0.0000 rate: 174.8 elapsed: 0.02 hr 2023-12-21 06:07:51 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 11250/50000] loss: 0.0000 rate: 180.7 elapsed: 0.02 hr 2023-12-21 06:07:52 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 11500/50000] loss: 0.0000 rate: 209.9 elapsed: 0.02 hr 2023-12-21 06:07:53 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 11750/50000] loss: 0.0000 rate: 136.8 elapsed: 0.02 hr 2023-12-21 06:07:55 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 12000/50000] loss: 0.0000 rate: 151.4 elapsed: 0.02 hr 2023-12-21 06:07:57 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 12250/50000] loss: 0.0000 rate: 163.1 elapsed: 0.02 hr 2023-12-21 06:07:58 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 12500/50000] loss: 0.0000 rate: 162.2 elapsed: 0.02 hr 2023-12-21 06:08:00 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 12750/50000] loss: 0.0000 rate: 169.8 elapsed: 0.02 hr 2023-12-21 06:08:01 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 13000/50000] loss: 0.0000 rate: 203.3 elapsed: 0.02 hr 2023-12-21 06:08:03 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 13250/50000] loss: 0.0000 rate: 167.7 elapsed: 0.02 hr 2023-12-21 06:08:04 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 13500/50000] loss: 0.0000 rate: 145.3 elapsed: 0.02 hr 2023-12-21 06:08:06 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 13750/50000] loss: 0.0000 rate: 153.4 elapsed: 0.02 hr 2023-12-21 06:08:08 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 14000/50000] loss: 0.0000 rate: 166.5 elapsed: 0.02 hr 2023-12-21 06:08:09 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 14250/50000] loss: 0.0000 rate: 156.3 elapsed: 0.02 hr 2023-12-21 06:08:11 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 14500/50000] loss: 0.0000 rate: 185.9 elapsed: 0.03 hr 2023-12-21 06:08:12 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 14750/50000] loss: 0.0000 rate: 203.1 elapsed: 0.03 hr 2023-12-21 06:08:13 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 15000/50000] loss: 0.0000 rate: 149.4 elapsed: 0.03 hr 2023-12-21 06:08:15 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 15250/50000] loss: 0.0000 rate: 154.3 elapsed: 0.03 hr 2023-12-21 06:08:19 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 15500/50000] loss: 0.0000 rate: 188.4 elapsed: 0.03 hr 2023-12-21 06:08:20 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 15750/50000] loss: 0.0000 rate: 177.8 elapsed: 0.03 hr 2023-12-21 06:08:21 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 16000/50000] loss: 0.0000 rate: 203.3 elapsed: 0.03 hr 2023-12-21 06:08:23 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 16250/50000] loss: 0.0000 rate: 145.4 elapsed: 0.03 hr 2023-12-21 06:08:24 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 16500/50000] loss: 0.0000 rate: 156.5 elapsed: 0.03 hr 2023-12-21 06:08:26 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 16750/50000] loss: 0.0000 rate: 166.6 elapsed: 0.03 hr 2023-12-21 06:08:27 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 17000/50000] loss: 0.0000 rate: 169.8 elapsed: 0.03 hr 2023-12-21 06:08:29 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 17250/50000] loss: 0.0000 rate: 157.1 elapsed: 0.03 hr 2023-12-21 06:08:30 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 17500/50000] loss: 0.0000 rate: 196.6 elapsed: 0.03 hr 2023-12-21 06:08:32 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 17750/50000] loss: 0.0000 rate: 186.3 elapsed: 0.03 hr 2023-12-21 06:08:33 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 18000/50000] loss: 0.0000 rate: 130.5 elapsed: 0.03 hr 2023-12-21 06:08:35 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 18250/50000] loss: 0.0000 rate: 167.1 elapsed: 0.03 hr 2023-12-21 06:08:37 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 18500/50000] loss: 0.0000 rate: 152.5 elapsed: 0.03 hr 2023-12-21 06:08:38 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 18750/50000] loss: 0.0000 rate: 159.1 elapsed: 0.03 hr 2023-12-21 06:08:40 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 19000/50000] loss: 0.0000 rate: 179.2 elapsed: 0.03 hr 2023-12-21 06:08:41 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 19250/50000] loss: 0.0000 rate: 187.5 elapsed: 0.03 hr 2023-12-21 06:08:42 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 19500/50000] loss: 0.0000 rate: 126.8 elapsed: 0.03 hr 2023-12-21 06:08:44 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 19750/50000] loss: 0.0000 rate: 164.9 elapsed: 0.03 hr 2023-12-21 06:08:46 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 20000/50000] loss: 0.0000 rate: 154.5 elapsed: 0.03 hr 2023-12-21 06:08:48 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 20250/50000] loss: 0.0000 rate: 167.0 elapsed: 0.04 hr 2023-12-21 06:08:51 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 20500/50000] loss: 0.0000 rate: 198.4 elapsed: 0.04 hr 2023-12-21 06:08:52 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 20750/50000] loss: 0.0000 rate: 147.6 elapsed: 0.04 hr 2023-12-21 06:08:54 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 21000/50000] loss: 0.0000 rate: 143.6 elapsed: 0.04 hr 2023-12-21 06:08:55 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 21250/50000] loss: 0.0000 rate: 165.1 elapsed: 0.04 hr 2023-12-21 06:08:57 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 21500/50000] loss: 0.0000 rate: 162.9 elapsed: 0.04 hr 2023-12-21 06:08:59 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 21750/50000] loss: 0.0000 rate: 165.6 elapsed: 0.04 hr 2023-12-21 06:09:00 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 22000/50000] loss: 0.0000 rate: 199.4 elapsed: 0.04 hr 2023-12-21 06:09:01 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 22250/50000] loss: 0.0000 rate: 187.0 elapsed: 0.04 hr 2023-12-21 06:09:03 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 22500/50000] loss: 0.0000 rate: 128.9 elapsed: 0.04 hr 2023-12-21 06:09:05 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 22750/50000] loss: 0.0000 rate: 177.1 elapsed: 0.04 hr 2023-12-21 06:09:06 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 23000/50000] loss: 0.0000 rate: 153.2 elapsed: 0.04 hr 2023-12-21 06:09:08 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 23250/50000] loss: 0.0000 rate: 167.4 elapsed: 0.04 hr 2023-12-21 06:09:09 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 23500/50000] loss: 0.0000 rate: 184.4 elapsed: 0.04 hr 2023-12-21 06:09:11 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 23750/50000] loss: 0.0000 rate: 183.8 elapsed: 0.04 hr 2023-12-21 06:09:12 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 24000/50000] loss: 0.0000 rate: 109.1 elapsed: 0.04 hr 2023-12-21 06:09:14 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 24250/50000] loss: 0.0000 rate: 142.1 elapsed: 0.04 hr 2023-12-21 06:09:16 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 24500/50000] loss: 0.0000 rate: 153.2 elapsed: 0.04 hr 2023-12-21 06:09:18 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 24750/50000] loss: 0.0000 rate: 171.1 elapsed: 0.04 hr 2023-12-21 06:09:19 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 25000/50000] loss: 0.0000 rate: 178.3 elapsed: 0.04 hr 2023-12-21 06:09:20 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 25250/50000] loss: 0.0000 rate: 143.9 elapsed: 0.05 hr 2023-12-21 06:09:24 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 25500/50000] loss: 0.0000 rate: 148.1 elapsed: 0.05 hr 2023-12-21 06:09:26 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 25750/50000] loss: 0.0000 rate: 146.5 elapsed: 0.05 hr 2023-12-21 06:09:27 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 26000/50000] loss: 0.0000 rate: 178.7 elapsed: 0.05 hr 2023-12-21 06:09:29 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 26250/50000] loss: 0.0000 rate: 164.4 elapsed: 0.05 hr 2023-12-21 06:09:30 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 26500/50000] loss: 0.0000 rate: 191.3 elapsed: 0.05 hr 2023-12-21 06:09:32 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 26750/50000] loss: 0.0000 rate: 146.7 elapsed: 0.05 hr 2023-12-21 06:09:33 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 27000/50000] loss: 0.0000 rate: 156.4 elapsed: 0.05 hr 2023-12-21 06:09:35 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 27250/50000] loss: 0.0000 rate: 148.1 elapsed: 0.05 hr 2023-12-21 06:09:37 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 27500/50000] loss: 0.0000 rate: 177.2 elapsed: 0.05 hr 2023-12-21 06:09:38 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 27750/50000] loss: 0.0000 rate: 161.8 elapsed: 0.05 hr 2023-12-21 06:09:40 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 28000/50000] loss: 0.0000 rate: 194.3 elapsed: 0.05 hr 2023-12-21 06:09:41 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 28250/50000] loss: 0.0000 rate: 182.3 elapsed: 0.05 hr 2023-12-21 06:09:42 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 28500/50000] loss: 0.0000 rate: 126.8 elapsed: 0.05 hr 2023-12-21 06:09:44 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 28750/50000] loss: 0.0000 rate: 170.5 elapsed: 0.05 hr 2023-12-21 06:09:46 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 29000/50000] loss: 0.0000 rate: 169.4 elapsed: 0.05 hr 2023-12-21 06:09:47 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 29250/50000] loss: 0.0000 rate: 183.8 elapsed: 0.05 hr 2023-12-21 06:09:49 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 29500/50000] loss: 0.0000 rate: 164.3 elapsed: 0.05 hr 2023-12-21 06:09:50 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 29750/50000] loss: 0.0000 rate: 193.0 elapsed: 0.05 hr 2023-12-21 06:09:51 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 30000/50000] loss: 0.0000 rate: 132.0 elapsed: 0.05 hr 2023-12-21 06:09:53 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 30250/50000] loss: 0.0000 rate: 157.3 elapsed: 0.05 hr 2023-12-21 06:09:57 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 30500/50000] loss: 0.0000 rate: 170.5 elapsed: 0.05 hr 2023-12-21 06:09:58 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 30750/50000] loss: 0.0000 rate: 168.6 elapsed: 0.05 hr 2023-12-21 06:09:59 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 31000/50000] loss: 0.0000 rate: 194.8 elapsed: 0.06 hr 2023-12-21 06:10:01 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 31250/50000] loss: 0.0000 rate: 168.3 elapsed: 0.06 hr 2023-12-21 06:10:02 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 31500/50000] loss: 0.0000 rate: 132.9 elapsed: 0.06 hr 2023-12-21 06:10:04 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 31750/50000] loss: 0.0000 rate: 172.0 elapsed: 0.06 hr 2023-12-21 06:10:06 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 32000/50000] loss: 0.0000 rate: 172.8 elapsed: 0.06 hr 2023-12-21 06:10:07 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 32250/50000] loss: 0.0000 rate: 183.9 elapsed: 0.06 hr 2023-12-21 06:10:08 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 32500/50000] loss: 0.0000 rate: 186.5 elapsed: 0.06 hr 2023-12-21 06:10:10 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 32750/50000] loss: 0.0000 rate: 207.1 elapsed: 0.06 hr 2023-12-21 06:10:11 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 33000/50000] loss: 0.0000 rate: 161.2 elapsed: 0.06 hr 2023-12-21 06:10:13 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 33250/50000] loss: 0.0000 rate: 148.4 elapsed: 0.06 hr 2023-12-21 06:10:14 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 33500/50000] loss: 0.0000 rate: 146.6 elapsed: 0.06 hr 2023-12-21 06:10:16 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 33750/50000] loss: 0.0000 rate: 168.6 elapsed: 0.06 hr 2023-12-21 06:10:17 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 34000/50000] loss: 0.0000 rate: 161.1 elapsed: 0.06 hr 2023-12-21 06:10:19 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 34250/50000] loss: 0.0000 rate: 204.6 elapsed: 0.06 hr 2023-12-21 06:10:20 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 34500/50000] loss: 0.0000 rate: 212.9 elapsed: 0.06 hr 2023-12-21 06:10:21 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 34750/50000] loss: 0.0000 rate: 130.9 elapsed: 0.06 hr 2023-12-21 06:10:23 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 35000/50000] loss: 0.0000 rate: 153.3 elapsed: 0.06 hr 2023-12-21 06:10:25 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 35250/50000] loss: 0.0000 rate: 165.0 elapsed: 0.06 hr 2023-12-21 06:10:28 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 35500/50000] loss: 0.0000 rate: 179.2 elapsed: 0.06 hr 2023-12-21 06:10:30 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 35750/50000] loss: 0.0000 rate: 210.8 elapsed: 0.06 hr 2023-12-21 06:10:31 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 36000/50000] loss: 0.0000 rate: 134.2 elapsed: 0.06 hr 2023-12-21 06:10:33 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 36250/50000] loss: 0.0000 rate: 158.3 elapsed: 0.06 hr 2023-12-21 06:10:34 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 36500/50000] loss: 0.0000 rate: 168.2 elapsed: 0.07 hr 2023-12-21 06:10:36 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 36750/50000] loss: 0.0000 rate: 162.6 elapsed: 0.07 hr 2023-12-21 06:10:38 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 37000/50000] loss: 0.0000 rate: 166.9 elapsed: 0.07 hr 2023-12-21 06:10:39 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 37250/50000] loss: 0.0000 rate: 206.1 elapsed: 0.07 hr 2023-12-21 06:10:40 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 37500/50000] loss: 0.0000 rate: 179.9 elapsed: 0.07 hr 2023-12-21 06:10:42 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 37750/50000] loss: 0.0000 rate: 146.5 elapsed: 0.07 hr 2023-12-21 06:10:43 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 38000/50000] loss: 0.0000 rate: 168.2 elapsed: 0.07 hr 2023-12-21 06:10:45 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 38250/50000] loss: 0.0000 rate: 159.8 elapsed: 0.07 hr 2023-12-21 06:10:46 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 38500/50000] loss: 0.0000 rate: 183.7 elapsed: 0.07 hr 2023-12-21 06:10:48 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 38750/50000] loss: 0.0000 rate: 175.1 elapsed: 0.07 hr 2023-12-21 06:10:49 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 39000/50000] loss: 0.0000 rate: 205.7 elapsed: 0.07 hr 2023-12-21 06:10:50 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 39250/50000] loss: 0.0000 rate: 156.8 elapsed: 0.07 hr 2023-12-21 06:10:52 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 39500/50000] loss: 0.0000 rate: 143.5 elapsed: 0.07 hr 2023-12-21 06:10:54 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 39750/50000] loss: 0.0000 rate: 163.5 elapsed: 0.07 hr 2023-12-21 06:10:55 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 40000/50000] loss: 0.0000 rate: 177.3 elapsed: 0.07 hr 2023-12-21 06:10:57 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 40250/50000] loss: 0.0000 rate: 205.7 elapsed: 0.07 hr 2023-12-21 06:11:00 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 40500/50000] loss: 0.0000 rate: 180.4 elapsed: 0.07 hr 2023-12-21 06:11:01 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 40750/50000] loss: 0.0000 rate: 141.5 elapsed: 0.07 hr 2023-12-21 06:11:03 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 41000/50000] loss: 0.0000 rate: 170.4 elapsed: 0.07 hr 2023-12-21 06:11:04 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 41250/50000] loss: 0.0000 rate: 153.2 elapsed: 0.07 hr 2023-12-21 06:11:06 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 41500/50000] loss: 0.0000 rate: 175.8 elapsed: 0.07 hr 2023-12-21 06:11:07 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 41750/50000] loss: 0.0000 rate: 178.0 elapsed: 0.07 hr 2023-12-21 06:11:09 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 42000/50000] loss: 0.0000 rate: 192.6 elapsed: 0.07 hr 2023-12-21 06:11:10 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 42250/50000] loss: 0.0000 rate: 153.5 elapsed: 0.07 hr 2023-12-21 06:11:12 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 42500/50000] loss: 0.0000 rate: 159.3 elapsed: 0.08 hr 2023-12-21 06:11:13 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 42750/50000] loss: 0.0000 rate: 166.8 elapsed: 0.08 hr 2023-12-21 06:11:15 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 43000/50000] loss: 0.0000 rate: 167.3 elapsed: 0.08 hr 2023-12-21 06:11:16 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 43250/50000] loss: 0.0000 rate: 161.8 elapsed: 0.08 hr 2023-12-21 06:11:18 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 43500/50000] loss: 0.0000 rate: 188.8 elapsed: 0.08 hr 2023-12-21 06:11:19 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 43750/50000] loss: 0.0000 rate: 204.9 elapsed: 0.08 hr 2023-12-21 06:11:20 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 44000/50000] loss: 0.0000 rate: 148.2 elapsed: 0.08 hr 2023-12-21 06:11:22 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 44250/50000] loss: 0.0000 rate: 156.6 elapsed: 0.08 hr 2023-12-21 06:11:24 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 44500/50000] loss: 0.0000 rate: 169.8 elapsed: 0.08 hr 2023-12-21 06:11:25 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 44750/50000] loss: 0.0000 rate: 164.6 elapsed: 0.08 hr 2023-12-21 06:11:27 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 45000/50000] loss: 0.0000 rate: 172.7 elapsed: 0.08 hr 2023-12-21 06:11:28 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 45250/50000] loss: 0.0000 rate: 166.6 elapsed: 0.08 hr 2023-12-21 06:11:31 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 45500/50000] loss: 0.0000 rate: 141.9 elapsed: 0.08 hr 2023-12-21 06:11:33 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 45750/50000] loss: 0.0000 rate: 169.1 elapsed: 0.08 hr 2023-12-21 06:11:35 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 46000/50000] loss: 0.0000 rate: 170.8 elapsed: 0.08 hr 2023-12-21 06:11:36 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 46250/50000] loss: 0.0000 rate: 172.7 elapsed: 0.08 hr 2023-12-21 06:11:37 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 46500/50000] loss: 0.0000 rate: 193.6 elapsed: 0.08 hr 2023-12-21 06:11:39 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 46750/50000] loss: 0.0000 rate: 207.4 elapsed: 0.08 hr 2023-12-21 06:11:40 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 47000/50000] loss: 0.0000 rate: 143.2 elapsed: 0.08 hr 2023-12-21 06:11:42 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 47250/50000] loss: 0.0000 rate: 168.4 elapsed: 0.08 hr 2023-12-21 06:11:43 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 47500/50000] loss: 0.0000 rate: 159.5 elapsed: 0.08 hr 2023-12-21 06:11:45 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 47750/50000] loss: 0.0000 rate: 161.8 elapsed: 0.08 hr 2023-12-21 06:11:46 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+[i: 48000/50000] loss: 0.0000 rate: 175.6 elapsed: 0.08 hr 2023-12-21 06:11:48 final_PINN_Sin1D_2_w1_16h_2l_200b_m
+
+torch.Size([1000, 1]) torch.Size([1000, 1]) torch.Size([1000, 1])
+torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1]) torch.Size([200, 1])
+Exception in thread Thread-1:
+Traceback (most recent call last):
+  File "D:\an\envs\fbpinn\Lib\threading.py", line 1038, in _bootstrap_inner
+Process Process-18:1:
+    self.run()
+  File "D:\an\envs\fbpinn\Lib\site-packages\tensorboardX\event_file_writer.py", line 202, in run
+    data = self._queue.get(True, queue_wait_duration)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\queues.py", line 113, in get
+    if not self._poll(timeout):
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\connection.py", line 256, in poll
+Traceback (most recent call last):
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\dell\Desktop\科研\FBPINNs-pytorch\fbpinns\trainersBase.py", line 111, in train_models_multiprocess
+    run.train()
+  File "C:\Users\dell\Desktop\科研\FBPINNs-pytorch\fbpinns\main.py", line 386, in train
+    x, yj, loss = self._train_step(model, optimizer, c, i, mu, sd, device)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dell\Desktop\科研\FBPINNs-pytorch\fbpinns\main.py", line 321, in _train_step
+    loss.backward()
+  File "D:\an\envs\fbpinn\Lib\site-packages\torch\_tensor.py", line 492, in backward
+    torch.autograd.backward(
+  File "D:\an\envs\fbpinn\Lib\site-packages\torch\autograd\__init__.py", line 251, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+KeyboardInterrupt
+    return self._poll(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\connection.py", line 329, in _poll
+    return bool(wait([self], timeout))
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\an\envs\fbpinn\Lib\multiprocessing\connection.py", line 882, in wait
+    ov.cancel()
+OSError: [WinError 6] 句柄无效。

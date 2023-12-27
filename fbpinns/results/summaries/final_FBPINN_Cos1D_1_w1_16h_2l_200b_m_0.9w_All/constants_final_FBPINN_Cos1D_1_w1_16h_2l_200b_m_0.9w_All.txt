@@ -1,5 +1,5 @@
 RUN: final_FBPINN_Cos1D_1_w1_16h_2l_200b_m_0.9w_All
-P: <problems.Cos1D_1 object at 0x000001A6AB0EA090>
+P: <problems.Cos1D_1 object at 0x0000018C680FDB50>
 SUBDOMAIN_XS: [array([-6.28318531, -4.48798951, -1.7951958 ,  0.        ,  3.5903916 ,
         6.28318531])]
 SUBDOMAIN_WS: [array([1.61567622, 1.61567622, 1.61567622, 1.61567622, 1.61567622,

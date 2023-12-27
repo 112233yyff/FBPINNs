@@ -58,10 +58,17 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
     # INIT FUNCTIONS
     
     def __init__(self, subdomain_xs, subdomain_ws, scale=0.05, device=None):
+        #这是类 ActiveRectangularDomainND 的构造函数，接收四个参数：
+        # subdomain_xs 和 subdomain_ws：超矩形子域的边界
+        # scale=0.05：一个比例因子，默认为 0.05。
+        # device=None：用于 Torch 张量的设备，如果未提供则默认为 None。
         super().__init__(subdomain_xs, subdomain_ws)
+        #这里调用了父类的构造函数 __init__，传递了 subdomain_xs 和 subdomain_ws 参数。
         
         self.N_MODELS = np.product(self.nm)
+        #计算了模型数量 N_MODELS，通过计算 nm 中所有元素的乘积得到。
         self.N_ORDERS = len(self.segments)
+        #设置了子域数量 N_ORDERS，这里使用了 segments 的长度。
         self.onm = (self.N_ORDERS,)+self.nm
         self.N_SEGMENTS = np.product(self.onm)
         
@@ -69,16 +76,22 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
         self.scale = scale
         
         # get outside filters
+        #调用类中的 _set_outside_filters 方法，用于设置域中段的外部过滤器
+
         self._set_outside_filters()
         
         # set helpers
+        #调用类中的 _set_helpers 方法，用于设置一些辅助属性和计算。
         self._set_helpers()
         
         # set torch tensors
+        #调用类中的 _set_torch_tensors 方法，根据提供的设备（如果有的话），设置 Torch 张量。
+
         self._set_torch_tensors(device)
     
     def _set_outside_filters(self):# [left over processing required from domainsBase._RectangularDomainND]
         "Set filters for segments in model_segments which fall outside of the segment grid"
+        #这段代码是用来设定过滤器，用于筛选在模型片段（model_segments）中落在段网格之外的部分。
         
         cs = []# filters for each segment type
         for ioa, ms in enumerate(self.models_segments):# (ne,nd,nm) ms
@@ -91,6 +104,15 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
 
     def _set_helpers(self):
         "Set some useful helper arrays"
+        #xmins 和 xmaxs 分别是表示每个模型的最小值和最大值。
+        # 它们使用切片操作从 self.xx（具有形状 (nd, nm+1)）中获取，通过不同的切片组合，分别获得了模型的最小和最大值，结果形状为 (nd, nm)。
+        #
+        # wmins 和 wmaxs 分别表示每个模型的窗口宽度的最小值和最大值。
+        # 同样地，它们也使用切片操作从 self.ww（具有形状 (nd, nm+1)）中获取，结果形状也是 (nd, nm)。
+        #
+        # mus 和 sds 分别是每个模型的均值和标准差。这些值是通过计算模型最小值和最大值的和与差的一半得到的，结果形状也是 (nd, nm)。
+        #
+        # 最后，将这些值以二元组 (mu, sd) 的形式组成的列表放入了 n 中，并以扁平化列表的方式保存。
         
         # get xmin, xmax of each model
         xmins = self.xx[(slice(None),)+(slice(None,-1),)*self.nd]# (nd, nm)  self.xx (nd,nm+1)
@@ -120,6 +142,9 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
         "Get the neighbours of an active array"
         
         # get the neighbouring models active values
+        #这个函数 _get_neighbours 的功能是获取一个数组 active 中各元素的相邻值
+        #返回的 neighbours 是一个由 ds 列表转换而来的 nd 维度数组，形状为 (nd, 2, nm)，其中包含了每个维度上模型的相邻值。
+
         pad = np.pad(active.copy(), 1, mode="constant", constant_values=0)# (nm+2) pads all dimensions with one zero either side
         ds = []
         for i in range(self.nd):
@@ -134,8 +159,10 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
         
     def _get_window_functions(self, neighbours):
         "For each model, get the appropriate window function, given the neighbours array"
+        #"对于每个模型，根据相邻数组获取相应的窗口函数"
         
         # get window functions by model
+
         w = []
         for im,ii in itergrid(self.nm):
             sl = (slice(None),)+ii# slice at grid location
@@ -155,6 +182,7 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
     
     def _get_isegs(self, ioa, ii):
         "Get all the isegs for a model at ii at segment order ioa"
+        #这段代码用于获取特定模型在特定段序（segment order）上的所有段（isegs）。
         
         # get appropriate map
         ms = self.models_segments[ioa]# (ne,nd,nm) ms
@@ -178,6 +206,7 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
     
     def update_active(self, active=None):
         "Update the domain with the current active array"
+        #"使用当前的活动数组更新域"
         
         if active is None: active = np.ones(self.nm, dtype=int)
         if active.shape != self.nm: raise Exception("ERROR: active shape %s does not equal model grid %s!"%(active.shape, self.nm))
@@ -274,6 +303,7 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
     
     def _set_torch_tensors(self, device):
         "Make torch copies of tensors supplied by this class which are used during training"
+        #"在训练期间使用当前类提供的张量创建 Torch 副本"
         
         self.device = torch.device("cpu") if device is None else device
         totorch = lambda x: torch.from_numpy(x.copy().astype(np.float32)).to(self.device)
@@ -283,6 +313,7 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
         
     def update_sampler(self, batch_size, random):
         "Set the batch size and type of the domain sampler. Be sure to use update_active to update index maps after this (!)"
+        #"设置域采样器的批处理大小和类型。务必在此之后使用 update_active 更新索引映射 (!)"
         
         if len(batch_size) != self.nd: raise Exception("ERROR: len(batch_size) != self.nd! (%s)"%(batch_size,))
         
@@ -318,6 +349,7 @@ class ActiveRectangularDomainND(domainsBase._RectangularDomainND):
         
     def sample_segments(self):
         """Sample all the segments in the model, returning torch tensors"""
+        #"""对模型中的所有片段进行采样，返回 Torch 张量"""
         
         xs = [None for iseg in range(self.N_SEGMENTS)]
         for iseg in range(self.N_SEGMENTS):# for each segment

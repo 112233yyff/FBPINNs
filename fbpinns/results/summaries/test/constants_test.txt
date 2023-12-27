@@ -1,27 +1,24 @@
 RUN: test
-P: <problems.WaveEquation3D object at 0x000001FCFF7E0510>
+P: <problems.WaveEquation3D object at 0x00000265F98074F0>
 SUBDOMAIN_XS: [array([-10.  ,  -3.33,   3.33,  10.  ]), array([-10.  ,  -3.33,   3.33,  10.  ]), array([ 0. ,  2.5,  5. ,  7.5, 10. ])]
-SUBDOMAIN_WS: [array([5.994, 5.994, 5.994, 5.994]), array([5.994, 5.994, 5.994, 5.994]), array([2.25, 2.25, 2.25, 2.25, 2.25])]
 BOUNDARY_N: (0.3,)
 Y_N: (0, 1)
-ACTIVE_SCHEDULER: <class 'active_schedulers.PlaneActiveSchedulerND'>
-ACTIVE_SCHEDULER_ARGS: (array([0]), [0, 1])
-DEVICE: 0
+DEVICE: cuda:0
 MODEL: <class 'models.FCN'>
-N_HIDDEN: 64
-N_LAYERS: 4
+N_HIDDEN: 16
+N_LAYERS: 2
 BATCH_SIZE: (58, 58, 58)
 RANDOM: True
 LRATE: 0.001
-N_STEPS: 150000
+N_STEPS: 75000
 SEED: 123
-BATCH_SIZE_TEST: (100, 100, 10)
+BATCH_SIZE_TEST: (50, 50, 10)
 PLOT_LIMS: (1, False)
 SUMMARY_FREQ: 250
-TEST_FREQ: 1000
-MODEL_SAVE_FREQ: 10000
-SHOW_FIGURES: True
-SAVE_FIGURES: False
+TEST_FREQ: 2000
+MODEL_SAVE_FREQ: 150000
+SHOW_FIGURES: False
+SAVE_FIGURES: True
 CLEAR_OUTPUT: False
 SUMMARY_OUT_DIR: results/summaries/test/
 MODEL_OUT_DIR: results/models/test/

@@ -78,19 +78,33 @@ random = True
 # Wave equation c=1
 
 P = problems.WaveEquation3D(c=1, source_sd=0.2)
+#c是速度常数，source_sd是控制源项（波源）的标准偏差
+#在这个特定的问题中，source_sd用于定义初始条件的影响范围。对于二维波动方程，它代表了初始条件中的高斯型激励（初始波形）。
+# 标准偏差决定了这个高斯激励的分布范围和形状。较小的标准偏差意味着源是一个更加尖锐的、局部化的激励，而较大的标准偏差则会使其更加分散和模糊。
+#因此，source_sd会影响问题中初始激励的分布范围和形状，进而影响了整个波动方程求解过程中的初始条件。
 subdomain_xs = [np.array([-1, -0.33, 0.33, 1]), np.array([-1, -0.33, 0.33, 1]), np.array([0, 0.5, 1])]
+#subdomain_xs表示的是每个子域的边界坐标
 boundary_n = (0.2,)
+#和source_sd保持一致，其实就是论文中问题描述的σ，是控制高斯点源的一个参数
 y_n = (0,1)
+#对模型的输出 y 进行缩放和偏移操作，以调整输出的范围。
+# y = y*c.Y_N[1] + c.Y_N[0]
 batch_size = (30,30,30)
+#训练时每个维度采样点的个数
 batch_size_test = (100,100,10)
+#测试时每个维度采样点的个数
 
 n_steps = 25000
+#训练次数
 n_hidden, n_layers = 64, 4
+#分别表示每个隐藏层的单元个数，以及隐藏层数
 runs.append(run_PINN())
 
 n_steps = 25000
+#训练次数
 A, args = AllActiveSchedulerND, ()
 width = 0.9
+#借此变量来定义子域间的重叠度
 subdomain_ws = get_subdomain_ws(subdomain_xs, width)
 for n_hidden, n_layers in [(16, 2), (32, 3)]:
     runs.append(run_FBPINN())
