@@ -14,7 +14,7 @@ def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
         u_test = u_test[:,:,it]# for 3D
     plt.imshow(u_test.T,# transpose as jnp.meshgrid uses indexing="ij"
                origin="lower", extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
-               cmap="viridis", vmin=ulim[0], vmax=ulim[1])
+               cmap="viridis", vmin=ulim[0][0], vmax=ulim[1][0])
     plt.colorbar()
     plt.xlim(xlim[0][0], xlim[1][0])
     plt.ylim(xlim[0][1], xlim[1][1])

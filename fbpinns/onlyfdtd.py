@@ -33,10 +33,16 @@ Ex = np.zeros((Zmax, Nmax))
 x_len = dz * Zmax
 x_cood = np.linspace(-x_len /2., x_len /2., Zmax)
 
+t_len = dt * Nmax
+t_cood = np.linspace(0, t_len, Nmax)
+
+def source(x,t,sd):
+    return np.exp(-0.5 * (x ** 2 + t ** 2) / (sd ** 2))
+
 source_x = int(Zmax/2.0)
 for t in range(0, Nmax-1):
     # 内层循环：在空间维度上的循环
-    Ex[:, t] = np.exp(-0.5 * (x_cood ** 2 + t ** 2) / (0.5 ** 2))
+    Ex[source_x,t] = source(x_cood[source_x],t_cood[t],0.5)
     Hy[-1, t + 1] = Hy[-2, t]  # abc
     for z in range(0, Zmax - 1):
         Hy[z, t + 1] = Hy[z, t] + (Ex[z + 1, t] - Ex[z, t]) * dt / (mu0 *dz)

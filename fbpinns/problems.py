@@ -405,44 +405,47 @@ class FDTD1D(Problem):
         return phys
 
     @staticmethod
-    def exact_solution(all_params, x_batch, batch_shape):
-        key = jax.random.PRNGKey(0)
-        return jax.random.normal(key, (x_batch.shape[0], 1))
-
     # def exact_solution(all_params, x_batch, batch_shape):
-    #     params = all_params["static"]["problem"]
-    #     c, sd= params["c"], params["sd"]
-    #
-    #     (xmin, tmin), (xmax,  tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
-    #
-    #     # get grid spacing
-    #     deltax,  deltat = (xmax - xmin) / (batch_shape[0] - 1),  (tmax - tmin) / (batch_shape[1] - 1)
-    #
-    #     # get f0, target deltas of FD simulation
-    #     f0 = c / sd  # approximate frequency of wave
-    #     DELTAX = 1 / (f0 * 10)  # target fine sampled deltas
-    #     DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
-    #     dx, dt = int(np.ceil(deltax / DELTAX)),  int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
-    #     DELTAX,  DELTAT = deltax / dx, deltat / dt
-    #     NX, NSTEPS = batch_shape[0] * dx - (dx - 1),  batch_shape[1] * dt - (dt - 1)
-    #     Hy, Ex = FDTD1DD(
-    #         xmin,
-    #         xmax,
-    #         NX,
-    #         NSTEPS,
-    #         DELTAX,
-    #         DELTAT,
-    #     )
-    #     Hy = Hy[::dx, ::dt]
-    #     Hy = jnp.ravel(Hy)
-    #     Hy = jnp.reshape(Hy, (-1, 1))
-    #     Ex = Ex[::dx, ::dt]
-    #     Ex = jnp.ravel(Ex)
-    #     Ex = jnp.reshape(Ex, (-1, 1))
-    #
-    #     # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
-    #     y = jnp.concatenate((Hy, Ex), axis=1)
-    #     return y # skip computing analytical gradients
+    #     key = jax.random.PRNGKey(0)
+    #     return jax.random.normal(key, (x_batch.shape[0], 1))
+
+    def exact_solution(all_params, x_batch, batch_shape):
+        params = all_params["static"]["problem"]
+        c, sd= params["c"], params["sd"]
+
+        (xmin, tmin), (xmax,  tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
+
+        # get grid spacing
+        deltax,  deltat = (xmax - xmin) / (batch_shape[0] - 1),  (tmax - tmin) / (batch_shape[1] - 1)
+
+        # get f0, target deltas of FD simulation
+        f0 = c / sd  # approximate frequency of wave
+        DELTAX = 1 / (f0 * 10)  # target fine sampled deltas
+        DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
+        dx, dt = int(np.ceil(deltax / DELTAX)),  int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
+        DELTAX,  DELTAT = deltax / dx, deltat / dt
+        NX, NSTEPS = batch_shape[0] * dx - (dx - 1),  batch_shape[1] * dt - (dt - 1)
+        Hy, Ex = FDTD1DD(
+            xmin,
+            xmax,
+            tmin,
+            tmax,
+            sd,
+            NX,
+            NSTEPS,
+            DELTAX,
+            DELTAT,
+        )
+        Hy = Hy[::dx, ::dt]
+        Hy = jnp.ravel(Hy)
+        Hy = jnp.reshape(Hy, (-1, 1))
+        Ex = Ex[::dx, ::dt]
+        Ex = jnp.ravel(Ex)
+        Ex = jnp.reshape(Ex, (-1, 1))
+
+        # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
+        y = jnp.concatenate((Hy, Ex), axis=1)
+        return y # skip computing analytical gradients
     @staticmethod
     def c_fn(all_params, x_batch):
         "Computes the velocity model"

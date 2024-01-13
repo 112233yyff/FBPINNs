@@ -11,6 +11,9 @@ from time import sleep
 def FDTD1DD(
         xmin,
         xmax,
+        tmin,
+        tmax,
+        sd,
         NX,
         NSTEPS,
         DELTAX,
@@ -33,12 +36,17 @@ def FDTD1DD(
     Hy = np.zeros((Zmax, Nmax)) # 初始化磁场的数组
     Ex = np.zeros((Zmax, Nmax)) #初始化电场的数组
 
-    # x_len = dz * Zmax #空间长度
-    x_cood = np.linspace(xmin, xmax, Zmax) #离散化后的空间坐标
+    x_cood = np.linspace(xmin, xmax, Zmax)
+
+    t_cood = np.linspace(tmin, tmax, Nmax)
+
+    def source(x, t, sd):
+        return np.exp(-0.5 * (x ** 2 + t ** 2) / (sd ** 2))
     source_x = int(Zmax / 2.0)
 
-    for t in range(0, Nmax-1): #t∈[0,Nmax-2] 循环不包括最后一个时间点
-        Ex[source_x, t] = np.sin(w * t * dt)
+    for t in range(0, Nmax - 1):
+        # 内层循环：在空间维度上的循环
+        Ex[source_x, t] = source(x_cood[source_x], t_cood[t], sd)
         Hy[-1, t + 1] = Hy[-2, t]  # abc
         # 内层循环：在空间维度上的循环
         for z in range(0, Zmax - 1):
