@@ -107,6 +107,8 @@ class RectangularDecompositionND(Decomposition):
         with subdomain centers subdomain_xs and widths subdomain_ws.
         """
 
+        #subdomain_xs代表子域的中心；subdomain_ws代表子域的宽度
+
         # get dimensionality of DD
         nm = tuple([len(x) for x in subdomain_xs])# shape of rectangular DD grid
         m = np.prod(nm)
@@ -379,8 +381,8 @@ if __name__ == "__main__":
 
     ## 1D test
 
-    subdomain_xs = [np.linspace(-3,3,4),]
-    subdomain_ws = [3*np.ones(4),]
+    subdomain_xs = [np.linspace(-3,3,7),]
+    subdomain_ws = [3*np.ones(7),]
 
     decomposition = RectangularDecompositionND
     ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
@@ -450,51 +452,51 @@ if __name__ == "__main__":
 
 
 
-    ## 3D test
-
-    subdomain_xs = [np.linspace(-3,3,4), np.linspace(-2,2,3), np.linspace(-1,1,2)]
-    subdomain_ws = [3*np.ones(4), 2.2*np.ones(3), 2.5*np.ones(2)]
-
-    decomposition = RectangularDecompositionND
-    ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
-    all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
-    m = all_params["static"]["decomposition"]["m"]
-    active = np.ones(m)
-
-    active[1] = 0
-    active[2] = 2
-    decomposition.plot(all_params, iaxes=[0,1], active=active, show_norm=True, show_window=True)
-    plt.show()
-    decomposition.plot(all_params, iaxes=[1,2], active=active, show_norm=True, show_window=True)
-    plt.show()
-
-    # large number of subdomains test
-    subdomain_xs = [np.linspace(-3,3,20), np.linspace(-2,2,20), np.linspace(-1,1,20)]
-    subdomain_ws = [3*np.ones(20), 2.2*np.ones(20), 2.5*np.ones(20)]
-
-    decomposition = RectangularDecompositionND
-    ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
-    all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
-
-    decomposition.plot(all_params)
-    plt.show()
-
-    ## multiscale tests
-
-    subdomain_xss = [[np.linspace(-3,3,4), np.linspace(-2,2,3)],
-                     [np.linspace(-3,3,10), np.linspace(-2,2,10)],
-                     ]
-    subdomain_wss = [[3*np.ones(4), 2.2*np.ones(3)],
-                     [1*np.ones(10), 1*np.ones(10)],
-                     ]
-
-    decomposition = MultilevelRectangularDecompositionND
-    ps_ = decomposition.init_params(subdomain_xss, subdomain_wss, (0,1))
-    all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
-    m = all_params["static"]["decomposition"]["m"]
-    active = np.ones(m)
-
-    decomposition.plot(all_params, active=active, show_norm=True, show_window=True)
+    # ## 3D test
+    #
+    # subdomain_xs = [np.linspace(-3,3,4), np.linspace(-2,2,3), np.linspace(-1,1,2)]
+    # subdomain_ws = [3*np.ones(4), 2.2*np.ones(3), 2.5*np.ones(2)]
+    #
+    # decomposition = RectangularDecompositionND
+    # ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
+    # all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
+    # m = all_params["static"]["decomposition"]["m"]
+    # active = np.ones(m)
+    #
+    # active[1] = 0
+    # active[2] = 2
+    # decomposition.plot(all_params, iaxes=[0,1], active=active, show_norm=True, show_window=True)
+    # plt.show()
+    # decomposition.plot(all_params, iaxes=[1,2], active=active, show_norm=True, show_window=True)
+    # plt.show()
+    #
+    # # large number of subdomains test
+    # subdomain_xs = [np.linspace(-3,3,20), np.linspace(-2,2,20), np.linspace(-1,1,20)]
+    # subdomain_ws = [3*np.ones(20), 2.2*np.ones(20), 2.5*np.ones(20)]
+    #
+    # decomposition = RectangularDecompositionND
+    # ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
+    # all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
+    #
+    # decomposition.plot(all_params)
+    # plt.show()
+    #
+    # ## multiscale tests
+    #
+    # subdomain_xss = [[np.linspace(-3,3,4), np.linspace(-2,2,3)],
+    #                  [np.linspace(-3,3,10), np.linspace(-2,2,10)],
+    #                  ]
+    # subdomain_wss = [[3*np.ones(4), 2.2*np.ones(3)],
+    #                  [1*np.ones(10), 1*np.ones(10)],
+    #                  ]
+    #
+    # decomposition = MultilevelRectangularDecompositionND
+    # ps_ = decomposition.init_params(subdomain_xss, subdomain_wss, (0,1))
+    # all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
+    # m = all_params["static"]["decomposition"]["m"]
+    # active = np.ones(m)
+    #
+    # decomposition.plot(all_params, active=active, show_norm=True, show_window=True)
 
 
 

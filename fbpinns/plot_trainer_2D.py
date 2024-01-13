@@ -80,15 +80,15 @@ def plot_2D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
     # plot full solution
     plt.subplot(3,2,2)
     plt.title(f"[{i}] Difference")
-    _plot_test_im(u_exact - u_test, xlim0, ulim, n_test)
+    _plot_test_im(u_exact[:,0] - u_test[:,0], xlim0, ulim, n_test)
 
     plt.subplot(3,2,3)
     plt.title(f"[{i}] Full solution")
-    _plot_test_im(u_test, xlim0, ulim, n_test)
+    _plot_test_im(u_test[:,0], xlim0, ulim, n_test)
 
     plt.subplot(3,2,4)
     plt.title(f"[{i}] Ground truth")
-    _plot_test_im(u_exact, xlim0, ulim, n_test)
+    _plot_test_im(u_exact[:,0], xlim0, ulim, n_test)
 
     # plot raw hist
     plt.subplot(3,2,5)

@@ -23,8 +23,6 @@ def get_subdomain_ws(subdomain_xs, width):
 
 
 
-# main constants class
-
 class Constants(ConstantsBase):
 
     def __init__(self, **kwargs):

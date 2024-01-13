@@ -215,12 +215,11 @@ def _get_ujs(x_batch, jmaps, u):
     nodes, leaves, jac_is = jmaps
     #: 这里从参数 jmaps 中解包了三个值，分别赋给了 nodes、leaves 和 jac_is。这些变量可能是与计算雅可比矩阵相关的节点、叶子和索引的信息。
     vs = jnp.tile(jnp.eye(x_batch.shape[1]), (x_batch.shape[0],1,1))
-    #这行代码创建了一个张量 vs，用于表示单位矩阵的重复。这个张量的维度是 (x_batch.shape[0], x_batch.shape[1], x_batch.shape[1])，它将用于存储雅可比矩阵的相关信息。
 
     # chain required jacobian functions
     fs = [u]
     for (ni, ix), _, _ in nodes:
-        fs.append(jacfwd(fs[ni], vs[:,ix]))
+        fs.append(jacfwd(fs[ni], vs[:,ix]))#ni表示函数列表中需要进行求导的函数的索引，
 
     # evaluate required jacobian functions
     jacs = []
@@ -241,6 +240,7 @@ def _get_ujs(x_batch, jmaps, u):
     return ujs
 
 def jacfwd(f, v):
+    #用于计算给定函数 f 关于输入变量 x 的雅可比矩阵。让我们逐行解释这段代码：
     "Computes jacobian for single x, for all y, fully chained"
     def jacfun(x):
         y, j, aux = jvp(f, (x,), (v,), has_aux=True)
@@ -278,8 +278,10 @@ def PINN_loss(active_params, static_params, constraints, model_fns, jmapss, loss
     for jmaps, constraint in zip(jmapss, constraints):
         logger.debug("constraint")
         for c_ in constraint:
+            jax.debug.print("c_: {}", c_)
             logger.debug(str_tensor(c_))
         x_batch = constraint[0]
+        jax.debug.print("x_bach: {}", x_batch)
         ujs = PINN_forward(all_params, x_batch, model_fns, jmaps)
         constraints_.append(constraint+ujs)
     return loss_fn(all_params, constraints_)
@@ -293,6 +295,13 @@ def FBPINN_update(optimiser_fn, active_opt_states,
     # update step
     lossval, grads = value_and_grad(FBPINN_loss, argnums=0)(
         active_params, fixed_params, static_params, takess, constraints, model_fns, jmapss, loss_fn)
+    #该行代码返回两个值：
+    # lossval 是损失函数的值，也就是 FBPINN_loss 在给定参数下的输出值。
+    # grads 是关于 active_params 的梯度，即 FBPINN_loss 函数对 active_params 的偏导数。
+    # 这行代码实际上通过调用损失函数来计算训练过程中需要的损失值和梯度，用于更新模型参数。
+
+    # FBPINN_loss是一个损失函数，而 active_params是用于模型训练的一组参数。
+    # 当我们说 "FBPINN_loss 函数对 active_params 的偏导数" 时，我们指的是计算损失函数关于这组参数的梯度。
     updates, active_opt_states = optimiser_fn(grads, active_opt_states, active_params)
     active_params = optax.apply_updates(active_params, updates)
     return lossval, active_opt_states, active_params
@@ -459,6 +468,7 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
     logger.debug(str_tensor(x_batch_global))
 
     # get jac maps
+    #用于构建一个计算“链式雅可比矩阵”的树形结构
     jmapss = tuple(get_jmaps(required_ujs) for required_ujs in required_ujss)
 
     # get test points - for now, just use global interior points
@@ -800,7 +810,7 @@ class PINNTrainer(_Trainer):
             ps_ = cl.init_params(**kwargs)
             if ps_[0]: all_params["static"][tag] = ps_[0]
             if ps_[1]: all_params["trainable"][tag] = ps_[1]
-        assert (all_params["static"]["domain"]["xd"] ==\
+        assert (all_params["static"]["domain"]["xd"] == \
                 all_params["static"]["problem"]["dims"][1])
 
         # initialise network params
@@ -961,7 +971,7 @@ if __name__ == "__main__":
     #     network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
     #     )
     #
-    # # run = FBPINNTrainer(c)
+    # #run = FBPINNTrainer(c)
     # run = PINNTrainer(c)
     #
     # all_params = run.train()
@@ -971,89 +981,94 @@ if __name__ == "__main__":
 
 
     #2D
+    import numpy as np
+    from fbpinns.domains import RectangularDomainND
+    from fbpinns.problems import FDTD1D
+    from fbpinns.decompositions import RectangularDecompositionND
+    from fbpinns.networks import FCN
+    from fbpinns.schedulers import AllActiveSchedulerND
+    from fbpinns.constants import Constants, get_subdomain_ws
+    from fbpinns.trainers import FBPINNTrainer,PINNTrainer
+
+    subdomain_xs = [np.linspace(-1, 1, 5), np.linspace(0, 1, 5)]
+    subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
+    c = Constants(
+        run="test",
+        domain=RectangularDomainND,
+        domain_init_kwargs=dict(
+            xmin=np.array([-1, 0]),
+            xmax=np.array([1, 1]),
+        ),
+        problem=FDTD1D,
+        problem_init_kwargs=dict(
+            c=1, sd=0.1,
+        ),
+        decomposition=RectangularDecompositionND,
+        decomposition_init_kwargs=dict(
+            subdomain_xs=subdomain_xs,
+            subdomain_ws=subdomain_ws,
+            unnorm=(0., 1.),
+        ),
+        network=FCN,
+        network_init_kwargs=dict(
+            layer_sizes=[2, 32, 2],
+        ),
+        ns=((500, 100),),
+        n_test=(1000, 150),
+        n_steps=15000,
+        optimiser_kwargs=dict(learning_rate=1e-3),
+        summary_freq=200,
+        test_freq=200,
+        show_figures=False,
+        clear_output=False,
+        save_figures=True,
+    )
+
+    # run = FBPINNTrainer(c)
+    # run.train()
+
+    c["network_init_kwargs"] = dict(layer_sizes=[2, 128, 128, 2])
+    run = PINNTrainer(c)
+    run.train()
+
+    # #3D
     # import numpy as np
     # from fbpinns.domains import RectangularDomainND
-    # from fbpinns.problems import BurgersEquation2D
+    # from fbpinns.problems import WaveEquationConstantVelocity3D
     # from fbpinns.decompositions import RectangularDecompositionND
     # from fbpinns.networks import FCN
-    # from fbpinns.schedulers import AllActiveSchedulerND
+    # from fbpinns.schedulers import PlaneSchedulerRectangularND
     # from fbpinns.constants import Constants, get_subdomain_ws
     # from fbpinns.trainers import FBPINNTrainer
     #
-    # subdomain_xs = [np.linspace(-1, 1, 4), np.linspace(0, 1, 2)]
+    # subdomain_xs = [np.linspace(-10, 10, 3), np.linspace(-10, 10, 3), np.linspace(0, 10, 4)]
     # c = Constants(
     #     domain=RectangularDomainND,
     #     domain_init_kwargs=dict(
-    #         xmin=np.array([-1, 0.]),
-    #         xmax=np.array([1., 1.])
+    #         xmin=np.array([-10, -10, 0.]),
+    #         xmax=np.array([10., 10., 10.])
     #     ),
-    #     problem=BurgersEquation2D,
+    #     problem=WaveEquationConstantVelocity3D,
     #     problem_init_kwargs=dict(),
     #     decomposition=RectangularDecompositionND,
     #     decomposition_init_kwargs=dict(
     #         subdomain_xs=subdomain_xs,
     #         # subdomain_ws=get_subdomain_ws(subdomain_xs, 2.9),
-    #         subdomain_ws=[0.9 * np.ones(4), 1.1 * np.ones(2)],
+    #         subdomain_ws = get_subdomain_ws(subdomain_xs, 1.6),
     #         unnorm=(0., 1.),
     #     ),
     #     network=FCN,
-    #     network_init_kwargs=dict(
-    #         layer_sizes=(2, 16, 1),
-    #     ),
-    #     scheduler = AllActiveSchedulerND,
-    #     scheduler_kwargs = dict(),
-    #     ns=((200, 200),),
-    #     n_test=(400, 400),
-    #     n_steps=50000,
+    #     network_init_kwargs=dict(layer_sizes=(3,64,64,64, 1),),
+    #     scheduler=PlaneSchedulerRectangularND,
+    #     scheduler_kwargs=dict( point=[0.], iaxes=[0,1],),
+    #     ns=((58, 58, 10),),
+    #     n_test=(100, 100, 10),
+    #     n_steps=150000,
     #     clear_output=True,
     # )
-    #
-    # run = FBPINNTrainer(c)
+
+    # run = PINNTrainer(c)
     # all_params = run.train()
-
-    #3D
-    import numpy as np
-    from fbpinns.domains import RectangularDomainND
-    from fbpinns.problems import WaveEquationConstantVelocity3D
-    from fbpinns.decompositions import RectangularDecompositionND
-    from fbpinns.networks import FCN
-    from fbpinns.schedulers import PlaneSchedulerRectangularND
-    from fbpinns.constants import Constants, get_subdomain_ws
-    from fbpinns.trainers import FBPINNTrainer
-
-
-
-    subdomain_xs = [np.array([-10, -3.33, 3.33, 10]), np.array([-10, -3.33, 3.33, 10]), np.array([0, 2.5, 5, 7.5, 10])]
-    c = Constants(
-        domain=RectangularDomainND,
-        domain_init_kwargs=dict(
-            xmin=np.array([-10, -10, 0.]),
-            xmax=np.array([10., 10., 10.])
-        ),
-        problem=WaveEquationConstantVelocity3D,
-        problem_init_kwargs=dict(),
-        decomposition=RectangularDecompositionND,
-        decomposition_init_kwargs=dict(
-            subdomain_xs=subdomain_xs,
-            # subdomain_ws=get_subdomain_ws(subdomain_xs, 2.9),
-            subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9),
-            unnorm=(0., 1.),
-        ),
-        network=FCN,
-        network_init_kwargs=dict(
-            layer_sizes=(3,64,64,64, 1),
-        ),
-        scheduler=PlaneSchedulerRectangularND,
-        scheduler_kwargs=dict( point=[0.], iaxes=[0,1],),
-
-        ns=((58, 58, 10),),
-        n_test=(100, 100, 10),
-        n_steps=150000,
-        clear_output=True,
-    )
-
-    run = FBPINNTrainer(c)
-    all_params = run.train()
 
 
 
