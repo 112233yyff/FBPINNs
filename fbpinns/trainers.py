@@ -477,8 +477,8 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get exact solution if it exists
     logger.info("Computing exact solution..")
-    # u_exact = problem.exact_solution(all_params=all_params, x_batch=x_batch_test, batch_shape=c.n_test)
-    u_exact = 0
+    u_exact = problem.exact_solution(all_params=all_params, x_batch=x_batch_test, batch_shape=c.n_test)
+    # u_exact = 0
     logger.info("Computing done")
     logger.debug("u_exact")
     logger.debug(str_tensor(u_exact))
@@ -919,9 +919,9 @@ class PINNTrainer(_Trainer):
 
                 # take test step
                 if test_:
-                    # u_test_losses = self._test(
-                    #     x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
-                    u_test_losses = self._test_step_no_true_solution(x_batch_test, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
+                    u_test_losses = self._test(
+                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
+                    # u_test_losses = self._test_step_no_true_solution(x_batch_test, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
                 # save model
                 if model_save_:
                     self._save_model(i, (i, all_params, all_opt_states, jnp.array(u_test_losses)))
@@ -1030,7 +1030,7 @@ if __name__ == "__main__":
         ),
         problem=FDTD1D,
         problem_init_kwargs=dict(
-            c=1, sd=0.3,
+            c=1, sd=0.1,
         ),
         decomposition=RectangularDecompositionND,
         decomposition_init_kwargs=dict(

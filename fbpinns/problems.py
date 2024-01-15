@@ -360,7 +360,7 @@ class FDTD1D(Problem):
     """
 
     @staticmethod
-    def init_params(c=1, sd = 0.3):
+    def init_params(c=1, sd = 0.1):
         static_params = {
             "dims": (2, 2),
             "c": c,
@@ -396,7 +396,6 @@ class FDTD1D(Problem):
         sd = all_params["static"]["problem"]["sd"]
         x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
         x, t = x_batch[:, 0:1], x_batch[:, 1:2]
-
         e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
         s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
         # s = e
@@ -453,6 +452,65 @@ class FDTD1D(Problem):
 
         c0 = all_params["static"]["problem"]["c0"]
         return jnp.array([[c0]], dtype=float)  # (1,1) scalar value
+
+
+class WaveEquation1D(Problem):
+    """Solves the time-dependent (2+1)D wave equation with constant velocity
+        d^2 u     1  d^2 u
+        -----  - --- ----- = s(x,t)
+        dx^2     c^2 dt^2
+
+        Boundary conditions:
+        u(x,0) = 0
+        du
+        --(x,0) = 0
+        dt
+    """
+
+    @staticmethod
+    def init_params(c=1, sd=1):
+        static_params = {
+            "dims": (1, 2),
+            "c": c,
+            "sd": sd,
+        }
+        return static_params, {}
+
+    @staticmethod
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes):
+        # physics loss
+        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
+        required_ujs_phys = (
+            (0, (0, 0)),
+            (0, (1, 1)),
+        )
+        return [[x_batch_phys, required_ujs_phys], ]
+
+    @staticmethod
+    def constraining_fn(all_params, x_batch, u):
+        c = all_params["static"]["problem"]["c"]
+        sd = all_params["static"]["problem"]["sd"]
+        t = x_batch[:, 1:2]
+
+        u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u  # constrains u(x,y,0) = u_t(x,y,0) = 0
+        return u
+
+    @staticmethod
+    def loss_fn(all_params, constraints):
+        c = all_params["static"]["problem"]["c"]
+        sd = all_params["static"]["problem"]["sd"]
+        x_batch, uxx, utt = constraints[0]
+        x,  t = x_batch[:, 0:1], x_batch[:, 1:2]
+
+        e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
+        s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
+        phys = uxx - (1 / c ** 2) * utt - s
+        return jnp.mean(phys ** 2)
+
+    @staticmethod
+    def exact_solution(all_params, x_batch, batch_shape):
+        key = jax.random.PRNGKey(0)
+        return jax.random.normal(key, (x_batch.shape[0], 1))
 class WaveEquationConstantVelocity3D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
         d^2 u   d^2 u    1  d^2 u
