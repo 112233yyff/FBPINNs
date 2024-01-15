@@ -360,7 +360,7 @@ class FDTD1D(Problem):
     """
 
     @staticmethod
-    def init_params(c=1, sd = 1):
+    def init_params(c=1, sd = 0.3):
         static_params = {
             "dims": (2, 2),
             "c": c,
@@ -399,8 +399,9 @@ class FDTD1D(Problem):
 
         e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
         s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
-        phys1 = jnp.mean((dHdx - dEdt - s) ** 2)
-        phys2 = jnp.mean((dEdx - dHdt) ** 2)
+        # s = e
+        phys1 = jnp.mean((dEdt - dHdx - s ) ** 2)
+        phys2 = jnp.mean((dHdt - dEdx ) ** 2)
         phys = phys1 + phys2
         return phys
 

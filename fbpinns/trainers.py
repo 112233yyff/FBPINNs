@@ -9,7 +9,6 @@ to one of the trainer classes defined here
 
 import time
 from functools import partial
-
 import jax
 import jax.numpy as jnp
 from jax import jit, vmap, value_and_grad, jvp
@@ -478,7 +477,8 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get exact solution if it exists
     logger.info("Computing exact solution..")
-    u_exact = problem.exact_solution(all_params=all_params, x_batch=x_batch_test, batch_shape=c.n_test)
+    # u_exact = problem.exact_solution(all_params=all_params, x_batch=x_batch_test, batch_shape=c.n_test)
+    u_exact = 0
     logger.info("Computing done")
     logger.debug("u_exact")
     logger.debug(str_tensor(u_exact))
@@ -919,9 +919,9 @@ class PINNTrainer(_Trainer):
 
                 # take test step
                 if test_:
-                    u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
-
+                    # u_test_losses = self._test(
+                    #     x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
+                    u_test_losses = self._test_step_no_true_solution(x_batch_test, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
                 # save model
                 if model_save_:
                     self._save_model(i, (i, all_params, all_opt_states, jnp.array(u_test_losses)))
@@ -932,7 +932,6 @@ class PINNTrainer(_Trainer):
 
     def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem):
         "Test step"
-
         c, writer = self.c, self.writer
         n_test = c.n_test
 
@@ -953,8 +952,38 @@ class PINNTrainer(_Trainer):
                 self._save_figs(i, fs)
 
         return u_test_losses
+    def _test_step_no_true_solution(self, x_batch_test, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem):
+        c, writer = self.c, self.writer
+        n_test = c.n_test
 
+        # get PINN solution using test data
+        u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
+        u_exact = u_test
 
+        # get losses over test data
+        l1 = jnp.mean(jnp.abs(u_exact - u_test)).item()
+        l1n = l1 / u_exact.std().item()
+        u_test_losses.append([i, pstep, fstep, time.time() - start0, l1, l1n])
+        writer.add_scalar("loss/test/l1_istep", l1, i)
+
+        if i % c.test_freq == 0:
+            # 保存电磁场分布图
+            if i // c.test_freq == 4:
+                # 获取 Hy 和 Ez 数据
+                Hy = jax.device_get(u_raw_test[:, 0:1])
+                Ez = jax.device_get(u_raw_test[:, 1:2])
+                # 保存到文件
+                np.savetxt('hy.txt', Hy)
+                np.savetxt('ez.txt', Ez)
+                #         np.savetxt('hy.txt', Hy.data.numpy())
+                #         np.savetxt('ez.txt', Ez.data.numpy())
+            # 创建并保存其他图形
+            fs = plot_trainer.plot("PINN", all_params["static"]["problem"]["dims"],
+                                       x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test)
+            if fs is not None:
+                self._save_figs(i, fs)
+
+        return u_test_losses
 
 if __name__ == "__main__":
 
@@ -1001,7 +1030,7 @@ if __name__ == "__main__":
         ),
         problem=FDTD1D,
         problem_init_kwargs=dict(
-            c=1, sd=0.1,
+            c=1, sd=0.3,
         ),
         decomposition=RectangularDecompositionND,
         decomposition_init_kwargs=dict(
@@ -1020,13 +1049,14 @@ if __name__ == "__main__":
         summary_freq=500,
         test_freq=500,
         show_figures=False,
-        clear_output=False,
+        clear_output=True,
         save_figures=True,
     )
 
     # run = FBPINNTrainer(c)
     # run.train()
-
+    # print(torch.conda.is_available())
+    # print(jax.devices()[0])
     c["network_init_kwargs"] = dict(layer_sizes=[2, 128, 128, 2])
     run = PINNTrainer(c)
     run.train()

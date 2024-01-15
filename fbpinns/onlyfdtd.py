@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Sat Jan 13 05:28:00 2024
+
+@author: shuw1
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Sat Jan  6 08:48:01 2024
 
 @author: shuw
@@ -22,8 +29,8 @@ dz = lam / 20
 dt = dz / c
 
 Distance = 10 * lam
-Zmax=int(np.ceil(10*lam/dz))
-Nmax=500
+Zmax=240
+Nmax=239
 
 imp = np.sqrt(mu0/(eps0*eps))
 
@@ -31,18 +38,20 @@ Hy = np.zeros((Zmax, Nmax))
 Ex = np.zeros((Zmax, Nmax))
 
 x_len = dz * Zmax
-x_cood = np.linspace(-x_len /2., x_len /2., Zmax)
+x_cood = np.linspace(-1, 1, 240)
 
 t_len = dt * Nmax
-t_cood = np.linspace(0, t_len, Nmax)
+t_cood = np.linspace(0, 1, 239)
 
 def source(x,t,sd):
-    return np.exp(-0.5 * (x ** 2 + t ** 2) / (sd ** 2))
+    e=-0.5 * (x ** 2 + t ** 2) / (sd ** 2)
+    return 0.3 * np.exp(e) * (1+e) #ricker source
+    # return np.exp(e) # gaussian source
 
-source_x = int(Zmax/2.0)
+source_x = range(0,Zmax)#int(Zmax/2.0)
 for t in range(0, Nmax-1):
     # 内层循环：在空间维度上的循环
-    Ex[source_x,t] = source(x_cood[source_x],t_cood[t],0.5)
+    Ex[source_x,t] = Ex[source_x,t]+source(x_cood[source_x],t_cood[t],0.3)
     Hy[-1, t + 1] = Hy[-2, t]  # abc
     for z in range(0, Zmax - 1):
         Hy[z, t + 1] = Hy[z, t] + (Ex[z + 1, t] - Ex[z, t]) * dt / (mu0 *dz)
@@ -56,7 +65,7 @@ for t in range(0, Nmax-1):
         plt.clf()
         plt.title("Ex after t=%i" % t)
         plt.plot(x_cood, Ex[:,t+1], x_cood,Hy[:,t+1])
-        # plt.ylim([-1, 1])
+        plt.ylim([-8, 8])
         plt.show()
         plt.clf()
         plt.close()
