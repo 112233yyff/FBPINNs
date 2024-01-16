@@ -1019,14 +1019,14 @@ if __name__ == "__main__":
     from fbpinns.constants import Constants, get_subdomain_ws
     from fbpinns.trainers import FBPINNTrainer,PINNTrainer
 
-    subdomain_xs = [np.linspace(-1, 1, 5), np.linspace(0, 1, 5)]
+    subdomain_xs = [np.linspace(-2, 2, 5), np.linspace(0, 1, 5)]
     subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
     c = Constants(
         run="test",
         domain=RectangularDomainND,
         domain_init_kwargs=dict(
-            xmin=np.array([-1, 0]),
-            xmax=np.array([1, 1]),
+            xmin=np.array([-2, 0]),
+            xmax=np.array([2, 1]),
         ),
         problem=FDTD1D,
         problem_init_kwargs=dict(

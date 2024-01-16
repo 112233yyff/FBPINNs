@@ -25,7 +25,7 @@ with open(PICKLE_FILE_ez, 'rb') as file:
 
 hy = hy.reshape(240,120)
 ez = ez.reshape(240,120)
-x = np.linspace(-1,1,240)
+x = np.linspace(-2,2,240)
 for time in range(120):
   if time % 20 == 0:
     plt.clf()

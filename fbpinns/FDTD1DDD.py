@@ -112,13 +112,14 @@ def FDTD1DD(
 
     def source(x,t,sd):
         e=-0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        return 0.11725e1 * np.exp(e) * (1+e) #ricker source
+        return 1200 * np.exp(e) * (1 + e) #ricker source
         # return np.exp(e) # gaussian source
 
     source_x = range(0,Zmax)#int(Zmax/2.0)
     for t in range(0, Nmax-1):
         # 内层循环：在空间维度上的循环
-        Ex[source_x,t] = Ex[source_x,t]+source(x_cood[source_x],t_cood[t],0.07)
+        # Ex[source_x,t] = Ex[source_x,t]+source(x_cood[source_x],t_cood[t],0.07)
+        Ex[source_x, t] = Ex[source_x, t] + source(x_cood[source_x], t_cood[t], sd) * dt / (eps0 * eps)
         Hy[-1, t + 1] = Hy[-2, t]  # abc
         for z in range(0, Zmax - 1):
             Hy[z, t + 1] = Hy[z, t] + (Ex[z + 1, t] - Ex[z, t]) * dt / (mu0 *dz)

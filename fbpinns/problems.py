@@ -360,7 +360,7 @@ class FDTD1D(Problem):
     """
 
     @staticmethod
-    def init_params(c=1, sd = 0.1):
+    def init_params(c=1, sd = 0.08):
         static_params = {
             "dims": (2, 2),
             "c": c,

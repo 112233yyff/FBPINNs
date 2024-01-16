@@ -1,10 +1,10 @@
 run: test
 domain: <class 'fbpinns.domains.RectangularDomainND'>
-domain_init_kwargs: {'xmin': array([-1,  0]), 'xmax': array([1, 1])}
+domain_init_kwargs: {'xmin': array([-2,  0]), 'xmax': array([2, 1])}
 problem: <class 'fbpinns.problems.FDTD1D'>
 problem_init_kwargs: {'c': 1, 'sd': 0.1}
 decomposition: <class 'fbpinns.decompositions.RectangularDecompositionND'>
-decomposition_init_kwargs: {'subdomain_xs': [array([-1. , -0.5,  0. ,  0.5,  1. ]), array([0.  , 0.25, 0.5 , 0.75, 1.  ])], 'subdomain_ws': [array([0.95, 0.95, 0.95, 0.95, 0.95]), array([0.475, 0.475, 0.475, 0.475, 0.475])], 'unnorm': (0.0, 1.0)}
+decomposition_init_kwargs: {'subdomain_xs': [array([-2., -1.,  0.,  1.,  2.]), array([0.  , 0.25, 0.5 , 0.75, 1.  ])], 'subdomain_ws': [array([1.9, 1.9, 1.9, 1.9, 1.9]), array([0.475, 0.475, 0.475, 0.475, 0.475])], 'unnorm': (0.0, 1.0)}
 network: <class 'fbpinns.networks.FCN'>
 network_init_kwargs: {'layer_sizes': [2, 128, 128, 2]}
 n_steps: 25000
@@ -13,7 +13,7 @@ scheduler_kwargs: {}
 ns: ((240, 120),)
 n_test: (240, 120)
 sampler: grid
-optimiser: <function adam at 0x00000268CF7927A0>
+optimiser: <function adam at 0x000001DDD4722980>
 optimiser_kwargs: {'learning_rate': 0.001}
 seed: 0
 summary_freq: 500
