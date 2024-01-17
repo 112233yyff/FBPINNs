@@ -13,7 +13,7 @@ scheduler_kwargs: {}
 ns: ((240, 120),)
 n_test: (240, 120)
 sampler: grid
-optimiser: <function adam at 0x000001DDD4722980>
+optimiser: <function adam at 0x000001FA367C2AC0>
 optimiser_kwargs: {'learning_rate': 0.001}
 seed: 0
 summary_freq: 500

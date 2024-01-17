@@ -382,27 +382,56 @@ class FDTD1D(Problem):
         return [[x_batch_phys, required_ujs_phys], ]
 
     @staticmethod
+    # def constraining_fn(all_params, x_batch, u):
+    #     c = all_params["static"]["problem"]["c"]
+    #     sd = all_params["static"]["problem"]["sd"]
+    #     t = x_batch[:, 1:2]
+    #
+    #     u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u
+    #     return u
     def constraining_fn(all_params, x_batch, u):
-        c = all_params["static"]["problem"]["c"]
-        sd = all_params["static"]["problem"]["sd"]
-        t = x_batch[:, 1:2]
+        params = all_params["static"]["problem"]
+        c, sd = params["c"], params["sd"]
+        x, t = x_batch[:,0:1], x_batch[:,1:2]
+        tanh, exp = jax.nn.tanh, jnp.exp
 
-        u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u
-        return u
+        # get starting wavefield
+        # p = jnp.expand_dims(source, axis=1)# (k, 1, 3)
+        # x = jnp.expand_dims(x, axis=0)# (1, n, 1)
+        f = exp(-0.5 * ((x/sd)**2))# (n, 1)
+        # form time-decaying anzatz
+        t1 = sd/c
+        f = exp(-0.5*(1.5*t/t1)**2) * f
+        t = tanh(2.5*t/t1)**2
+        # u_new = u
+        # u_new[:, 0:1] = t * u[:, 0:1] - f  # 磁场值更新
+        # u_new[:, 1:2] = t * u[:, 1:2] + f  # 电场值更新
+        u_new = u.at[:, 0:1].set(t * u[:, 0:1] - f)
+        u_new = u_new.at[:, 1:2].set(t * u[:, 1:2] + f)
+        return u_new
 
     @staticmethod
+    # def loss_fn(all_params, constraints):
+    #     c = all_params["static"]["problem"]["c"]
+    #     sd = all_params["static"]["problem"]["sd"]
+    #     x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
+    #     x, t = x_batch[:, 0:1], x_batch[:, 1:2]
+    #     e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
+    #     s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
+    #     # s = e
+    #     phys1 = jnp.mean((dEdt - dHdx - s ) ** 2)
+    #     phys2 = jnp.mean((dHdt - dEdx ) ** 2)
+    #
+    #     phys = phys1 + phys2
+    #     return phys
     def loss_fn(all_params, constraints):
         c = all_params["static"]["problem"]["c"]
         sd = all_params["static"]["problem"]["sd"]
         x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
-        x, t = x_batch[:, 0:1], x_batch[:, 1:2]
-        e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
-        # s = e
-        phys1 = jnp.mean((dEdt - dHdx - s ) ** 2)
-        phys2 = jnp.mean((dHdt - dEdx ) ** 2)
+        phys1 = jnp.mean((dHdx - dEdt) ** 2)
+        phys2 = jnp.mean((dEdx - dHdt ) ** 2)
         phys = phys1 + phys2
-        return phys
+        return jnp.mean(phys ** 2)
 
     @staticmethod
     # def exact_solution(all_params, x_batch, batch_shape):
