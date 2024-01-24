@@ -89,10 +89,6 @@ class FCN(Network):
         keys = random.split(key, len(layer_sizes)-1)
         params = [FCN._random_layer_params(k, m, n)
                 for k, m, n in zip(keys, layer_sizes[:-1], layer_sizes[1:])]
-        # layer_sizes[:-1]:
-        # 这表示从列表的第一个元素开始，一直到倒数第二个元素（不包括最后一个元素）。
-        # 这相当于获取了layer_sizes列表中除了最后一层的所有层的大小。
-        # 在神经网络中，这对应于每一层的输入大小。
         trainable_params = {"layers": params}
         return {}, trainable_params
 
