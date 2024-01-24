@@ -20,6 +20,7 @@ from fbpinns.trainers_base import _Trainer
 from fbpinns import networks, plot_trainer
 from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
+from networks import CustomNetwork
 
 
 # LABELLING CONVENTIONS
@@ -585,42 +586,80 @@ class FBPINNTrainer(_Trainer):
 
         return active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch
 
+    @property
     def train(self):
         "Train model"
 
         c, writer = self.c, self.writer
 
         # generate root key
+        #总体而言，这段代码的目的是在整个程序执行过程中提供可重现的随机性，以确保在不同运行中获得相同的结果。
         key = random.PRNGKey(c.seed)
+        #使用 JAX 库的 random.PRNGKey 函数生成一个伪随机数生成器（PRNG）的根密钥，种子为 c.seed。这将用于在整个训练过程中提供可重现的随机性。
         np.random.seed(c.seed)
+        #使用 NumPy 库的 np.random.seed 函数设置 NumPy 随机数生成器的种子。与上一行一样，这是为了确保可重现性，尤其是在涉及 NumPy 的随机操作时。
 
         # define all_params
         all_params = {"static":{},"trainable":{}}
+        #初始化一个字典，用于存储模型的所有参数，分为静态参数（static）和可训练参数（trainable）两个部分。
 
         # initialise domain, problem and decomposition params
         domain, problem, decomposition = c.domain, c.problem, c.decomposition
+        #domain, problem, decomposition: 从配置参数 c 中获取领域、问题和分解器的定义。
         for tag, cl, kwargs in zip(["domain", "problem", "decomposition"], [domain, problem, decomposition],
                                    [c.domain_init_kwargs, c.problem_init_kwargs, c.decomposition_init_kwargs]):
+        #这使用了 zip 函数，将三个列表依次配对。即，对于每次迭代，会从这三个列表中分别取出一个元素，分别是 tag、cl、kwargs。
+        #这是一个循环，通过 zip 的方式迭代三个列表中的元素。在每次迭代中，tag 是一个字符串，cl 是一个类的实例，kwargs 是一个包含初始化参数的字典。
             ps_ = cl.init_params(**kwargs)
+            #这一行调用了类 cl 中的 init_params 方法，传递了初始化参数 kwargs。返回一个元组 ps_，其中包含静态参数和可训练参数。
             if ps_[0]: all_params["static"][tag] = ps_[0]
+            #如果静态参数存在（不为 None），则将其存储在 all_params 字典的 static 部分下的 tag 键中。
             if ps_[1]: all_params["trainable"][tag] = ps_[1]
+            #如果可训练参数存在（不为 None），则将其存储在 all_params 字典的 trainable 部分下的 tag 键中。
         assert (all_params["static"]["domain"]["xd"] ==\
                 all_params["static"]["problem"]["dims"][1] ==\
                 all_params["static"]["decomposition"]["xd"])
+        #该assert 语句是一个断言，确保三个领域（domain）、问题（problem）和分解器（decomposition）的相关参数相等。
+        # 这个断言用于验证在初始化过程中的一致性，以确保模型的正确性。
         logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
+        # jax.debug.print("ret {}--------------------------", all_params)
 
+        # # initialise subdomain network params
+        # network = c.network
+        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
+        # #: 使用 JAX 的 random.split 方法将根密钥 key 分割为 all_params["static"]["decomposition"]["m"]+1 个子密钥。
+        # # 这些子密钥将用于初始化网络的参数。
+        # ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
+        # #这一行代码的目的是通过 vmap 将 network.init_params 函数向量化映射到多个子密钥上，以便同时初始化多个子域网络的参数。
+        # if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0],0)# grab first set of static params only
+        # #如果静态参数 ps_[0] 存在（不为 None），则将其存储在 all_params 字典的 static 部分下的 "network" 键中。
+        # #这里使用了 tree_index 函数，它从参数的树结构中提取指定索引位置的参数，这里的索引是 0，表示只提取静态参数的第一组。
+        # if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
+        # #如果可训练参数 ps_[1] 存在（不为 None），则将其存储在 all_params 字典的 trainable 部分下的 "network" 键中，并用字典包装，标识为 "subdomain"。
+        # logger.debug("all_params")
+        # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
         # initialise subdomain network params
         network = c.network
-        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
-        ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
+        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
+        # 提供每个子域的标识符
+        subdomain_ids = range(1, all_params["static"]["decomposition"]["m"])
+        ps_ = vmap(network.init_params, in_axes=(0, None,None))(jnp.array(subkeys), *c.network_init_kwargs.values(),subdomain_ids)
+        #这一行代码的目的是通过 vmap 将 network.init_params 函数向量化映射到多个子密钥上，以便同时初始化多个子域网络的参数。
         if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0],0)# grab first set of static params only
+        #如果静态参数 ps_[0] 存在（不为 None），则将其存储在 all_params 字典的 static 部分下的 "network" 键中。
+        #这里使用了 tree_index 函数，它从参数的树结构中提取指定索引位置的参数，这里的索引是 0，表示只提取静态参数的第一组。
         if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
+        #如果可训练参数 ps_[1] 存在（不为 None），则将其存储在 all_params 字典的 trainable 部分下的 "network" 键中，并用字典包装，标识为 "subdomain"。
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
+        #
         model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
-
+        # jax.debug.print("ret {}--------------------------", model_fns)
+        #创建一个包含模型函数的元组。这些函数包括规范化函数、网络函数、非规范化函数、窗口函数和约束函数。
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
+        #这行代码的目的是初始化训练过程中使用的调度器，该调度器可能负责控制学习率的变化、提前停止策略等。
+        # 调度器在训练过程中的作用是对训练进行动态调整，以提高模型的性能和稳定性。因此，具体的调度器实现和功能会取决于配置参数 c 中所选择的调度器函数。
 
         # common initialisation
         (optimiser, all_opt_states, optimiser_fn, loss_fn, key,
@@ -630,8 +669,11 @@ class FBPINNTrainer(_Trainer):
         # fix test data inputs
         logger.info("Getting test data inputs..")
         active_test_ = jnp.ones(all_params["static"]["decomposition"]["m"], dtype=int)
+        # 创建一个由全为1的数组，其长度等于分解中子域的数量。这个数组将在后续的操作中用于指示哪些子域是活跃的。
         takes_, all_ims_, (_, _, _, cut_all_, _)  = get_inputs(x_batch_test, active_test_, all_params, decomposition)
+        # 调用 get_inputs 函数，获取测试数据的输入
         test_inputs = (takes_, all_ims_, cut_all_)
+        #将获取的测试数据输入组装成一个元组 test_inputs，其中包括 takes_、all_ims_ 和 cut_all_
 
         # train loop
         pstep, fstep, u_test_losses = 0, 0, []
@@ -639,6 +681,8 @@ class FBPINNTrainer(_Trainer):
         merge_active, active_params, active_opt_states, fixed_params = None, None, None, None
         lossval = None
         for i,active_ in enumerate(scheduler):
+        #scheduler 是一个迭代器或可遍历对象，通过 enumerate(scheduler) 迭代时，
+        #每次返回一个 (i, active_) 元组，其中 i 是索引，active_ 是当前步骤的活跃标志。
 
             # update active
             if active_ is not None:
@@ -768,9 +812,11 @@ class FBPINNTrainer(_Trainer):
 
         else:
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
-
+        # jax.debug.print("ret {}", u_test.shape)
+        # jax.debug.print("ret {}", u_exact.shape)# dEdx and dEdt being [] while dHdx and dHdt are OK
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
+
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)
@@ -1014,7 +1060,7 @@ if __name__ == "__main__":
     from fbpinns.domains import RectangularDomainND
     from fbpinns.problems import FDTD1D
     from fbpinns.decompositions import RectangularDecompositionND
-    from fbpinns.networks import FCN
+    from fbpinns.networks import FCN,CustomNetwork
     from fbpinns.schedulers import AllActiveSchedulerND
     from fbpinns.constants import Constants, get_subdomain_ws
     from fbpinns.trainers import FBPINNTrainer,PINNTrainer
@@ -1038,13 +1084,14 @@ if __name__ == "__main__":
             subdomain_ws=subdomain_ws,
             unnorm=(0., 1.),
         ),
-        network=FCN,
+        network=CustomNetwork,
+        # network=FCN,
         network_init_kwargs=dict(
-            layer_sizes=[2, 32, 2],
+            layer_sizes=[2, 16,16,16, 2],
         ),
         ns=((240, 120),),
         n_test=(240, 120),
-        n_steps=25000,
+        n_steps=1,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=500,
         test_freq=500,
@@ -1053,13 +1100,13 @@ if __name__ == "__main__":
         save_figures=True,
     )
 
-    # run = FBPINNTrainer(c)
     # run.train()
     # print(torch.conda.is_available())
     # print(jax.devices()[0])
-    c["network_init_kwargs"] = dict(layer_sizes=[2, 128, 128, 2])
-    run = PINNTrainer(c)
-    run.train()
+    # c["network_init_kwargs"] = dict(layer_sizes=[2, 128, 128, 2])
+    run = FBPINNTrainer(c)
+    # run = PINNTrainer(c)
+    all_params = run.train()
 
     # #3D
     # import numpy as np

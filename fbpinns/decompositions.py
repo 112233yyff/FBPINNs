@@ -35,6 +35,10 @@ class Decomposition:
     (A side-effect is any effect of a function that doesn’t appear in its output)
     This is why only static methods are defined.
     """
+    #"基础分解类，由不同的分解类继承。
+    # 注意：此类中的所有方法都是由JIT编译/由JAX使用的，因此它们不能包含任何副作用！
+    #（副作用是指函数的任何效果，它不出现在其输出中）
+    # 这就是为什么只定义了静态方法的原因。"
 
     # required methods
 
@@ -43,13 +47,17 @@ class Decomposition:
         """Initialise class parameters.
         Returns tuple of dicts ({k: pytree}, {k: pytree}) containing static and trainable parameters.
         The special key, k='subdomain', should be used to specify all subdomain parameters"""
+        # "初始化类参数。
+        # 返回包含静态参数和可训练参数的字典元组（{k: pytree}，{k: pytree}）。
+        # 应使用特殊键k = 'subdomain'
+        # 来指定所有子域参数。"
 
         # below parameters need to be defined
         static_params = {
-            "m":None,# total number of models (i.e. subdomains) in domain
-            "xd":None,# dimensionality of x
+            "m":None,# total number of models (i.e. subdomains) in domain 领域中模型的总数（即子域数）。
+            "xd":None,# dimensionality of x x的维度
             "subdomain":{
-                "pou":None,# pou for each subdomain
+                "pou":None,# pou for each subdomain 每个子域的POU
                 }
             }
         raise NotImplementedError
@@ -67,6 +75,7 @@ class Decomposition:
     @staticmethod
     def window_fn(params, x):
         """"Applies window function, for a SINGLE point with shape (xd,) and params for a SINGLE model"""
+        #"应用窗口函数，对于形状为 (xd,) 的单个点和单个模型的参数"
         raise NotImplementedError
 
     @staticmethod
@@ -75,6 +84,7 @@ class Decomposition:
         ips, ims = indices of all point-model pairs where point is inside model
         inside_ims = indicies of all models which have at least one point inside them
         """
+        #"返回 inside_ips 和 d，其中inside_ips = ims 中至少在一个模型内的所有点的索引d = ims 中每个模型内平均的点数"
         raise NotImplementedError
 
     @staticmethod
@@ -100,6 +110,7 @@ class Decomposition:
 class RectangularDecompositionND(Decomposition):
     """ND hyperrectangular domain.
     Rectangular subdomains can be placed arbitrarily in domain."""
+    #"ND超矩形域。矩形子域可以在域内任意放置。"
 
     @staticmethod
     def init_params(subdomain_xs, subdomain_ws, unnorm):
@@ -413,7 +424,6 @@ if __name__ == "__main__":
 
     decomposition.plot(all_params)
     plt.show()
-
 
 
     ## 2D test

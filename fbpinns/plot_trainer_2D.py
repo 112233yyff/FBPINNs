@@ -40,15 +40,15 @@ def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
     # plot full solutions
     plt.subplot(3,2,2)
     plt.title(f"[{i}] Difference")
-    _plot_test_im(u_exact - u_test, xlim0, ulim, n_test)
+    _plot_test_im(u_exact[:,0] - u_test[:,0], xlim0, ulim, n_test)
 
     plt.subplot(3,2,3)
     plt.title(f"[{i}] Full solution")
-    _plot_test_im(u_test, xlim0, ulim, n_test)
+    _plot_test_im(u_test[:,0], xlim0, ulim, n_test)
 
     plt.subplot(3,2,4)
     plt.title(f"[{i}] Ground truth")
-    _plot_test_im(u_exact, xlim0, ulim, n_test)
+    _plot_test_im(u_exact[:,0], xlim0, ulim, n_test)
 
     # plot raw hist
     plt.subplot(3,2,5)

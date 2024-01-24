@@ -90,7 +90,7 @@ def train_models_multiprocess(ip, devices, c, Trainer, wait=0):
     c.device = devices[ip]# set device to run on, based on process id
     c.show_figures = c.clear_output = False# make sure plots are not shown
     run = Trainer(c)
-    run.train()
+    run.train
 
 
 

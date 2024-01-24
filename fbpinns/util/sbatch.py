@@ -61,4 +61,4 @@ def run():
 
     # create trainer, start training
     run = trainer(c)
-    run.train()
+    run.train
