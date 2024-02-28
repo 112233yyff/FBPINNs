@@ -95,21 +95,25 @@ class CustomNetwork(Network):
     #     return x
 
 class FCN(Network):
+
     @staticmethod
     def init_params(key, layer_sizes):
         keys = random.split(key, len(layer_sizes)-1)
         params = [FCN._random_layer_params(k, m, n)
                 for k, m, n in zip(keys, layer_sizes[:-1], layer_sizes[1:])]
-        trainable_params =  params
+        trainable_params = {"layers": params}
         return {}, trainable_params
+
     @staticmethod
     def _random_layer_params(key, m, n):
         "Create a random layer parameters"
+
         w_key, b_key = random.split(key)
         v = jnp.sqrt(1/m)
         w = random.uniform(w_key, (n, m), minval=-v, maxval=v)
         b = random.uniform(b_key, (n,), minval=-v, maxval=v)
         return w,b
+
     @staticmethod
     def network_fn(params, x):
         params = params["trainable"]["network"]["subdomain"]["layers"]

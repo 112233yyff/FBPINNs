@@ -61,10 +61,6 @@ class Constants(ConstantsBase):
         self.network_init_kwargs = dict(
             layer_sizes=[1, 32, 1],
             )
-        self.network_init_kwargs1 = dict(
-            layer_sizes=[1, 32, 1],
-        )
-
         # Define scheduler
         self.n_steps = 15000
         self.scheduler = schedulers.AllActiveSchedulerND

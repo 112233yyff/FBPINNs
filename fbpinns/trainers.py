@@ -583,7 +583,7 @@ class FBPINNTrainer(_Trainer):
         np.random.seed(c.seed)
 
         # define all_params
-        all_params = {"static":{},"trainable":{}}
+        all_params = {"static": {}, "trainable": {}}
 
         # initialise domain, problem and decomposition params
         domain, problem, decomposition = c.domain, c.problem, c.decomposition
@@ -592,88 +592,34 @@ class FBPINNTrainer(_Trainer):
             ps_ = cl.init_params(**kwargs)
             if ps_[0]: all_params["static"][tag] = ps_[0]
             if ps_[1]: all_params["trainable"][tag] = ps_[1]
-        assert (all_params["static"]["domain"]["xd"] ==\
-                all_params["static"]["problem"]["dims"][1] ==\
+        assert (all_params["static"]["domain"]["xd"] == \
+                all_params["static"]["problem"]["dims"][1] == \
                 all_params["static"]["decomposition"]["xd"])
-        logger.info('Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
-        # # initialise subdomain network params
-        # network = c.network
-        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        # jax.debug.print("ret {}", len(subkeys))
-        # ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
-        # jax.debug.print("ret {}", ps_[1])
-        # if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
-        # if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
-        # logger.debug("all_params")
-        # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-        #              problem.constraining_fn)
+        logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
 
         # initialise subdomain network params
         network = c.network
-        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
-        subdomain_ids = range(1, all_params["static"]["decomposition"]["m"]+1)
-        temp_trainable = []
-        temp_static = []
-        all_params["trainable"] = {"network": {"subdomain": {}}}
-        for subdomain_id in subdomain_ids:
-            # 在这里根据子域ID选择不同的神经网络初始化函数
-            if subdomain_id == 3:
-                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs1.values())
-            else:
-                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values())
-            if ps_[0]:temp_static.append(ps_[0])# grab first set of static params only
-            if ps_[1]:temp_trainable.append(ps_[1])  # 将每个子域的值存储在列表中
-            #可以尝试把每个ps_[1]拆成两部分然后再重新组合成一个新的列表，注意保持最终结构一致
-        # jax.debug.print("ret {}", temp_static)
-        jax.debug.print("ret {}", temp_trainable)
-
-        if temp_static: all_params["static"]["network"] = tree_index(temp_static, 0)
-        if temp_trainable: all_params["trainable"]["network"]["subdomain"] = {"layers": temp_trainable}
+        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
+        ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
+        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
+        if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
-
-
-
-        ##params = params["trainable"]["network"]["subdomain"]["layers"]
-        #subdomain_network_info = {'id0':{5,6,6,3}, 'id1':{4,2,2,3}}
-        #all_params['static']['xxx]['yyy']['subdomain_id'] = subdoman_network_info
-        # jax.debug.print("ret {}", all_params)
-        # # 初始化 subdomain network 参数
-        # network = c.network
-        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        # subdomain_ids = range(1, all_params["static"]["decomposition"]["m"] + 1)
-        # all_params["static"]["network"] = {}  # 存储静态参数的字典
-        # all_params["trainable"]["network"] = {}  # 存储可训练参数的字典
-        # temp_trainable = []
-        # temp_static = []
-        #
-        # for subdomain_id in subdomain_ids:
-        #     # 在这里根据子域ID选择不同的神经网络初始化函数
-        #     ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values(), subdomain_id)
-        #
-        #     if ps_[0]: temp_static.append(ps_[0])  # grab first set of static params only
-        #     if ps_[1]:temp_trainable.append(ps_[1])  # 将每个子域的值存储在列表中
-        # if temp_static: all_params["static"]["network"] = tree_index(temp_static, 0)
-        # if temp_trainable: all_params["trainable"]["network"]["subdomain"] = {"layers": temp_trainable}
-        # logger.debug("all_params")
-        # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-        #              problem.constraining_fn)
+        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
+                     problem.constraining_fn)
 
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
 
         # common initialisation
         (optimiser, all_opt_states, optimiser_fn, loss_fn, key,
-        constraints_global, x_batch_global, constraint_offsets_global, constraint_fs_global, jmapss,
-        x_batch_test, u_exact) = _common_train_initialisation(c, key, all_params, problem, domain)
+         constraints_global, x_batch_global, constraint_offsets_global, constraint_fs_global, jmapss,
+         x_batch_test, u_exact) = _common_train_initialisation(c, key, all_params, problem, domain)
 
         # fix test data inputs
         logger.info("Getting test data inputs..")
         active_test_ = jnp.ones(all_params["static"]["decomposition"]["m"], dtype=int)
-        takes_, all_ims_, (_, _, _, cut_all_, _)  = get_inputs(x_batch_test, active_test_, all_params, decomposition)
+        takes_, all_ims_, (_, _, _, cut_all_, _) = get_inputs(x_batch_test, active_test_, all_params, decomposition)
         test_inputs = (takes_, all_ims_, cut_all_)
 
         # train loop
@@ -681,7 +627,7 @@ class FBPINNTrainer(_Trainer):
         start0, start1, report_time = time.time(), time.time(), 0.
         merge_active, active_params, active_opt_states, fixed_params = None, None, None, None
         lossval = None
-        for i,active_ in enumerate(scheduler):
+        for i, active_ in enumerate(scheduler):
 
             # update active
             if active_ is not None:
@@ -694,7 +640,8 @@ class FBPINNTrainer(_Trainer):
 
                 # then get new inputs to update step
                 active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch = \
-                     self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global, constraint_fs_global, constraint_offsets_global, decomposition, problem)
+                    self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global,
+                                            constraint_fs_global, constraint_offsets_global, decomposition, problem)
 
                 # AOT compile update function
                 startc = time.time()
@@ -703,36 +650,39 @@ class FBPINNTrainer(_Trainer):
                 update = FBPINN_update.lower(optimiser_fn, active_opt_states,
                                              active_params, fixed_params, static_params_dynamic, static_params_static,
                                              takess, constraints, model_fns, jmapss, loss_fn).compile()
-                logger.info(f"[i: {i}/{self.c.n_steps}] Compiling done ({time.time()-startc:.2f} s)")
+                logger.info(f"[i: {i}/{self.c.n_steps}] Compiling done ({time.time() - startc:.2f} s)")
                 cost_ = update.cost_analysis()
-                p,f = total_size(active_params["network"]), cost_[0]["flops"] if (cost_ and "flops" in cost_[0]) else 0
+                p, f = total_size(active_params["network"]), cost_[0]["flops"] if (cost_ and "flops" in cost_[0]) else 0
                 logger.debug("p, f")
-                logger.debug((p,f))
+                logger.debug((p, f))
 
             # report initial model
             if i == 0:
                 u_test_losses, start1, report_time = \
-                self._report(i, pstep, fstep, u_test_losses, start0, start1, report_time,
-                            u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
-                            active, merge_active, active_opt_states, active_params, x_batch,
-                            lossval)
+                    self._report(i, pstep, fstep, u_test_losses, start0, start1, report_time,
+                                 u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem,
+                                 decomposition,
+                                 active, merge_active, active_opt_states, active_params, x_batch,
+                                 lossval)
 
             # take a training step
             lossval, active_opt_states, active_params = update(active_opt_states,
-                                         active_params, fixed_params, static_params_dynamic,
-                                         takess, constraints)# note compiled function only accepts dynamic arguments
-            pstep, fstep = pstep+p, fstep+f
+                                                               active_params, fixed_params, static_params_dynamic,
+                                                               takess,
+                                                               constraints)  # note compiled function only accepts dynamic arguments
+            pstep, fstep = pstep + p, fstep + f
 
             # report
             u_test_losses, start1, report_time = \
-            self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
-                        u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
-                        active, merge_active, active_opt_states, active_params, x_batch,
-                        lossval)
+                self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
+                             u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem,
+                             decomposition,
+                             active, merge_active, active_opt_states, active_params, x_batch,
+                             lossval)
 
         # cleanup
         writer.close()
-        logger.info(f"[i: {i+1}/{self.c.n_steps}] Training complete")
+        logger.info(f"[i: {i + 1}/{self.c.n_steps}] Training complete")
 
         # return trained parameters
         all_params["trainable"] = merge_active(active_params, all_params["trainable"])
@@ -1037,9 +987,6 @@ if __name__ == "__main__":
         network=FCN,
         network_init_kwargs=dict(
             layer_sizes=[2, 16, 16, 16, 2],
-        ),
-        network_init_kwargs1=dict(
-            layer_sizes=[2, 32, 32, 32, 2],
         ),
         ns=((240, 120),),
         n_test=(240, 120),
