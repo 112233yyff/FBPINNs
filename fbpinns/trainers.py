@@ -597,43 +597,16 @@ class FBPINNTrainer(_Trainer):
                 all_params["static"]["decomposition"]["xd"])
         logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
 
-        # # initialise subdomain network params
-        # network = c.network
-        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        # ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
-        # if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
-        # if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
-        # logger.debug("all_params")
-        # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-        #              problem.constraining_fn)
-
-
         # initialise subdomain network params
         network = c.network
         key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        subdomain_ids = range(1, all_params["static"]["decomposition"]["m"] + 1)
-        temp_trainable = []
-        temp_static = []
-        all_params["trainable"] = {"network": {"subdomain": {}}}
-        for subdomain_id in subdomain_ids:
-            # 在这里根据子域ID选择不同的神经网络初始化函数
-            if subdomain_id == 3:
-                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs1.values())
-            else:
-                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values())
-            if ps_[0]: temp_static.append(ps_[0])  # grab first set of static params only
-            if ps_[1]: temp_trainable.append(ps_[1])  # 将每个子域的值存储在列表中
-        # jax.debug.print("ret {}", temp_static)
-        # jax.debug.print("ret {}", temp_trainable)
-        if temp_static: all_params["static"]["network"] = tree_index(temp_static, 0)
-        if temp_trainable: all_params["trainable"]["network"]["subdomain"] = {"layers": temp_trainable}
+        ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
+        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
+        if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        model_fns = (
-            decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-            problem.constraining_fn)
-
+        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
+                     problem.constraining_fn)
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
 
@@ -1013,9 +986,6 @@ if __name__ == "__main__":
         network=FCN,
         network_init_kwargs=dict(
             layer_sizes=[2, 16, 16, 16, 2],
-        ),
-        network_init_kwargs1=dict(
-            layer_sizes=[2, 32, 32, 32, 2],
         ),
         ns=((240, 120),),
         n_test=(240, 120),
