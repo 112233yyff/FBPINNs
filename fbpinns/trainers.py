@@ -595,37 +595,72 @@ class FBPINNTrainer(_Trainer):
         assert (all_params["static"]["domain"]["xd"] ==\
                 all_params["static"]["problem"]["dims"][1] ==\
                 all_params["static"]["decomposition"]["xd"])
-        logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
-
+        logger.info('Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
         # # initialise subdomain network params
         # network = c.network
-        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
+        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
+        # jax.debug.print("ret {}", len(subkeys))
         # ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
-        # if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0],0)# grab first set of static params only
-        # if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
+        # jax.debug.print("ret {}", ps_[1])
+        # if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
+        # if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
         # logger.debug("all_params")
         # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
-        # 初始化 subdomain network 参数
-        network = c.network
-        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        subdomain_ids = range(1, all_params["static"]["decomposition"]["m"])
-        all_params["static"]["network"] = {}  # 存储静态参数的字典
-        all_params["trainable"]["network"] = {}  # 存储可训练参数的字典
+        # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
+        #              problem.constraining_fn)
 
+        # initialise subdomain network params
+        network = c.network
+        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
+        subdomain_ids = range(1, all_params["static"]["decomposition"]["m"]+1)
+        temp_trainable = []
+        temp_static = []
+        all_params["trainable"] = {"network": {"subdomain": {}}}
         for subdomain_id in subdomain_ids:
             # 在这里根据子域ID选择不同的神经网络初始化函数
-            ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values(), subdomain_id)
+            if subdomain_id == 3:
+                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs1.values())
+            else:
+                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values())
+            if ps_[0]:temp_static.append(ps_[0])# grab first set of static params only
+            if ps_[1]:temp_trainable.append(ps_[1])  # 将每个子域的值存储在列表中
+            #可以尝试把每个ps_[1]拆成两部分然后再重新组合成一个新的列表，注意保持最终结构一致
+        # jax.debug.print("ret {}", temp_static)
+        jax.debug.print("ret {}", temp_trainable)
 
-            # 直接使用子域ID作为键赋值给 all_params["static"]["network"]
-            all_params["static"]["network"][subdomain_id] = ps_[0]
-            # 对于可训练参数，也可以类似操作，直接使用子域ID作为键
-            all_params["trainable"]["network"][subdomain_id] = {"subdomain": ps_[1]}
-
+        if temp_static: all_params["static"]["network"] = tree_index(temp_static, 0)
+        if temp_trainable: all_params["trainable"]["network"]["subdomain"] = {"layers": temp_trainable}
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-                     problem.constraining_fn)
+        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
+
+
+
+        ##params = params["trainable"]["network"]["subdomain"]["layers"]
+        #subdomain_network_info = {'id0':{5,6,6,3}, 'id1':{4,2,2,3}}
+        #all_params['static']['xxx]['yyy']['subdomain_id'] = subdoman_network_info
+        # jax.debug.print("ret {}", all_params)
+        # # 初始化 subdomain network 参数
+        # network = c.network
+        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
+        # subdomain_ids = range(1, all_params["static"]["decomposition"]["m"] + 1)
+        # all_params["static"]["network"] = {}  # 存储静态参数的字典
+        # all_params["trainable"]["network"] = {}  # 存储可训练参数的字典
+        # temp_trainable = []
+        # temp_static = []
+        #
+        # for subdomain_id in subdomain_ids:
+        #     # 在这里根据子域ID选择不同的神经网络初始化函数
+        #     ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values(), subdomain_id)
+        #
+        #     if ps_[0]: temp_static.append(ps_[0])  # grab first set of static params only
+        #     if ps_[1]:temp_trainable.append(ps_[1])  # 将每个子域的值存储在列表中
+        # if temp_static: all_params["static"]["network"] = tree_index(temp_static, 0)
+        # if temp_trainable: all_params["trainable"]["network"]["subdomain"] = {"layers": temp_trainable}
+        # logger.debug("all_params")
+        # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
+        # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
+        #              problem.constraining_fn)
 
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
@@ -962,7 +997,11 @@ class PINNTrainer(_Trainer):
 
         return u_test_losses
 
-
+##task:修改某个特定子域的神经网络结构
+##思路:设定子域id，根据子域id去选择神经网络
+##问题：1、如何去选择特定的神经网络结构（在constant对象里定义两个神经网络？/在初始化
+##     2、子域id定义在哪个字典里（静态字典还是可训练参数的字典里以及该如何定义呢？
+##     了解清楚字典的结构，以及对于子域神经网络在整个过程中是如何判别使用的，从而在合适的位置添加id信息。
 
 if __name__ == "__main__":
     # 2D
@@ -994,17 +1033,20 @@ if __name__ == "__main__":
             subdomain_ws=subdomain_ws,
             unnorm=(0., 1.),
         ),
-        network=CustomNetwork,
-        # network=FCN,
+        # network=CustomNetwork,
+        network=FCN,
         network_init_kwargs=dict(
             layer_sizes=[2, 16, 16, 16, 2],
         ),
+        network_init_kwargs1=dict(
+            layer_sizes=[2, 32, 32, 32, 2],
+        ),
         ns=((240, 120),),
         n_test=(240, 120),
-        n_steps=100,
+        n_steps=70000,
         optimiser_kwargs=dict(learning_rate=1e-3),
-        summary_freq=500,
-        test_freq=500,
+        summary_freq=1000,
+        test_freq=1000,
         show_figures=False,
         clear_output=True,
         save_figures=True,

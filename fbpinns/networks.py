@@ -69,7 +69,7 @@ class CustomNetwork(Network):
         b = random.uniform(b_key, (n,), minval=-v, maxval=v)
         return w, b
 
-    @staticmethod
+    # @staticmethod
     def network_fn(params, x):
         # 从参数中提取子域的神经网络层参数。
         params = params["trainable"]["network"]["subdomain"]["layers"]
@@ -82,26 +82,34 @@ class CustomNetwork(Network):
         x = jnp.dot(w, x) + b
         return x
 
-class FCN(Network):
+    # def network_fn(params, x, subdomain_id):
+    #     # 从参数中提取子域的神经网络层参数。
+    #     params = params["trainable"]["network"]["subdomain"][subdomain_id]["layers"]
+    #     # 遍历网络层，应用权重、偏差和激活函数（tanh）。
+    #     for w, b in params[:-1]:
+    #         x = jnp.dot(w, x) + b
+    #         x = jnp.tanh(x)
+    #     # 处理最后一层，不应用激活函数。
+    #     w, b = params[-1]
+    #     x = jnp.dot(w, x) + b
+    #     return x
 
+class FCN(Network):
     @staticmethod
     def init_params(key, layer_sizes):
         keys = random.split(key, len(layer_sizes)-1)
         params = [FCN._random_layer_params(k, m, n)
                 for k, m, n in zip(keys, layer_sizes[:-1], layer_sizes[1:])]
-        trainable_params = {"layers": params}
+        trainable_params =  params
         return {}, trainable_params
-
     @staticmethod
     def _random_layer_params(key, m, n):
         "Create a random layer parameters"
-
         w_key, b_key = random.split(key)
         v = jnp.sqrt(1/m)
         w = random.uniform(w_key, (n, m), minval=-v, maxval=v)
         b = random.uniform(b_key, (n,), minval=-v, maxval=v)
         return w,b
-
     @staticmethod
     def network_fn(params, x):
         params = params["trainable"]["network"]["subdomain"]["layers"]

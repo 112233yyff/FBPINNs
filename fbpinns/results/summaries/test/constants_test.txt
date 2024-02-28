@@ -5,19 +5,20 @@ problem: <class 'fbpinns.problems.FDTD1D'>
 problem_init_kwargs: {'c': 1, 'sd': 0.1}
 decomposition: <class 'fbpinns.decompositions.RectangularDecompositionND'>
 decomposition_init_kwargs: {'subdomain_xs': [array([-2., -1.,  0.,  1.,  2.]), array([0.  , 0.25, 0.5 , 0.75, 1.  ])], 'subdomain_ws': [array([1.9, 1.9, 1.9, 1.9, 1.9]), array([0.475, 0.475, 0.475, 0.475, 0.475])], 'unnorm': (0.0, 1.0)}
-network: <class 'fbpinns.networks.CustomNetwork'>
+network: <class 'fbpinns.networks.FCN'>
 network_init_kwargs: {'layer_sizes': [2, 16, 16, 16, 2]}
-n_steps: 100
+network_init_kwargs1: {'layer_sizes': [2, 32, 32, 32, 2]}
+n_steps: 70000
 scheduler: <class 'fbpinns.schedulers.AllActiveSchedulerND'>
 scheduler_kwargs: {}
 ns: ((240, 120),)
 n_test: (240, 120)
 sampler: grid
-optimiser: <function adam at 0x000001F6C1AC8EA0>
+optimiser: <function adam at 0x00000145349A2A20>
 optimiser_kwargs: {'learning_rate': 0.001}
 seed: 0
-summary_freq: 500
-test_freq: 500
+summary_freq: 1000
+test_freq: 1000
 model_save_freq: 10000
 show_figures: False
 save_figures: True
