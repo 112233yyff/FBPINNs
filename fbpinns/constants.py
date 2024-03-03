@@ -123,8 +123,10 @@ class Constants(ConstantsBase):
 
         # Model parameters
         self.MODEL = models.FCN
-        self.N_HIDDEN = 64
-        self.N_LAYERS = 4
+        self.N_HIDDEN = 128
+        self.N_LAYERS = 5
+        self.N_HIDDENN = 200
+        self.N_LAYERSS = 6
 
         # Optimisation parameters
         self.BATCH_SIZE = (58,58,58)

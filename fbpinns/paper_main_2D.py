@@ -47,8 +47,8 @@ def run_PINN():
 def run_FBPINN():
     sampler = "r" if random else "m"
     c = Constants(
-        RUN="final_FBPINN_%s_%sh_%sl_%sb_%s_%sw_%s" % (
-        P.name, n_hidden, n_layers, batch_size[0], sampler, width, A.name),
+        RUN="final_FBPINN_%s_%sh_%sl_%sh_%sl_%sb_%s_%sw_%s" % (
+            P.name, n_hidden, n_layers, n_hiddenn, n_layerss, batch_size[0], sampler, width, A.name),
         P=P,
         SUBDOMAIN_XS=subdomain_xs,
         SUBDOMAIN_WS=subdomain_ws,
@@ -58,6 +58,8 @@ def run_FBPINN():
         ACTIVE_SCHEDULER_ARGS=args,
         N_HIDDEN=n_hidden,
         N_LAYERS=n_layers,
+        N_HIDDENN=n_hiddenn,
+        N_LAYERSS=n_layerss,
         BATCH_SIZE=batch_size,
         RANDOM=random,
         N_STEPS=n_steps,
@@ -141,6 +143,7 @@ A = AllActiveSchedulerND
 args = ()
 n_steps = 75000
 n_hidden, n_layers = 128, 5
+n_hiddenn, n_layerss = 200, 6
 runs.append(run_FBPINN())
 
 

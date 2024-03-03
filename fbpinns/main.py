@@ -252,10 +252,18 @@ class FBPINNTrainer(_Trainer):
         A = c.ACTIVE_SCHEDULER(c.N_STEPS, D, *c.ACTIVE_SCHEDULER_ARGS)
 
         # create models
-        models = [c.MODEL(c.P.d[0], c.P.d[1], c.N_HIDDEN, c.N_LAYERS) for _ in
-                  range(D.N_MODELS)]  # problem-specific
+        # models = [c.MODEL(c.P.d[0], c.P.d[1], c.N_HIDDEN, c.N_LAYERS) for _ in
+        #           range(D.N_MODELS)]  # problem-specific
         #创建了一个模型列表 models，其中包含了多个模型对象。这些模型对象可能由给定的参数构建而成，如输入维度、输出维度、隐藏层维度和层数。
-
+        models = []
+        for i in range(D.N_MODELS):
+            if i == 2:  # 检查是否为第三个子域
+                # 对于第三个子域，使用不同的神经网络结构
+                model = c.MODEL(c.P.d[0], c.P.d[1], c.N_HIDDENN, c.N_LAYERSS)
+            else:
+                # 对于其他子域，使用相同的神经网络结构
+                model = c.MODEL(c.P.d[0], c.P.d[1], c.N_HIDDEN, c.N_LAYERS)
+            models.append(model)
         # create optimisers
         optimizers = [torch.optim.Adam(model.parameters(), lr=c.LRATE) for model in models]
 
