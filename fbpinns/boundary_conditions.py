@@ -45,6 +45,17 @@ def tanh2_2(x, mu, sd):
     
     return t2, jt2, jjt2
 
+
+def exp_(x, mu, sd):
+    "Compute solution/gradients of y=tanh^2((x-mu)/sd)"
+
+    xn = (x - mu) / sd
+
+    exp = torch.exp(-0.5 * (xn **2))
+    jexp = exp * (-1 / sd) * xn
+    jjexp = (-1 / sd ** 2) * exp - (xn / sd) * jexp
+
+    return exp, jexp, jjexp
 def tanhtanh_2(x, mu1, mu2, sd):
     "Compute solution/gradients of y=tanh((x-mu1)/sd)*tanh((x-mu2)/sd)"
     
@@ -119,3 +130,9 @@ def AB_1D_2(x, y, j, jj, A, B, mu, sd):
     jj_new = jjt2*y + 2*jt2*j + t2*jj + B*jjt
     
     return y_new, j_new, jj_new
+
+def exp_decay(x,  sd):
+        s = torch.exp(-0.5*(1.0)*(x/sd)**2)
+        js =-s*1/1.*x/(sd**2)
+        jjs = -1./1/(sd**2)*s + 1./1*x**2/sd**4
+        return s,js,jjs

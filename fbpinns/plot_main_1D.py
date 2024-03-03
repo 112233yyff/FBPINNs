@@ -50,7 +50,7 @@ def _plot_setup(x_test, yj_true, yj_full, yj_test_losses, c):
     yj_test_losses = np.array(yj_test_losses)
     
     # boundary condition
-    boundary = c.P.boundary_condition(torch.from_numpy(x_test), 
+    boundary = c.P.boundary_condition(torch.from_numpy(x_test),
                                       *[torch.ones(t.shape)*c.Y_N[1]+c.Y_N[0] for t in yj_full], *c.BOUNDARY_N)
     
     return xlim, yjlims, n_yj, boundary, yj_test_losses

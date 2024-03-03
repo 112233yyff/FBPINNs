@@ -1,22 +1,22 @@
 RUN: test
-P: <problems.WaveEquation3D object at 0x00000265F98074F0>
-SUBDOMAIN_XS: [array([-10.  ,  -3.33,   3.33,  10.  ]), array([-10.  ,  -3.33,   3.33,  10.  ]), array([ 0. ,  2.5,  5. ,  7.5, 10. ])]
-BOUNDARY_N: (0.3,)
+P: <problems.WaveEquation3D object at 0x000002C78FC1B9A0>
+SUBDOMAIN_XS: [array([-1.  , -0.33,  0.33,  1.  ]), array([-1.  , -0.33,  0.33,  1.  ]), array([0. , 0.5, 1. ])]
+BOUNDARY_N: (0.2,)
 Y_N: (0, 1)
 DEVICE: cuda:0
 MODEL: <class 'models.FCN'>
 N_HIDDEN: 16
 N_LAYERS: 2
-BATCH_SIZE: (58, 58, 58)
+BATCH_SIZE: (30, 30, 30)
 RANDOM: True
 LRATE: 0.001
-N_STEPS: 75000
+N_STEPS: 25000
 SEED: 123
 BATCH_SIZE_TEST: (50, 50, 10)
 PLOT_LIMS: (1, False)
-SUMMARY_FREQ: 250
-TEST_FREQ: 2000
-MODEL_SAVE_FREQ: 150000
+SUMMARY_FREQ: 500
+TEST_FREQ: 1000
+MODEL_SAVE_FREQ: 2000
 SHOW_FIGURES: False
 SAVE_FIGURES: True
 CLEAR_OUTPUT: False

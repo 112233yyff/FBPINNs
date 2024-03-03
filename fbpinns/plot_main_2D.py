@@ -135,6 +135,8 @@ def plot_2D_PINN(x_test, yj_true,   x, yj,   yj_full, y_full_raw,   yj_test_loss
         plt.subplot2grid(shape,(1+j,0))
     
         plt.tricontourf(triangle, yj[j][:,0], cmap="viridis", vmin=yjlims[j][0], vmax=yjlims[j][1])
+
+        #特定时刻，将训练点输入到模型中得到的值
         
         _fix_plot(xlim)
         plt.title("[%i] Full solution - $yj_{%i}$"%(i,j))
@@ -143,7 +145,9 @@ def plot_2D_PINN(x_test, yj_true,   x, yj,   yj_full, y_full_raw,   yj_test_loss
         plt.subplot2grid(shape,(1+j,1))
         
         _plot_test_im(yj_full[j][:,0], xlim, yjlims[j], c)
-        
+        # print(yj_full[j][:, 0].shape)
+        # print(yj_full[j][:,0])
+        ##特定时刻，将测试点输入到模型中得到的值
         _fix_plot(xlim)
         plt.title("[%i] Full solution - $yj_{%i}$"%(i,j))
         
@@ -151,13 +155,15 @@ def plot_2D_PINN(x_test, yj_true,   x, yj,   yj_full, y_full_raw,   yj_test_loss
         plt.subplot2grid(shape,(1+j,2))
         
         _plot_test_im(yj_true[j][:,0], xlim, yjlims[j], c)
+        # print(yj_true[j][:, 0].shape)
+        # print(yj_true[j][:, 0])
+
         
         _fix_plot(xlim)
         plt.title("[%i] Ground truth - $yj_{%i}$"%(i,j))
         
         # difference
         plt.subplot2grid(shape,(1+j,3))
-        
         _plot_test_im(yj_full[j][:,0]-yj_true[j][:,0], xlim, yjlims[j], c)
         
         _fix_plot(xlim)
@@ -167,6 +173,7 @@ def plot_2D_PINN(x_test, yj_true,   x, yj,   yj_full, y_full_raw,   yj_test_loss
     plt.subplot2grid(shape, (0,1))
     
     _plot_test_im(y_full_raw[:,0], xlim, (None, None), c)
+    ##特定时刻，将训练点输入到模型中得到的原始值
     
     _fix_plot(xlim)
     plt.title("[%i] Individual model - Raw"%(i,))

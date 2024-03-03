@@ -93,7 +93,6 @@ batch_size = (30,30,30)
 #训练时每个维度采样点的个数
 batch_size_test = (100,100,10)
 #测试时每个维度采样点的个数
-
 n_steps = 25000
 #训练次数
 n_hidden, n_layers = 64, 4
