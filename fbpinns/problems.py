@@ -189,7 +189,6 @@ class HarmonicOscillator1DHardBC(HarmonicOscillator1D):
 
     @staticmethod
     def constraining_fn(all_params, x_batch, u):
-
         sd = all_params["static"]["problem"]["sd"]
         x, tanh = x_batch[:,0:1], jnp.tanh
 
@@ -370,7 +369,6 @@ class FDTD1D(Problem):
 
     @staticmethod
     def sample_constraints(all_params, domain, key, sampler, batch_shapes):
-
         # physics loss
         x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
         required_ujs_phys = (

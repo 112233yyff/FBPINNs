@@ -101,18 +101,20 @@ class FCN(Network):
         keys = random.split(key, len(layer_sizes)-1)
         params = [FCN._random_layer_params(k, m, n)
                 for k, m, n in zip(keys, layer_sizes[:-1], layer_sizes[1:])]
-        trainable_params = {"layerss": params}
+        trainable_params = {'layers': params}
         return {}, trainable_params
 
     @staticmethod
     def _random_layer_params(key, m, n):
+        #m == 2 n == 16
         "Create a random layer parameters"
+        #形状分别为(n, m) 和 (n,)
 
         w_key, b_key = random.split(key)
         v = jnp.sqrt(1/m)
         w = random.uniform(w_key, (n, m), minval=-v, maxval=v)
         b = random.uniform(b_key, (n,), minval=-v, maxval=v)
-        return w,b
+        return w, b
 
     @staticmethod
     def network_fn(params, x):
@@ -123,6 +125,21 @@ class FCN(Network):
         w, b = params[-1]
         x = jnp.dot(w, x) + b
         return x
+
+    # def network_fn(params, x):
+    #     params = params["trainable"]["network"]["subdomain"]["layers"]
+    #     for domain_params in params:
+    #         # 处理除了最后一层以外的其他层
+    #         for layer_params in domain_params[:-1]:
+    #             w, b = layer_params
+    #             x = jnp.dot(w, x) + b
+    #             x = jnp.tanh(x)
+    #     # 统一处理所有子域的最后一层
+    #     for domain_params in params:
+    #         w, b = domain_params[-1]
+    #         x = jnp.dot(w, x) + b
+    #     return x
+
 
 class AdaptiveFCN(Network):
 
