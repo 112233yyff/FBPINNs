@@ -207,9 +207,6 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     # us_raw = jnp.stack(us_raw)
     # return us, ws, us_raw
 
-    # 在循环外部调用FBPINN_model函数
-    us, ws, us_raw = FBPINN_model(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)
-
     # apply POU and sum
     u = jnp.concatenate([us, ws], axis=1)# (s, ud+1)
     u = jax.ops.segment_sum(u, p_take, indices_are_sorted=False, num_segments=len(np_take))# (_, ud+1)
@@ -301,16 +298,16 @@ def FBPINN_loss(active_params, fixed_params, static_params, takess, constraints,
 
     # add fixed params to active, recombine all_params
     d, da = active_params, fixed_params
-    # trainable_params = {cl_k: {k: jax.tree_map(lambda p1, p2:jnp.concatenate([p1,p2],0), d[cl_k][k], da[cl_k][k]) if k=="subdomain" else d[cl_k][k]
-    #     for k in d[cl_k]}
-    #     for cl_k in d}
-    # 遍历 d 和 da 的每个层级和参数类型
-    for cl_k in d:
-        if cl_k in da:
-            if "subdomain" in d[cl_k] and "subdomain" in da[cl_k]:
-                for i, layer in enumerate(da[cl_k]["subdomain"]["layers"]):
-                    d[cl_k]["subdomain"]["layers"].append(layer)
-    trainable_params = d
+    trainable_params = {cl_k: {k: jax.tree_map(lambda p1, p2:jnp.concatenate([p1,p2],0), d[cl_k][k], da[cl_k][k]) if k=="subdomain" else d[cl_k][k]
+        for k in d[cl_k]}
+        for cl_k in d}
+    # # 遍历 d 和 da 的每个层级和参数类型
+    # for cl_k in d:
+    #     if cl_k in da:
+    #         if "subdomain" in d[cl_k] and "subdomain" in da[cl_k]:
+    #             for i, layer in enumerate(da[cl_k]["subdomain"]["layers"]):
+    #                 d[cl_k]["subdomain"]["layers"].append(layer)
+    # trainable_params = d
     all_params = {"static": static_params, "trainable": trainable_params}
 
     # run FBPINN for each constraint, with shared params
@@ -449,86 +446,86 @@ def get_inputs(x_batch, active, all_params, decomposition):
     takes = (m_take, n_take, p_take, np_take, npou)
 
     # cut active and fixed parameter trees
-    # def cut_active(d):
-    #     "Cuts active_ims from param dict"
-    #     return {cl_k: {k: jax.tree_map(lambda p:p[active_ims], d[cl_k][k]) if k=="subdomain" else d[cl_k][k]
-    #             for k in d[cl_k]}
-    #             for cl_k in d}
     def cut_active(d):
         "Cuts active_ims from param dict"
-        new_d = {}  # 创建一个新的空字典
-        for parent_key, parent_value in d.items():  # 遍历原始字典的键值对
-            if isinstance(parent_value, dict) and 'subdomain' in parent_value:  # 判断值是否为字典且包含'subdomain'键
-                subdomain_value = parent_value['subdomain']  # 获取'subdomain'键的值
-                new_subdomain_value = {}  # 创建一个新的空字典
-                for key, value in subdomain_value.items():  # 遍历'subdomain'字典的键值对
-                    if key == 'layers':  # 判断是否为'layers'键
-                        new_layers = []
-                        for i in active_ims:
-                            if i < len(value):
-                                new_layers.append(value[i])  # 根据active_ims选取对应索引的列表
-                        new_subdomain_value[key] = new_layers
-                    else:
-                        new_subdomain_value[key] = value  # 其他类型的值直接复制到新字典中
-                new_d[parent_key] = {'subdomain': new_subdomain_value}  # 将处理后的'subdomain'值放入新的字典中
-            else:
-                new_d[parent_key] = parent_value  # 其他类型的值直接复制到新字典中
-        return new_d
-    # def cut_fixed(d):
-    #     "Cuts fixed_ims from param dict"
-    #     return {cl_k: {k: jax.tree_map(lambda p:p[fixed_ims],  d[cl_k][k]) if k=="subdomain" else d[cl_k][k]
-    #             for k in d[cl_k]}
-    #             for cl_k in d}
-
+        return {cl_k: {k: jax.tree_map(lambda p:p[active_ims], d[cl_k][k]) if k=="subdomain" else d[cl_k][k]
+                for k in d[cl_k]}
+                for cl_k in d}
+    # def cut_active(d):
+    #     "Cuts active_ims from param dict"
+    #     new_d = {}  # 创建一个新的空字典
+    #     for parent_key, parent_value in d.items():  # 遍历原始字典的键值对
+    #         if isinstance(parent_value, dict) and 'subdomain' in parent_value:  # 判断值是否为字典且包含'subdomain'键
+    #             subdomain_value = parent_value['subdomain']  # 获取'subdomain'键的值
+    #             new_subdomain_value = {}  # 创建一个新的空字典
+    #             for key, value in subdomain_value.items():  # 遍历'subdomain'字典的键值对
+    #                 if key == 'layers':  # 判断是否为'layers'键
+    #                     new_layers = []
+    #                     for i in active_ims:
+    #                         if i < len(value):
+    #                             new_layers.append(value[i])  # 根据active_ims选取对应索引的列表
+    #                     new_subdomain_value[key] = new_layers
+    #                 else:
+    #                     new_subdomain_value[key] = value  # 其他类型的值直接复制到新字典中
+    #             new_d[parent_key] = {'subdomain': new_subdomain_value}  # 将处理后的'subdomain'值放入新的字典中
+    #         else:
+    #             new_d[parent_key] = parent_value  # 其他类型的值直接复制到新字典中
+    #     return new_d
     def cut_fixed(d):
-        "Cuts active_ims from param dict"
-        new_d = {}  # 创建一个新的空字典
-        for parent_key, parent_value in d.items():  # 遍历原始字典的键值对
-            if isinstance(parent_value, dict) and 'subdomain' in parent_value:  # 判断值是否为字典且包含'subdomain'键
-                subdomain_value = parent_value['subdomain']  # 获取'subdomain'键的值
-                new_subdomain_value = {}  # 创建一个新的空字典
-                for key, value in subdomain_value.items():  # 遍历'subdomain'字典的键值对
-                    if key == 'layers':  # 判断是否为'layers'键
-                        new_layers = []
-                        for i in fixed_ims:
-                            if i < len(value):
-                                new_layers.append(value[i])  # 根据active_ims选取对应索引的列表
-                        new_subdomain_value[key] = new_layers
-                    else:
-                        new_subdomain_value[key] = value  # 其他类型的值直接复制到新字典中
-                new_d[parent_key] = {'subdomain': new_subdomain_value}  # 将处理后的'subdomain'值放入新的字典中
-            else:
-                new_d[parent_key] = parent_value  # 其他类型的值直接复制到新字典中
-        return new_d
+        "Cuts fixed_ims from param dict"
+        return {cl_k: {k: jax.tree_map(lambda p:p[fixed_ims],  d[cl_k][k]) if k=="subdomain" else d[cl_k][k]
+                for k in d[cl_k]}
+                for cl_k in d}
+
+    # def cut_fixed(d):
+    #     "Cuts active_ims from param dict"
+    #     new_d = {}  # 创建一个新的空字典
+    #     for parent_key, parent_value in d.items():  # 遍历原始字典的键值对
+    #         if isinstance(parent_value, dict) and 'subdomain' in parent_value:  # 判断值是否为字典且包含'subdomain'键
+    #             subdomain_value = parent_value['subdomain']  # 获取'subdomain'键的值
+    #             new_subdomain_value = {}  # 创建一个新的空字典
+    #             for key, value in subdomain_value.items():  # 遍历'subdomain'字典的键值对
+    #                 if key == 'layers':  # 判断是否为'layers'键
+    #                     new_layers = []
+    #                     for i in fixed_ims:
+    #                         if i < len(value):
+    #                             new_layers.append(value[i])  # 根据active_ims选取对应索引的列表
+    #                     new_subdomain_value[key] = new_layers
+    #                 else:
+    #                     new_subdomain_value[key] = value  # 其他类型的值直接复制到新字典中
+    #             new_d[parent_key] = {'subdomain': new_subdomain_value}  # 将处理后的'subdomain'值放入新的字典中
+    #         else:
+    #             new_d[parent_key] = parent_value  # 其他类型的值直接复制到新字典中
+    #     return new_d
 
     def cut_all(d):
         "Cuts all_ims from param dict"
         return {cl_k: {k: jax.tree_map(lambda p:p[all_ims],    d[cl_k][k]) if k=="subdomain" else d[cl_k][k]
                 for k in d[cl_k]}
                 for cl_k in d}
-    # def merge_active(da, d):
-    #     "Merges active_ims from param dict da to d"
-    #     for cl_k in d:
-    #         for k in d[cl_k]:
-    #             if k=="subdomain":
-    #                 d[cl_k][k] = jax.tree_map(lambda pa, p: p.copy().at[active_ims].set(pa), da[cl_k][k], d[cl_k][k])
-    #             else:
-    #                 d[cl_k][k] = da[cl_k][k]
-    #     return d
-    def merge_active(da, d, active_ims):
+    def merge_active(da, d):
         "Merges active_ims from param dict da to d"
         for cl_k in d:
             for k in d[cl_k]:
-                if k == "subdomain":
-                    for idx in active_ims:
-                        if len(da[cl_k][k]) > idx:
-                            if len(d[cl_k][k]) > idx:
-                                d[cl_k][k][idx] = da[cl_k][k][idx]
-                            else:
-                                d[cl_k][k].insert(idx, da[cl_k][k][idx])
+                if k=="subdomain":
+                    d[cl_k][k] = jax.tree_map(lambda pa, p: p.copy().at[active_ims].set(pa), da[cl_k][k], d[cl_k][k])
                 else:
                     d[cl_k][k] = da[cl_k][k]
         return d
+    # def merge_active(da, d, active_ims):
+    #     "Merges active_ims from param dict da to d"
+    #     for cl_k in d:
+    #         for k in d[cl_k]:
+    #             if k == "subdomain":
+    #                 for idx in active_ims:
+    #                     if len(da[cl_k][k]) > idx:
+    #                         if len(d[cl_k][k]) > idx:
+    #                             d[cl_k][k][idx] = da[cl_k][k][idx]
+    #                         else:
+    #                             d[cl_k][k].insert(idx, da[cl_k][k][idx])
+    #             else:
+    #                 d[cl_k][k] = da[cl_k][k]
+    #     return d
 
     #d和da的结构是由多个列表构成的，我想根据active_ims 集合中指定的索引值，从d字典中选取对应索引值的列表保存到new_d中
 
@@ -717,57 +714,41 @@ class FBPINNTrainer(_Trainer):
         logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
 
         # initialise subdomain network params
-        # network = c.network
-        # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        # ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
-        # if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
-        # if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
-        # jax.debug.print("ret {}", ps_)
-        # logger.debug("all_params")
-        # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-        #              problem.constraining_fn)
-
         network = c.network
         key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        subdomain_ids = range(1, all_params["static"]["decomposition"]["m"] + 1)
-        temp_trainable = []
-        temp_static = []
-        all_params["trainable"] = {"network": {"subdomain": {}}}
-        for subdomain_id in subdomain_ids:
-            # 在这里根据子域ID选择不同的神经网络初始化函数
-            if subdomain_id == 1:
-                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs1.values())
-            else:
-                ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values())
-            if ps_[0]: temp_static.append(ps_[0])  # grab first set of static params only
-            if ps_[1]: temp_trainable.append(ps_[1])  # 将每个子域的值存储在列表中
-        # jax.debug.print("ret {}", temp_static)
-        # jax.debug.print("ret {}", temp_trainable)
-        if temp_static: all_params["static"]["network"] = tree_index(temp_static, 0)
-        if temp_trainable: all_params["trainable"]["network"]["subdomain"] = {"layers": temp_trainable}
-        jax.debug.print("ret {}", all_params["trainable"])
+        ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
+        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
+        if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
+        jax.debug.print("ret {}", ps_)
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
         model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-            problem.constraining_fn)
+                     problem.constraining_fn)
 
-        # # 初始化 subdomain network 参数
         # network = c.network
         # key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
         # subdomain_ids = range(1, all_params["static"]["decomposition"]["m"] + 1)
-        # all_params["static"]["network"] = {}  # 存储静态参数的字典
-        # all_params["trainable"]["network"]["subdomain"]["layers"] = {}  # 存储可训练参数的字典
-        #
+        # temp_trainable = []
+        # temp_static = []
+        # all_params["trainable"] = {"network": {"subdomain": {}}}
         # for subdomain_id in subdomain_ids:
         #     # 在这里根据子域ID选择不同的神经网络初始化函数
-        #     ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values(), subdomain_id)
-        #     if ps_[0]: all_params["static"]["network"][subdomain_id] = tree_index(ps_[0], 0)
-        #     if ps_[1]: all_params["trainable"]["network"]["subdomain"]["layers"] = {subdomain_id: ps_[1]}
+        #     if subdomain_id == 1:
+        #         ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs1.values())
+        #     else:
+        #         ps_ = network.init_params(subkeys[subdomain_id - 1], *c.network_init_kwargs.values())
+        #     if ps_[0]: temp_static.append(ps_[0])  # grab first set of static params only
+        #     if ps_[1]: temp_trainable.append(ps_[1])  # 将每个子域的值存储在列表中
+        # # jax.debug.print("ret {}", temp_static)
+        # # jax.debug.print("ret {}", temp_trainable)
+        # if temp_static: all_params["static"]["network"] = tree_index(temp_static, 0)
+        # if temp_trainable: all_params["trainable"]["network"]["subdomain"] = {"layers": temp_trainable}
+        # jax.debug.print("ret {}", all_params["trainable"])
         # logger.debug("all_params")
         # logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
         # model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-        #              problem.constraining_fn)
+        #     problem.constraining_fn)
+
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
 
