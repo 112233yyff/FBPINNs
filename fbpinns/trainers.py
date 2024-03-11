@@ -111,11 +111,11 @@ def get_jmaps(required_ujs):
 
 # JITTED FUNCTIONS
 
-def FBPINN_model_inner(params, x, norm_fn, network_fn, unnorm_fn, window_fn):
-    x_norm = norm_fn(params, x)# normalise
+def FBPINN_model_inner(params, x, norm_fn, network_fn, unnorm_fn, window_fn,i):
+    x_norm = norm_fn(params, x, i)# normalise
     u_raw = network_fn(params, x_norm)# network
-    u = unnorm_fn(params, u_raw)# unnormalisex
-    w = window_fn(params, x)# window
+    u = unnorm_fn(params, u_raw, i)# unnormalisex
+    w = window_fn(params, x, i)# window
     return u*w, w, u_raw
 
 def PINN_model_inner(all_params, x, norm_fn, network_fn, unnorm_fn):
@@ -137,40 +137,29 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     log_(str_tensor(x_batch))# (n, xd)
     log_("x_take")
     log_(str_tensor(x_take))
-    # take subdomain params
+    ## take subdomain params
+    # d = all_params
+    # all_params_take = {t_k: {cl_k: {k: jax.tree_map(lambda p:p[m_take], d[t_k][cl_k][k]) if k=="subdomain" else d[t_k][cl_k][k]
+    #     for k in d[t_k][cl_k]}
+    #     for cl_k in d[t_k]}
+    #     for t_k in ["static", "trainable"]}
     d = all_params
-    all_params_take = {t_k: {cl_k: {k: jax.tree_map(lambda p:p[m_take], d[t_k][cl_k][k]) if k=="subdomain" else d[t_k][cl_k][k]
-        for k in d[t_k][cl_k]}
-        for cl_k in d[t_k]}
-        for t_k in ["static", "trainable"]}
-
-    # all_params_take = {
-    #     t_k: {
-    #         cl_k: {
-    #             k: (
-    #                 # 对于子键 "subdomain"，应用一个函数，选择保留在 m_take 中指定索引的列表
-    #                 jax.tree_map(lambda p: [layer for i, layer in enumerate(p) if i in m_take], d[t_k][cl_k][k])
-    #                 if k == "layers" else d[t_k][cl_k][k]
-    #             )
-    #             for k in d[t_k][cl_k]  # 遍历每个子键
-    #         }
-    #         for cl_k in d[t_k]  # 遍历每个子域
-    #     }
-    #     for t_k in ["static"]  # 遍历静态和可训练的参数
-    # }
-    #
-    # # 对于可训练的参数，添加一个新的键值对，保留在 m_take 中指定索引的列表
-    # all_params_take["trainable"] = {
-    #     cl_k: {
-    #         k: (
-    #             # 对于子键 "layers"，应用一个函数，选择保留在 m_take 中指定索引的列表
-    #             jax.tree_map(lambda p: [layer for i, layer in enumerate(p) if i in m_take], d["trainable"][cl_k][k])
-    #             if k == "layers" else d["trainable"][cl_k][k]
-    #         )
-    #         for k in d["trainable"][cl_k]  # 遍历每个子键
-    #     }
-    #     for cl_k in d["trainable"]  # 遍历每个子域
-    # }
+    all_params_take = {"static": {
+        cl_k: {k: jax.tree_map(lambda p: p[m_take], d["static"][cl_k][k]) if k == "subdomain" else d["static"][cl_k][k]
+               for k in d["static"][cl_k]} for cl_k in d["static"]}, "trainable": {}}
+    for cl_k, cl_v in d["trainable"].items():
+        if "network" in cl_v:
+            all_params_take["trainable"][cl_k] = {"network": {}}
+            for k, v in cl_v["network"].items():
+                if k == "subdomain" and "layers" in v:
+                    all_params_take["trainable"][cl_k]["network"]["layers"] = all_params_take["trainable"][cl_k][
+                        "network"].get("layers", [])
+                    for idx in m_take:
+                        all_params_take["trainable"][cl_k]["network"]["layers"].append(v["layers"][idx])
+                else:
+                    all_params_take["trainable"][cl_k]["network"][k] = v
+        else:
+            all_params_take["trainable"][cl_k] = cl_v.copy()
 
     f = {t_k: {cl_k: {k: jax.tree_map(lambda p: 0, d[t_k][cl_k][k]) if k=="subdomain" else jax.tree_map(lambda p: None, d[t_k][cl_k][k])
         for k in d[t_k][cl_k]}
@@ -183,29 +172,26 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     logger.debug("vmap f")
     logger.debug(f)
 
-    # batch over parameters and points
-    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f,0,None,None,None,None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)# (s, ud)
+    # # batch over parameters and points
+    # us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f,0,None,None,None,None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)# (s, ud)
+    us = []
+    ws = []
+    us_raw = []
+    for i in range(len(x_take)):
+        # 调用 FBPINN_model_inner 函数
+        u, w, u_raw = FBPINN_model_inner(
+            all_params_take, x_take[i], norm_fn, network_fn, unnorm_fn, window_fn, i
+        )
+
+        us.append(u)
+        ws.append(w)
+        us_raw.append(u_raw)
+
+    us = jnp.array(us)
+    ws = jnp.array(ws)
+    us_raw = jnp.array(us_raw)
     logger.debug("u")
     logger.debug(str_tensor(us))
-    # num_samples = len(x_take)
-    # us = []
-    # ws = []
-    # us_raw = []
-    # # 循环处理每个样本
-    # for i in range(num_samples):
-    #     # 从参数字典中获取当前样本的参数
-    #     params = all_params_take
-    #     # 调用内部模型函数，传递当前样本的参数和输入
-    #     u, w, u_raw = FBPINN_model_inner(params, x_take[i], norm_fn, network_fn, unnorm_fn, window_fn)
-    #     # 将结果添加到对应的列表中
-    #     us.append(u)
-    #     ws.append(w)
-    #     us_raw.append(u_raw)
-    # # 将列表转换为数组
-    # us = jnp.stack(us)
-    # ws = jnp.stack(ws)
-    # us_raw = jnp.stack(us_raw)
-    # return us, ws, us_raw
 
     # apply POU and sum
     u = jnp.concatenate([us, ws], axis=1)# (s, ud+1)
@@ -303,10 +289,9 @@ def FBPINN_loss(active_params, fixed_params, static_params, takess, constraints,
     #     for cl_k in d}
     # 遍历 d 和 da 的每个层级和参数类型
     for cl_k in d:
-        if cl_k in da:
-            if "subdomain" in d[cl_k] and "subdomain" in da[cl_k]:
-                for i, layer in enumerate(da[cl_k]["subdomain"]["layers"]):
-                    d[cl_k]["subdomain"]["layers"].append(layer)
+        if cl_k in da and "subdomain" in d[cl_k] and "subdomain" in da[cl_k]:
+            for sublist in da[cl_k]["subdomain"]["layers"]:
+                d[cl_k]["subdomain"]["layers"].extend(sublist)
     trainable_params = d
     all_params = {"static": static_params, "trainable": trainable_params}
 
@@ -512,17 +497,13 @@ def get_inputs(x_batch, active, all_params, decomposition):
     #             else:
     #                 d[cl_k][k] = da[cl_k][k]
     #     return d
-    def merge_active(da, d, active_ims):
+    def merge_active(da, d):
         "Merges active_ims from param dict da to d"
         for cl_k in d:
             for k in d[cl_k]:
                 if k == "subdomain":
                     for idx in active_ims:
-                        if len(da[cl_k][k]) > idx:
-                            if len(d[cl_k][k]) > idx:
-                                d[cl_k][k][idx] = da[cl_k][k][idx]
-                            else:
-                                d[cl_k][k].insert(idx, da[cl_k][k][idx])
+                        d[cl_k][k][idx] = da[cl_k][k][idx]
                 else:
                     d[cl_k][k] = da[cl_k][k]
         return d

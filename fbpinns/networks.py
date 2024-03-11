@@ -135,8 +135,7 @@ class FCN(Network):
                 w, b = layer_params
                 x = jnp.dot(w, x) + b
                 x = jnp.tanh(x)
-        # 统一处理所有子域的最后一层
-        for domain_params in params:
+            #处理子域的最后一层
             w, b = domain_params[-1]
             x = jnp.dot(w, x) + b
         return x

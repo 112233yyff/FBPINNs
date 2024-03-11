@@ -193,22 +193,26 @@ class RectangularDecompositionND(Decomposition):
         return [xmins, xmaxs, wmins, wmaxs, flags, unnorms, pous]
 
     @staticmethod
-    def norm_fn(params, x):
+    def norm_fn(params, x, i):
         params = params["static"]["decomposition"]["subdomain"]["params"]
-        xmin, xmax = params[:2]
+        # xmin, xmax = params[:2]
+        xmin = params[0][i]
+        xmax = params[1][i]
         mu, sd = (xmax+xmin)/2, (xmax-xmin)/2
         return networks.norm(mu, sd, x)
 
     @staticmethod
-    def unnorm_fn(params, u):
+    def unnorm_fn(params, u, i):
         params = params["static"]["decomposition"]["subdomain"]["params"]
-        mu, sd = params[5]
+        # mu, sd = params[5]
+        mu, sd = params[5][i]
         return networks.unnorm(mu, sd, u)
 
     @staticmethod
-    def window_fn(params, x):
+    def window_fn(params, x, i):
         params = params["static"]["decomposition"]["subdomain"]["params"]
-        return params[4]*windows.cosine(*params[:2], x)+(1-params[4])
+        # return params[4][i]*windows.cosine(*params[:2], x)+(1-params[4][i])
+        return params[4][i] * windows.cosine(params[0][i], params[1][i], x) + (1 - params[4][i])
 
     @staticmethod
     def inside_points(all_params, x_batch):
