@@ -124,76 +124,14 @@ class FCN(Network):
         return w, b
 
     @staticmethod
-    # def network_fn(params, x):
-    #     params = params["trainable"]["network"]["subdomain"]["layers"]
-    #     for w, b in params[:-1]:
-    #         x = jnp.dot(w, x) + b
-    #         x = jnp.tanh(x)
-    #     w, b = params[-1]
-    #     x = jnp.dot(w, x) + b
-    #     return x
-
     def network_fn(params, x):
         params = params["trainable"]["network"]["subdomain"]["layers"]
-
-        def process_special(args):
-            params, x = args
-            for w, b in params[:-1]:
-                w = w[:3, :]
-                b = b[:3]
-                x = jnp.dot(w, x) + b
-                x = jnp.tanh(x)
-            w, b = params[-1]
-            w = w[:, :3]
+        for w, b in params[:-1]:
             x = jnp.dot(w, x) + b
-            return x
-
-        def process_regular(args):
-            params, x = args
-            for w, b in params[:-1]:
-                x = jnp.dot(w, x) + b
-                x = jnp.tanh(x)
-            w, b = params[-1]
-            x = jnp.dot(w, x) + b
-            return x
-
-        condition = (x[0] > -2) & (x[0] < 0) & (x[1] > 0) & (x[1] < 0.5)
-        x = lax.cond(condition, process_special, process_regular, (params, x))
+            x = jnp.tanh(x)
+        w, b = params[-1]
+        x = jnp.dot(w, x) + b
         return x
-
-    # def network_fn(params, x):
-    #     params = params["trainable"]["network"]["subdomain"]["layers"]
-    #     if x[0] > -2 and x[0] < 0 and x[1] > 0 and  x[1] < 0.5:
-    #         for w, b in params[:-1]:
-    #             w = w[:3, :]
-    #             b = b[:3]
-    #             x = jnp.dot(w, x) + b
-    #             x = jnp.tanh(x)
-    #         w, b = params[-1]
-    #         w = w[:, :3]
-    #         x = jnp.dot(w, x) + b
-    #     else:
-    #         for w, b in params[:-1]:
-    #             x = jnp.dot(w, x) + b
-    #             x = jnp.tanh(x)
-    #         w, b = params[-1]
-    #         x = jnp.dot(w, x) + b
-    #     return x
-
-    # def network_fn(params, x):
-    #     params = params["trainable"]["network"]["subdomain"]["layers"]
-    #     for domain_params in params:
-    #         # 处理除了最后一层以外的其他层
-    #         for layer_params in domain_params[:-1]:
-    #             w, b = layer_params
-    #             x = jnp.dot(w, x) + b
-    #             x = jnp.tanh(x)
-    #         #处理子域的最后一层
-    #         w, b = domain_params[-1]
-    #         x = jnp.dot(w, x) + b
-    #     return x
-
-
 class AdaptiveFCN(Network):
 
     @staticmethod
