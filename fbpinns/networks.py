@@ -6,9 +6,11 @@ Each network class must define the NotImplemented methods.
 
 This module is used by constants.py (and subsequently trainers.py)
 """
-
+import jax
 import jax.numpy as jnp
 from jax import random
+from jax import lax
+
 
 
 class Network:
@@ -101,8 +103,12 @@ class FCN(Network):
         keys = random.split(key, len(layer_sizes)-1)
         params = [FCN._random_layer_params(k, m, n)
                 for k, m, n in zip(keys, layer_sizes[:-1], layer_sizes[1:])]
-        # trainable_params = {'layers': params}
-        trainable_params =  params
+        trainable_params = {'layers': params}
+        # 创建一个唯一的subdomain_id，将其赋值给每个子域
+        # subdomain_id = jax.lax.tie_in(keys[0], jnp.arange(num_subdomains))
+        # # 将每个子域的subdomain_id添加到静态参数部分
+        # static_params = {'subdomain_id': {i: subdomain_id[i] for i in range(num_subdomains)}}
+        # trainable_params =  params
         return {}, trainable_params
 
     @staticmethod
@@ -129,16 +135,63 @@ class FCN(Network):
 
     def network_fn(params, x):
         params = params["trainable"]["network"]["subdomain"]["layers"]
-        for domain_params in params:
-            # 处理除了最后一层以外的其他层
-            for layer_params in domain_params[:-1]:
-                w, b = layer_params
+
+        def process_special(args):
+            params, x = args
+            for w, b in params[:-1]:
+                w = w[:3, :]
+                b = b[:3]
                 x = jnp.dot(w, x) + b
                 x = jnp.tanh(x)
-            #处理子域的最后一层
-            w, b = domain_params[-1]
+            w, b = params[-1]
+            w = w[:, :3]
             x = jnp.dot(w, x) + b
+            return x
+
+        def process_regular(args):
+            params, x = args
+            for w, b in params[:-1]:
+                x = jnp.dot(w, x) + b
+                x = jnp.tanh(x)
+            w, b = params[-1]
+            x = jnp.dot(w, x) + b
+            return x
+
+        condition = (x[0] > -2) & (x[0] < 0) & (x[1] > 0) & (x[1] < 0.5)
+        x = lax.cond(condition, process_special, process_regular, (params, x))
         return x
+
+    # def network_fn(params, x):
+    #     params = params["trainable"]["network"]["subdomain"]["layers"]
+    #     if x[0] > -2 and x[0] < 0 and x[1] > 0 and  x[1] < 0.5:
+    #         for w, b in params[:-1]:
+    #             w = w[:3, :]
+    #             b = b[:3]
+    #             x = jnp.dot(w, x) + b
+    #             x = jnp.tanh(x)
+    #         w, b = params[-1]
+    #         w = w[:, :3]
+    #         x = jnp.dot(w, x) + b
+    #     else:
+    #         for w, b in params[:-1]:
+    #             x = jnp.dot(w, x) + b
+    #             x = jnp.tanh(x)
+    #         w, b = params[-1]
+    #         x = jnp.dot(w, x) + b
+    #     return x
+
+    # def network_fn(params, x):
+    #     params = params["trainable"]["network"]["subdomain"]["layers"]
+    #     for domain_params in params:
+    #         # 处理除了最后一层以外的其他层
+    #         for layer_params in domain_params[:-1]:
+    #             w, b = layer_params
+    #             x = jnp.dot(w, x) + b
+    #             x = jnp.tanh(x)
+    #         #处理子域的最后一层
+    #         w, b = domain_params[-1]
+    #         x = jnp.dot(w, x) + b
+    #     return x
 
 
 class AdaptiveFCN(Network):
