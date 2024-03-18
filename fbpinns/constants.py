@@ -86,9 +86,9 @@ class Constants(ConstantsBase):
         # Define summary output parameters
         self.summary_freq    = 1000# outputs train stats to command line
         self.test_freq       = 1000# outputs test stats to plot / file / command line
-        self.model_save_freq = 20000
-        self.show_figures = True# whether to show figures
-        self.save_figures = False# whether to save figures
+        self.model_save_freq = 15000
+        self.show_figures = False# whether to show figures
+        self.save_figures = True# whether to save figures
         self.clear_output = False# whether to clear ipython output periodically
 
         # other constants

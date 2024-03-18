@@ -123,7 +123,7 @@ class FCN(Network):
     #     w, b = params[-1]
     #     x = jnp.dot(w, x) + b
     #     return x
-    def network_fn(params, x):
+    def network_fn(params, x,mask):
         params1 = params["trainable"]["network"]["subdomain"]["layers"]
         def process_special(args):
             params, x = args
@@ -145,8 +145,8 @@ class FCN(Network):
             w, b = params[-1]
             x = jnp.dot(w, x) + b
             return x
-        condition = (x[0] > -2) & (x[0] < 0) & (x[1] > 0) & (x[1] < 0.5)
-        x = lax.cond(condition, process_special, process_regular, (params1, x))
+        # condition = (x[0] > -2) & (x[0] < 0) & (x[1] > 0) & (x[1] < 0.5)
+        x = lax.cond(mask, process_special, process_regular, (params1, x))
         return x
 class AdaptiveFCN(Network):
 

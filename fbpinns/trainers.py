@@ -101,9 +101,9 @@ def get_jmaps(required_ujs):
 
 # JITTED FUNCTIONS
 
-def FBPINN_model_inner(params, x,norm_fn, network_fn, unnorm_fn, window_fn):
+def FBPINN_model_inner(params, x, mask, norm_fn, network_fn, unnorm_fn, window_fn):
     x_norm = norm_fn(params, x)# normalise
-    u_raw = network_fn(params, x_norm)# network
+    u_raw = network_fn(params, x_norm, mask)# network
     u = unnorm_fn(params, u_raw)# unnormalise
     w = window_fn(params, x)# window
     return u*w, w, u_raw
@@ -144,11 +144,16 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params_take))
     logger.debug("vmap f")
     logger.debug(f)
-
-    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f,0,None,None,None,None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)# (s, ud)
+    # 根据 m_take 中的值生成掩码 mask
+    mask = m_take == 2
+    # 将 True 转换为 1， False 转换为 0
+    mask = mask.astype(bool)
+    # jax.debug.print("ret {}", mask)
+    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, 0, None, None, None, None))(all_params_take, x_take, mask,
+                                                                                         norm_fn, network_fn, unnorm_fn,
+                                                                                         window_fn)  # (s, ud)
     logger.debug("u")
     logger.debug(str_tensor(us))
-
     # apply POU and sum
     u = jnp.concatenate([us, ws], axis=1)# (s, ud+1)
     u = jax.ops.segment_sum(u, p_take, indices_are_sorted=False, num_segments=len(np_take))# (_, ud+1)
@@ -272,7 +277,7 @@ def PINN_loss(active_params, static_params, constraints, model_fns, jmapss, loss
         constraints_.append(constraint+ujs)
     return loss_fn(all_params, constraints_)
 
-@partial(jit, static_argnums=(0, 5, 8, 9, 10))
+# @partial(jit, static_argnums=(0, 5, 8, 9, 10))
 def FBPINN_update(optimiser_fn, active_opt_states,
                   active_params, fixed_params, static_params_dynamic, static_params_static,
                   takess, constraints, model_fns, jmapss, loss_fn):
@@ -964,10 +969,10 @@ if __name__ == "__main__":
         ),
         network=FCN,
         network_init_kwargs=dict(
-            layer_sizes=[2, 6, 2],
+            layer_sizes=[2, 32, 2],
         ),
-        ns=((5, 2),),
-        n_test=(5, 2),
+        ns=((300, 200),),
+        n_test=(300, 200),
         n_steps=170000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=5000,
