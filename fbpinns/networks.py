@@ -104,19 +104,10 @@ class FCN(Network):
         params = [FCN._random_layer_params(k, m, n)
                 for k, m, n in zip(keys, layer_sizes[:-1], layer_sizes[1:])]
         trainable_params = {'layers': params}
-        # 创建一个唯一的subdomain_id，将其赋值给每个子域
-        # subdomain_id = jax.lax.tie_in(keys[0], jnp.arange(num_subdomains))
-        # # 将每个子域的subdomain_id添加到静态参数部分
-        # static_params = {'subdomain_id': {i: subdomain_id[i] for i in range(num_subdomains)}}
-        # trainable_params =  params
         return {}, trainable_params
 
     @staticmethod
     def _random_layer_params(key, m, n):
-        #m == 2 n == 16
-        "Create a random layer parameters"
-        #形状分别为(n, m) 和 (n,)
-
         w_key, b_key = random.split(key)
         v = jnp.sqrt(1/m)
         w = random.uniform(w_key, (n, m), minval=-v, maxval=v)
@@ -133,17 +124,16 @@ class FCN(Network):
     #     x = jnp.dot(w, x) + b
     #     return x
     def network_fn(params, x):
-        params = params["trainable"]["network"]["subdomain"]["layers"]
-
+        params1 = params["trainable"]["network"]["subdomain"]["layers"]
         def process_special(args):
             params, x = args
             for w, b in params[:-1]:
-                w = w[:3, :]
-                b = b[:3]
+                w = w[:16, :]
+                b = b[:16]
                 x = jnp.dot(w, x) + b
                 x = jnp.tanh(x)
             w, b = params[-1]
-            w = w[:, :3]
+            w = w[:, :16]
             x = jnp.dot(w, x) + b
             return x
 
@@ -155,9 +145,8 @@ class FCN(Network):
             w, b = params[-1]
             x = jnp.dot(w, x) + b
             return x
-
         condition = (x[0] > -2) & (x[0] < 0) & (x[1] > 0) & (x[1] < 0.5)
-        x = lax.cond(condition, process_special, process_regular, (params, x))
+        x = lax.cond(condition, process_special, process_regular, (params1, x))
         return x
 class AdaptiveFCN(Network):
 

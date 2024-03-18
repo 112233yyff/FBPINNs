@@ -1,12 +1,3 @@
-"""
-Defines trainer classes for FBPINNs and PINNs.
-
-This is the main entry point for training FBPINNs and PINNs.
-
-To train a FBPINN / PINN, use a Constants object to set up the problem and define its hyperparameters, and pass it
-to one of the trainer classes defined here
-"""
-
 import time
 from functools import partial
 
@@ -21,7 +12,6 @@ from fbpinns.trainers_base import _Trainer
 from fbpinns import networks, plot_trainer
 from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
-import copy
 
 
 # LABELLING CONVENTIONS
@@ -111,10 +101,10 @@ def get_jmaps(required_ujs):
 
 # JITTED FUNCTIONS
 
-def FBPINN_model_inner(params, x, norm_fn, network_fn, unnorm_fn, window_fn):
+def FBPINN_model_inner(params, x,norm_fn, network_fn, unnorm_fn, window_fn):
     x_norm = norm_fn(params, x)# normalise
     u_raw = network_fn(params, x_norm)# network
-    u = unnorm_fn(params, u_raw)# unnormalisex
+    u = unnorm_fn(params, u_raw)# unnormalise
     w = window_fn(params, x)# window
     return u*w, w, u_raw
 
@@ -137,13 +127,13 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     log_(str_tensor(x_batch))# (n, xd)
     log_("x_take")
     log_(str_tensor(x_take))
-    ## take subdomain params
+
+    # take subdomain params
     d = all_params
     all_params_take = {t_k: {cl_k: {k: jax.tree_map(lambda p:p[m_take], d[t_k][cl_k][k]) if k=="subdomain" else d[t_k][cl_k][k]
         for k in d[t_k][cl_k]}
         for cl_k in d[t_k]}
         for t_k in ["static", "trainable"]}
-
     f = {t_k: {cl_k: {k: jax.tree_map(lambda p: 0, d[t_k][cl_k][k]) if k=="subdomain" else jax.tree_map(lambda p: None, d[t_k][cl_k][k])
         for k in d[t_k][cl_k]}
         for cl_k in d[t_k]}
@@ -155,8 +145,9 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     logger.debug("vmap f")
     logger.debug(f)
 
-    # batch over parameters and points
     us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f,0,None,None,None,None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)# (s, ud)
+    logger.debug("u")
+    logger.debug(str_tensor(us))
 
     # apply POU and sum
     u = jnp.concatenate([us, ws], axis=1)# (s, ud+1)
@@ -184,7 +175,6 @@ def PINN_model(all_params, x_batch, model_fns, verbose=True):
     log_(str_tensor(x_batch))# (n, xd)
 
     # batch over parameters and points
-
     u, u_raw = vmap(PINN_model_inner, in_axes=(None,0,None,None,None))(all_params, x_batch, norm_fn, network_fn, unnorm_fn)# (n, ud)
     logger.debug("u")
     logger.debug(str_tensor(u))
@@ -196,6 +186,7 @@ def PINN_model(all_params, x_batch, model_fns, verbose=True):
 
 def FBPINN_forward(all_params, x_batch, takes, model_fns, jmaps):
     "Computes gradients of FBPINN model"
+
     # isolate model function
     def u(x_batch):
         return FBPINN_model(all_params, x_batch, takes, model_fns)[0], ()
@@ -203,6 +194,7 @@ def FBPINN_forward(all_params, x_batch, takes, model_fns, jmaps):
 
 def PINN_forward(all_params, x_batch, model_fns, jmaps):
     "Computes gradients of PINN model"
+
     # isolate model function
     def u(x_batch):
         return PINN_model(all_params, x_batch, model_fns)[0], ()
@@ -251,7 +243,7 @@ def FBPINN_loss(active_params, fixed_params, static_params, takess, constraints,
     trainable_params = {cl_k: {k: jax.tree_map(lambda p1, p2:jnp.concatenate([p1,p2],0), d[cl_k][k], da[cl_k][k]) if k=="subdomain" else d[cl_k][k]
         for k in d[cl_k]}
         for cl_k in d}
-    all_params = {"static": static_params, "trainable": trainable_params}
+    all_params = {"static":static_params, "trainable":trainable_params}
 
     # run FBPINN for each constraint, with shared params
     constraints_ = []
@@ -288,9 +280,9 @@ def FBPINN_update(optimiser_fn, active_opt_states,
     static_params = combine(static_params_dynamic, static_params_static)
     # update step
     lossval, grads = value_and_grad(FBPINN_loss, argnums=0)(
-        active_params, fixed_params, static_params, takess, constraints, model_fns, jmapss, loss_fn)#111111111111111111111111111111111111111111111
+        active_params, fixed_params, static_params, takess, constraints, model_fns, jmapss, loss_fn)
     updates, active_opt_states = optimiser_fn(grads, active_opt_states, active_params)
-    active_params = optax.apply_updates(active_params, updates)#11111111111111111111111111111111111111111111111111111111111111111111111
+    active_params = optax.apply_updates(active_params, updates)
     return lossval, active_opt_states, active_params
 
 @partial(jit, static_argnums=(0, 4, 6, 7, 8))
@@ -350,7 +342,7 @@ def get_inputs(x_batch, active, all_params, decomposition):
     mask = jnp.zeros_like(active)# mask out models in training points
     mask = mask.at[training_ims].set(1)
     active = active*mask
-    ims_ = jnp.arange(all_params["static"]["decomposition"]["m"])#子域的索引
+    ims_ = jnp.arange(all_params["static"]["decomposition"]["m"])
     active_ims = ims_[active==1]# assume unsorted
     fixed_ims = ims_[active==2]
     logger.debug("updated active")
@@ -363,7 +355,6 @@ def get_inputs(x_batch, active, all_params, decomposition):
     # note, numbers in all_ims == numbers in training_ims == numbers in m_take
     # which also means we need all m_take points above
     all_ims = jnp.concatenate([active_ims, fixed_ims])
-    # jax.debug.print("ret {}", all_ims)
 
     # re-index m_take to all_ims index
     inv = jnp.zeros(all_params["static"]["decomposition"]["m"], dtype=int)
@@ -396,13 +387,12 @@ def get_inputs(x_batch, active, all_params, decomposition):
                 for cl_k in d}
     def cut_fixed(d):
         "Cuts fixed_ims from param dict"
-        return {cl_k: {k: jax.tree_map(lambda p:p[fixed_ims],  d[cl_k][k]) if k=="subdomain"  else d[cl_k][k]
+        return {cl_k: {k: jax.tree_map(lambda p:p[fixed_ims],  d[cl_k][k]) if k=="subdomain" else d[cl_k][k]
                 for k in d[cl_k]}
                 for cl_k in d}
-
     def cut_all(d):
         "Cuts all_ims from param dict"
-        return {cl_k: {k: jax.tree_map(lambda p:p[all_ims], d[cl_k][k]) if k=="subdomain"  else d[cl_k][k]
+        return {cl_k: {k: jax.tree_map(lambda p:p[all_ims],    d[cl_k][k]) if k=="subdomain" else d[cl_k][k]
                 for k in d[cl_k]}
                 for cl_k in d}
     def merge_active(da, d):
@@ -415,8 +405,6 @@ def get_inputs(x_batch, active, all_params, decomposition):
                     d[cl_k][k] = da[cl_k][k]
         return d
 
-    #d和da的结构是由多个列表构成的，我想根据active_ims 集合中指定的索引值，从d字典中选取对应索引值的列表保存到new_d中
-
     return takes, all_ims, (active, cut_active, cut_fixed, cut_all, merge_active)
 
 
@@ -426,7 +414,6 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
     logger.info("Total number of trainable parameters:")
     for k in all_params["trainable"]:
         logger.info(f'\t{k}: {total_size(all_params["trainable"][k]):,}')
-        jax.debug.print("ret {}", f'\t{k}: {total_size(all_params["trainable"][k]):,}')
 
     # initialise optimiser
     optimiser = optax.adam(**c.optimiser_kwargs)
@@ -524,7 +511,6 @@ class FBPINNTrainer(_Trainer):
         x_batch, constraints, constraint_fs, constraint_ips = self._get_x_batch(i, active, all_params, x_batch_global, constraints_global, constraint_fs_global, constraint_offsets_global, decomposition)
 
         # get model takes / scheduler cuts given x_batch and active
-        # "获取模型参数 / 调度器根据给定的 x_batch 和激活状态进行剪裁"
         takes, _, (active, cut_active, cut_fixed, cut_all, merge_active) = get_inputs(x_batch, active, all_params, decomposition)
 
         # cut params / opt states (schedule)
@@ -587,7 +573,7 @@ class FBPINNTrainer(_Trainer):
         np.random.seed(c.seed)
 
         # define all_params
-        all_params = {"static": {}, "trainable": {}}
+        all_params = {"static":{},"trainable":{}}
 
         # initialise domain, problem and decomposition params
         domain, problem, decomposition = c.domain, c.problem, c.decomposition
@@ -596,36 +582,33 @@ class FBPINNTrainer(_Trainer):
             ps_ = cl.init_params(**kwargs)
             if ps_[0]: all_params["static"][tag] = ps_[0]
             if ps_[1]: all_params["trainable"][tag] = ps_[1]
-        assert (all_params["static"]["domain"]["xd"] == \
-                all_params["static"]["problem"]["dims"][1] == \
+        assert (all_params["static"]["domain"]["xd"] ==\
+                all_params["static"]["problem"]["dims"][1] ==\
                 all_params["static"]["decomposition"]["xd"])
         logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
 
         # initialise subdomain network params
         network = c.network
-        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
-        num_subdomains = all_params["static"]["decomposition"]["m"]
+        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
         ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
-        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
-        # if ps_[0]: all_params["static"]["network"] = {"subdomain": ps_[0]}
-        if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
+        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0],0)# grab first set of static params only
+        if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
-                     problem.constraining_fn)
+        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
 
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
 
         # common initialisation
         (optimiser, all_opt_states, optimiser_fn, loss_fn, key,
-         constraints_global, x_batch_global, constraint_offsets_global, constraint_fs_global, jmapss,
-         x_batch_test, u_exact) = _common_train_initialisation(c, key, all_params, problem, domain)
+        constraints_global, x_batch_global, constraint_offsets_global, constraint_fs_global, jmapss,
+        x_batch_test, u_exact) = _common_train_initialisation(c, key, all_params, problem, domain)
 
         # fix test data inputs
         logger.info("Getting test data inputs..")
         active_test_ = jnp.ones(all_params["static"]["decomposition"]["m"], dtype=int)
-        takes_, all_ims_, (_, _, _, cut_all_, _) = get_inputs(x_batch_test, active_test_, all_params, decomposition)
+        takes_, all_ims_, (_, _, _, cut_all_, _)  = get_inputs(x_batch_test, active_test_, all_params, decomposition)
         test_inputs = (takes_, all_ims_, cut_all_)
 
         # train loop
@@ -633,7 +616,8 @@ class FBPINNTrainer(_Trainer):
         start0, start1, report_time = time.time(), time.time(), 0.
         merge_active, active_params, active_opt_states, fixed_params = None, None, None, None
         lossval = None
-        for i, active_ in enumerate(scheduler):
+        for i,active_ in enumerate(scheduler):
+
             # update active
             if active_ is not None:
                 active = active_
@@ -645,8 +629,7 @@ class FBPINNTrainer(_Trainer):
 
                 # then get new inputs to update step
                 active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch = \
-                    self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global,
-                                            constraint_fs_global, constraint_offsets_global, decomposition, problem)
+                     self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global, constraint_fs_global, constraint_offsets_global, decomposition, problem)
 
                 # AOT compile update function
                 startc = time.time()
@@ -655,39 +638,36 @@ class FBPINNTrainer(_Trainer):
                 update = FBPINN_update.lower(optimiser_fn, active_opt_states,
                                              active_params, fixed_params, static_params_dynamic, static_params_static,
                                              takess, constraints, model_fns, jmapss, loss_fn).compile()
-                logger.info(f"[i: {i}/{self.c.n_steps}] Compiling done ({time.time() - startc:.2f} s)")
+                logger.info(f"[i: {i}/{self.c.n_steps}] Compiling done ({time.time()-startc:.2f} s)")
                 cost_ = update.cost_analysis()
-                p, f = total_size(active_params["network"]), cost_[0]["flops"] if (cost_ and "flops" in cost_[0]) else 0
+                p,f = total_size(active_params["network"]), cost_[0]["flops"] if (cost_ and "flops" in cost_[0]) else 0
                 logger.debug("p, f")
-                logger.debug((p, f))
+                logger.debug((p,f))
 
             # report initial model
             if i == 0:
                 u_test_losses, start1, report_time = \
-                    self._report(i, pstep, fstep, u_test_losses, start0, start1, report_time,
-                                 u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem,
-                                 decomposition,
-                                 active, merge_active, active_opt_states, active_params, x_batch,
-                                 lossval)
+                self._report(i, pstep, fstep, u_test_losses, start0, start1, report_time,
+                            u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
+                            active, merge_active, active_opt_states, active_params, x_batch,
+                            lossval)
 
             # take a training step
             lossval, active_opt_states, active_params = update(active_opt_states,
-                                                               active_params, fixed_params, static_params_dynamic,
-                                                               takess,
-                                                               constraints)  # note compiled function only accepts dynamic arguments
-            pstep, fstep = pstep + p, fstep + f
+                                         active_params, fixed_params, static_params_dynamic,
+                                         takess, constraints)# note compiled function only accepts dynamic arguments
+            pstep, fstep = pstep+p, fstep+f
 
             # report
             u_test_losses, start1, report_time = \
-                self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
-                             u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem,
-                             decomposition,
-                             active, merge_active, active_opt_states, active_params, x_batch,
-                             lossval)
+            self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
+                        u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
+                        active, merge_active, active_opt_states, active_params, x_batch,
+                        lossval)
 
         # cleanup
         writer.close()
-        logger.info(f"[i: {i + 1}/{self.c.n_steps}] Training complete")
+        logger.info(f"[i: {i+1}/{self.c.n_steps}] Training complete")
 
         # return trained parameters
         all_params["trainable"] = merge_active(active_params, all_params["trainable"])
@@ -724,6 +704,7 @@ class FBPINNTrainer(_Trainer):
                 if test_:
                     u_test_losses = self._test(
                         x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition)
+
                 # save model
                 if model_save_:
                     self._save_model(i, (i, all_params, all_opt_states, active, jnp.array(u_test_losses)))
@@ -789,7 +770,6 @@ class PINNTrainer(_Trainer):
     "PINN model trainer class"
 
     def train(self):
-        "Train model"
         "Train model"
 
         c, writer = self.c, self.writer
@@ -952,19 +932,13 @@ class PINNTrainer(_Trainer):
 
         return u_test_losses
 
-##task:修改某个特定子域的神经网络结构
-##思路:设定子域id，根据子域id去选择神经网络
-##问题：1、如何去选择特定的神经网络结构（在constant对象里定义两个神经网络？/在初始化
-##     2、子域id定义在哪个字典里（静态字典还是可训练参数的字典里以及该如何定义呢？
-##     了解清楚字典的结构，以及对于子域神经网络在整个过程中是如何判别使用的，从而在合适的位置添加id信息。
-
 if __name__ == "__main__":
     # 2D
     import numpy as np
     from fbpinns.domains import RectangularDomainND
     from fbpinns.problems import FDTD1D
     from fbpinns.decompositions import RectangularDecompositionND
-    from fbpinns.networks import FCN, CustomNetwork
+    from fbpinns.networks import FCN
     from fbpinns.schedulers import AllActiveSchedulerND
     from fbpinns.constants import Constants, get_subdomain_ws
     from fbpinns.trainers import FBPINNTrainer, PINNTrainer
@@ -988,16 +962,12 @@ if __name__ == "__main__":
             subdomain_ws=subdomain_ws,
             unnorm=(0., 1.),
         ),
-        # network=CustomNetwork,
         network=FCN,
-        # network_init_kwargs1=dict(
-        #     layer_sizes=[2, 3, 2],
-        # ),
         network_init_kwargs=dict(
             layer_sizes=[2, 6, 2],
         ),
-        ns=((240, 120),),
-        n_test=(240, 120),
+        ns=((5, 2),),
+        n_test=(5, 2),
         n_steps=170000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=5000,
@@ -1009,24 +979,29 @@ if __name__ == "__main__":
     run = FBPINNTrainer(c)
     # run = PINNTrainer(c)
     run.train()
-    # c = Constants(
-    #     run="test",
-    #     #problem=HarmonicOscillator1D,
-    #     #problem=HarmonicOscillator1DHardBC,
-    #     problem=HarmonicOscillator1DInverse,
-    #     network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
-    #     )
-    #
-    # run = FBPINNTrainer(c)
-    # #run = PINNTrainer(c)
-    #
-    # all_params = run.train()
-    # print(all_params["static"]["problem"])
-    # if "problem" in all_params["trainable"]:
-    #     print(all_params["trainable"]["problem"])
 
-
-
+# if __name__ == "__main__":
+#
+#     from fbpinns.constants import Constants
+#     from fbpinns.problems import HarmonicOscillator1D, HarmonicOscillator1DHardBC, HarmonicOscillator1DInverse
+#
+#     logger.setLevel("DEBUG")
+#
+#     c = Constants(
+#         run="test",
+#         #problem=HarmonicOscillator1D,
+#         #problem=HarmonicOscillator1DHardBC,
+#         problem=HarmonicOscillator1DInverse,
+#         network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
+#         )
+#
+#     run = FBPINNTrainer(c)
+#     #run = PINNTrainer(c)
+#
+#     all_params = run.train()
+#     print(all_params["static"]["problem"])
+#     if "problem" in all_params["trainable"]:
+#         print(all_params["trainable"]["problem"])
 
 
 

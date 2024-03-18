@@ -218,10 +218,16 @@ class RectangularDecompositionND(Decomposition):
     def inside_points(all_params, x_batch):
         m = all_params["static"]["decomposition"]["m"]
         ims = jnp.arange(m)
+        #使用 jnp.arange(m) 创建一个范围数组 ims，其中包含从 0 到 m-1 的整数。这个数组用于表示子域的索引。
         batch_size = min(int(1e9/(4*ims.shape[0])), x_batch.shape[0])# limit GPU memory
+        #计算一个批处理大小 batch_size，以限制 GPU 内存的使用。为了做到这一点，它使用了一个上限，该上限是 GPU 内存大小的 1/4，除以子域的数量 m，然后再除以输入数据 x_batch 的大小。
+        #这样计算出的批处理大小将用于限制在内部函数 inside_points_batch 中处理的数据量。
         all_params = {"params": all_params["static"]["decomposition"]["subdomain"]["params"]}# filter out subdomain params
         return inside_points_batch(all_params, x_batch, ims, batch_size,
                                    RectangularDecompositionND._inside_rectangleND)
+    #最后，调用 inside_points_batch 函数，将提取的子域参数、输入数据 x_batch、子域索引数组 ims、
+    # 计算的批处理大小 batch_size 以及一个指定矩形区域内部的函数 _inside_rectangleND 作为参数。
+    # 此函数的目的是在给定的矩形内部计算一组点。
 
     @staticmethod
     def inside_models(all_params, x_batch, ims):
