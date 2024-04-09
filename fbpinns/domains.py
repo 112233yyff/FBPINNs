@@ -84,7 +84,6 @@ class RectangularDomainND(Domain):
         xd = all_params["static"]["domain"]["xd"]
 
         assert len(batch_shapes) == 2*xd# total number of boundaries
-
         x_batches = []
         for i in range(xd):
             ic = jnp.array(list(range(i))+list(range(i+1,xd)), dtype=int)

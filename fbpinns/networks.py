@@ -98,7 +98,7 @@ class CustomNetwork(Network):
 
 class FCN(Network):
 
-    @staticmethod
+    # @staticmethod
     def init_params(key, layer_sizes):
         keys = random.split(key, len(layer_sizes)-1)
         params = [FCN._random_layer_params(k, m, n)
@@ -106,7 +106,7 @@ class FCN(Network):
         trainable_params = {'layers': params}
         return {}, trainable_params
 
-    @staticmethod
+    # @staticmethod
     def _random_layer_params(key, m, n):
         w_key, b_key = random.split(key)
         v = jnp.sqrt(1/m)
@@ -114,8 +114,8 @@ class FCN(Network):
         b = random.uniform(b_key, (n,), minval=-v, maxval=v)
         return w, b
 
-    @staticmethod
-    # def network_fn(params, x):
+    # @staticmethod
+    # def network_fn(params, x, mask):
     #     params = params["trainable"]["network"]["subdomain"]["layers"]
     #     for w, b in params[:-1]:
     #         x = jnp.dot(w, x) + b
@@ -123,7 +123,7 @@ class FCN(Network):
     #     w, b = params[-1]
     #     x = jnp.dot(w, x) + b
     #     return x
-    def network_fn(params, x,mask):
+    def network_fn(params, x, mask):
         params1 = params["trainable"]["network"]["subdomain"]["layers"]
         def process_special(args):
             params, x = args
@@ -136,7 +136,6 @@ class FCN(Network):
             w = w[:, :16]
             x = jnp.dot(w, x) + b
             return x
-
         def process_regular(args):
             params, x = args
             for w, b in params[:-1]:
@@ -145,8 +144,7 @@ class FCN(Network):
             w, b = params[-1]
             x = jnp.dot(w, x) + b
             return x
-        # condition = (x[0] > -2) & (x[0] < 0) & (x[1] > 0) & (x[1] < 0.5)
-        x = lax.cond(mask, process_special, process_regular, (params1, x))
+        x = lax.cond(mask, process_regular,process_special,  (params1, x))
         return x
 class AdaptiveFCN(Network):
 

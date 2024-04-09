@@ -1,3 +1,12 @@
+"""
+Defines trainer classes for FBPINNs and PINNs.
+
+This is the main entry point for training FBPINNs and PINNs.
+
+To train a FBPINN / PINN, use a Constants object to set up the problem and define its hyperparameters, and pass it
+to one of the trainer classes defined here
+"""
+
 import time
 from functools import partial
 
@@ -101,14 +110,16 @@ def get_jmaps(required_ujs):
 
 # JITTED FUNCTIONS
 
-def FBPINN_model_inner(params, x, mask, norm_fn, network_fn, unnorm_fn, window_fn):
+def FBPINN_model_inner(params, x, mask,norm_fn, network_fn, unnorm_fn, window_fn):
     x_norm = norm_fn(params, x)# normalise
     u_raw = network_fn(params, x_norm, mask)# network
     u = unnorm_fn(params, u_raw)# unnormalise
     w = window_fn(params, x)# window
+    #window_fn 函数的作用是基于给定的参数 params 和输入 x
+    #返回一个加权和的结果，其中权重由 params[4] 控制。
     return u*w, w, u_raw
 
-def PINN_model_inner(all_params, x, norm_fn, network_fn, unnorm_fn):
+def PINN_model_inner(all_params, x,  norm_fn, network_fn, unnorm_fn):
     x_norm = norm_fn(all_params, x)# normalise
     u_raw = network_fn(all_params, x_norm)# network
     u = unnorm_fn(u_raw)# unnormalise
@@ -119,7 +130,7 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
 
     norm_fn, network_fn, unnorm_fn, window_fn, constraining_fn = model_fns
     m_take, n_take, p_take, np_take, npou = takes
-
+    # jax.debug.print("ret {}", m_take)
     # take x_batch
     x_take = x_batch[n_take]# (s, xd)
     log_ = logger.info if verbose else logger.debug
@@ -144,25 +155,41 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params_take))
     logger.debug("vmap f")
     logger.debug(f)
-    # 根据 m_take 中的值生成掩码 mask
-    mask = m_take == 2
-    # 将 True 转换为 1， False 转换为 0
-    mask = mask.astype(bool)
+    # 创建一个与 m_take 相同长度的零数组
+    mask = jnp.zeros_like(m_take, dtype=int)
+    # 将 m_take 中值为2的位置设为1
+    mask = jnp.where(m_take == 3, 1, mask)
+    jax.debug.print("ret {}", m_take)
     # jax.debug.print("ret {}", mask)
     us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, 0, None, None, None, None))(all_params_take, x_take, mask,
-                                                                                         norm_fn, network_fn, unnorm_fn,
-                                                                                         window_fn)  # (s, ud)
+                                                                                         norm_fn, network_fn, unnorm_fn, window_fn)  # (s, ud)
+    #思路：先判别点是属于哪个子域的，进入到if-else语句中，然后再利用vmap函数
+    #unnormalise * window  window  network
+    # us = u*w（在求和之前，每个网络被一个平滑的、可微的窗口函数相乘，该窗口函数将其局部限制在它的子区域内
+    # ws = w（原始的x经过窗函数处理的值，更像是一个系数）
+    # us_raw = u_raw(经过标准化然后神经网络输出的值）
     logger.debug("u")
     logger.debug(str_tensor(us))
     # apply POU and sum
     u = jnp.concatenate([us, ws], axis=1)# (s, ud+1)
+    # unnormalise * window  window
+    # 其中 s 是样本数量，ud 是数据维度。
     u = jax.ops.segment_sum(u, p_take, indices_are_sorted=False, num_segments=len(np_take))# (_, ud+1)
+    #p_take = Array([0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9], dtype=int32)
+    #np_take = Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
+    # 这行代码应用了segment_sum操作，它根据p_take数组中的索引将u中的元素分组求和。
+    # p_take指定了每个元素属于哪个子域，num_segments=len(np_take)指定了总共有多少个不同子域。
     wp = u[:,-1:]
+    #将数组 u 的最后一列提取出来,最后一列是window
     u = u[:,:-1]/wp
+    #这一行代码是将数组 u 中除了最后一列之外的所有列除以 wp，也就是unnormalise * window / window
     logger.debug(str_tensor(u))
     u = jax.ops.segment_sum(u, np_take, indices_are_sorted=False, num_segments=len(x_batch))# (n, ud)
+    #np_take = Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
     logger.debug(str_tensor(u))
     u = u/npou
+    ##npou：1
+    #npou 计算了所有不同处理单元索引的数量，因此它代表了总的处理单元数量。
     logger.debug(str_tensor(u))
 
     # then apply constraining operator
@@ -277,7 +304,7 @@ def PINN_loss(active_params, static_params, constraints, model_fns, jmapss, loss
         constraints_.append(constraint+ujs)
     return loss_fn(all_params, constraints_)
 
-# @partial(jit, static_argnums=(0, 5, 8, 9, 10))
+@partial(jit, static_argnums=(0, 5, 8, 9, 10))
 def FBPINN_update(optimiser_fn, active_opt_states,
                   active_params, fixed_params, static_params_dynamic, static_params_static,
                   takess, constraints, model_fns, jmapss, loss_fn):
@@ -374,12 +401,24 @@ def get_inputs(x_batch, active, all_params, decomposition):
     # get POUs
     pous = all_params["static"]["decomposition"]["subdomain"]["pou"][all_ims].astype(int)
     np = jnp.stack([n_take, pous[m_take,0]], axis=-1).astype(int)# points and pous
+    #Array([[0, 0],[1, 0],[2, 0],[3, 0],[4, 0],[4, 0],[5, 0],[5, 0],[6, 0],[7, 0],[8, 0],[9, 0]], dtype=int32)
+    #每一行表示一个数据点的索引和其对应的处理单元索引。
+    # `pous[m_take, 0]`这个表达式的含义是从名为`pous`的数组中选取特定行和列的元素。
+    # - `m_take`是一个索引数组或列表，用于选取`pous`数组的行。- `0`表示选取列的索引，这里始终选择第一列。
+    # 因此，`pous[m_take, 0]`的结果是从`pous`数组中选取了`m_take`指定的行，并且选取了这些行的第一列元素。
+    #np是一个二维数组（12，2）。第一个坐标表示的是第几个点的索引，第二个坐标表示的是pou，也就是显示单元。
     logger.debug(str_tensor(np))
     npu,p_take = jnp.unique(np, axis=0, return_inverse=True)# unique points and pous (sorted), point-pou takes
+    # npu = Array([[0, 0],[1, 0],[2, 0],[3, 0],[4, 0],[5, 0],[6, 0],[7, 0],[8, 0],[9, 0]], dtype=int32)
+    #p_take = Array([0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9], dtype=int32)
     np_take = npu[:,0]
+    #Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
+    #np_take 包含了所有点的次序的索引
     logger.debug(str_tensor(p_take))
     logger.debug(str_tensor(np_take))
     npou = len(jnp.unique(all_params["static"]["decomposition"]["subdomain"]["pou"].astype(int)))# global npou
+    #npou：1
+    #npou 计算了所有不同处理单元索引的数量，因此它代表了总的处理单元数量。
     logger.debug(f"Total number of POUs: {npou}")
 
     takes = (m_take, n_take, p_take, np_take, npou)
@@ -618,6 +657,7 @@ class FBPINNTrainer(_Trainer):
 
         # train loop
         pstep, fstep, u_test_losses = 0, 0, []
+        u_test_lossess = []
         start0, start1, report_time = time.time(), time.time(), 0.
         merge_active, active_params, active_opt_states, fixed_params = None, None, None, None
         lossval = None
@@ -652,7 +692,7 @@ class FBPINNTrainer(_Trainer):
             # report initial model
             if i == 0:
                 u_test_losses, start1, report_time = \
-                self._report(i, pstep, fstep, u_test_losses, start0, start1, report_time,
+                self._report(i, pstep, fstep, u_test_losses, u_test_lossess, start0, start1, report_time,
                             u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
                             active, merge_active, active_opt_states, active_params, x_batch,
                             lossval)
@@ -665,7 +705,7 @@ class FBPINNTrainer(_Trainer):
 
             # report
             u_test_losses, start1, report_time = \
-            self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
+            self._report(i + 1, pstep, fstep, u_test_losses, u_test_lossess, start0, start1, report_time,
                         u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
                         active, merge_active, active_opt_states, active_params, x_batch,
                         lossval)
@@ -680,7 +720,7 @@ class FBPINNTrainer(_Trainer):
 
         return all_params
 
-    def _report(self, i, pstep, fstep, u_test_losses, start0, start1, report_time,
+    def _report(self, i, pstep, fstep, u_test_losses, u_test_lossess, start0, start1, report_time,
                 u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
                 active, merge_active, active_opt_states, active_params, x_batch,
                 lossval):
@@ -708,7 +748,7 @@ class FBPINNTrainer(_Trainer):
                 # take test step
                 if test_:
                     u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition)
+                        x_batch_test, u_exact, u_test_losses, u_test_lossess, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition)
 
                 # save model
                 if model_save_:
@@ -718,11 +758,11 @@ class FBPINNTrainer(_Trainer):
 
         return u_test_losses, start1, report_time
 
-    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition):
+    def _test(self, x_batch_test, u_exact, u_test_losses, u_test_lossess, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition):
         "Test step"
-
         c, writer = self.c, self.writer
         n_test = c.n_test
+        num =  c.test_freq
 
         # get FBPINN solution using test data
         takes, all_ims, cut_all = test_inputs
@@ -756,18 +796,18 @@ class FBPINNTrainer(_Trainer):
         l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
+        u_test_lossess.append([l1])
         writer.add_scalar("loss/test/l1_istep", l1, i)
 
         # create figures
         if i % (c.test_freq * 5) == 0:
+        # if i % (c.test_freq * 5) == 0 and i != 0:
             fs = plot_trainer.plot("FBPINN", all_params["static"]["problem"]["dims"],
-                x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test)
+                x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test, u_test_lossess, num)
             if fs is not None:
                 self._save_figs(i, fs)
 
         return u_test_losses
-
-
 
 
 
@@ -850,7 +890,7 @@ class PINNTrainer(_Trainer):
                             x_batch,
                             lossval)
 
-            # take a training step
+            #take a training step
             lossval, active_opt_states, active_params = update(active_opt_states,
                                        active_params, static_params_dynamic,
                                        constraints)# note compiled function only accepts dynamic arguments
@@ -937,6 +977,8 @@ class PINNTrainer(_Trainer):
 
         return u_test_losses
 
+
+
 if __name__ == "__main__":
     # 2D
     import numpy as np
@@ -944,12 +986,12 @@ if __name__ == "__main__":
     from fbpinns.problems import FDTD1D
     from fbpinns.decompositions import RectangularDecompositionND
     from fbpinns.networks import FCN
-    from fbpinns.schedulers import AllActiveSchedulerND
+    from fbpinns.schedulers import LineSchedulerRectangularND
     from fbpinns.constants import Constants, get_subdomain_ws
     from fbpinns.trainers import FBPINNTrainer, PINNTrainer
 
-    subdomain_xs = [np.linspace(-2, 2, 2), np.linspace(0, 1, 2)]
-    subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
+    subdomain_xs = [np.linspace(-2, 2, 3), np.linspace(0, 1, 4)]
+    subdomain_ws = get_subdomain_ws(subdomain_xs, 1.1)
     c = Constants(
         run="test",
         domain=RectangularDomainND,
@@ -969,14 +1011,14 @@ if __name__ == "__main__":
         ),
         network=FCN,
         network_init_kwargs=dict(
-            layer_sizes=[2, 32, 2],
+            layer_sizes=[2,32, 2],
         ),
-        ns=((300, 200),),
-        n_test=(300, 200),
-        n_steps=170000,
+        ns=((5, 2),),
+        n_test=(5, 2),
+        n_steps=1700,
         optimiser_kwargs=dict(learning_rate=1e-3),
-        summary_freq=5000,
-        test_freq=5000,
+        summary_freq=50,
+        test_freq=50,
         show_figures=False,
         clear_output=True,
         save_figures=True,
@@ -984,37 +1026,3 @@ if __name__ == "__main__":
     run = FBPINNTrainer(c)
     # run = PINNTrainer(c)
     run.train()
-
-# if __name__ == "__main__":
-#
-#     from fbpinns.constants import Constants
-#     from fbpinns.problems import HarmonicOscillator1D, HarmonicOscillator1DHardBC, HarmonicOscillator1DInverse
-#
-#     logger.setLevel("DEBUG")
-#
-#     c = Constants(
-#         run="test",
-#         #problem=HarmonicOscillator1D,
-#         #problem=HarmonicOscillator1DHardBC,
-#         problem=HarmonicOscillator1DInverse,
-#         network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
-#         )
-#
-#     run = FBPINNTrainer(c)
-#     #run = PINNTrainer(c)
-#
-#     all_params = run.train()
-#     print(all_params["static"]["problem"])
-#     if "problem" in all_params["trainable"]:
-#         print(all_params["trainable"]["problem"])
-
-
-
-
-
-
-
-
-
-
-
