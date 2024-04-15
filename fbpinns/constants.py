@@ -80,7 +80,6 @@ class Constants(ConstantsBase):
 
         # Define optimisation parameters
         self.ns = ((60,),)# batch_shape for each training constraint
-        self.nb = ((60,),)
         self.n_test = (200,)# batch_shape for test data
         self.sampler = "grid"# one of ["grid", "uniform", "sobol", "halton"]
         self.optimiser = optax.adam

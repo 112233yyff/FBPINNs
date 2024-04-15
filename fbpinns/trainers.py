@@ -468,7 +468,7 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get global constraints (training points)
     key, subkey = random.split(key)
-    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.ns, start_batch_shapes=c.n_start)
+    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.ns)
     for constraint_ in constraints_global:
         for c_ in constraint_[:-1]:
             assert c_.shape[0] == constraint_[0].shape[0]
@@ -1014,8 +1014,6 @@ if __name__ == "__main__":
             layer_sizes=[2,32, 2],
         ),
         ns=((500, 400),),#计算物理损失的点
-        n_start=((50, 1),),#表示在t==0时，x取5个点
-        n_boundary=((5, 4),),#表示在边界处的采样点
         n_test=(500, 400),
         n_steps=170000,
         optimiser_kwargs=dict(learning_rate=1e-3),

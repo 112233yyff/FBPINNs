@@ -107,26 +107,24 @@ def FDTD1DD(
     Ex = np.zeros((Zmax, Nmax))
 
     x_cood = np.linspace(xmin, xmax, Zmax)
-
     t_cood = np.linspace(tmin, tmax, Nmax)
 
     def source(x,t,sd):
         e=-0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        return 1200 * np.exp(e) * (1 + e) #ricker source
+        return 0 * np.exp(e) * (1 + e) #ricker source
         # return np.exp(e) # gaussian source
 
     source_x = range(0,Zmax)#int(Zmax/2.0)
     # x_cood = np.linspace(xmin, xmax, Zmax)  # 离散化后的空间坐标
-    # Ex[:, 0:1] = np.exp(-(((x_cood / sd) ** 2) / 2)).reshape(-1, 1)
+    Ex[:, 0:1] = np.exp(-(((x_cood / sd) ** 2) / 2)).reshape(-1, 1)
     # Hy[0:-1, 0:1] = -Ex[1:, 0:1] / imp  # shift by 1 because of stagging grid
     for t in range(0, Nmax-1):
-        #内层循环：在空间维度上的循环
-        # Ex[source_x,t] = Ex[source_x,t]+source(x_cood[source_x],t_cood[t],0.07)
-        Ex[source_x, t] = Ex[source_x, t] + source(x_cood[source_x], t_cood[t], sd) * dt / (eps0 * eps)
+        #加源
+        # Ex[source_x, t] = Ex[source_x, t] + source(x_cood[source_x], t_cood[t], sd) * dt / (eps0 * eps)
+        #迭代过程
         Hy[-1, t + 1] = Hy[-2, t]  # abc
         for z in range(0, Zmax - 1):
             Hy[z, t + 1] = Hy[z, t] + (Ex[z + 1, t] - Ex[z, t]) * dt / (mu0 *dz)
-
 
         Ex[0, t + 1] = Ex[1, t]  # abc
         for z in range(1, Zmax):

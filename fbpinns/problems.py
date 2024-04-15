@@ -364,7 +364,7 @@ class FDTD1D(Problem):
         return static_params, {}
 
     @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes):
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes):
         params = all_params["static"]["problem"]
         sd = params["sd"]
         # physics loss
@@ -375,47 +375,32 @@ class FDTD1D(Problem):
             (0, (1,)),  # dH / dt
             (1, (1,)),  # dE /dt
         )
-        # data loss
-        x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
-        x = x_batch_start[:, 0]  # 提取 x 坐标
-        E_start =  jnp.exp(-0.5 * (x ** 2) / (sd ** 2))
-        required_ujs_start = (
-            (1, ()),
-        )
-        return [[x_batch_phys, required_ujs_phys], [x_batch_start, E_start, required_ujs_start]]
+        return [[x_batch_phys, required_ujs_phys]]
 
-    # @staticmethod
-    # def constraining_fn(all_params, x_batch, u):
-    #     c = all_params["static"]["problem"]["c"]
-    #     sd = all_params["static"]["problem"]["sd"]
-    #     t = x_batch[:, 1:2]
-    #
-    #     u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u
-    #     return u
+    @staticmethod
+    def constraining_fn(all_params, x_batch, u):
+        c = all_params["static"]["problem"]["c"]
+        sd = all_params["static"]["problem"]["sd"]
+        t = x_batch[:, 1:2]
+
+        u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u
+        return u
 
     @staticmethod
     def loss_fn(all_params, constraints):
         # physics loss
-        # c = all_params["static"]["problem"]["c"]
-        # sd = all_params["static"]["problem"]["sd"]
+        c = all_params["static"]["problem"]["c"]
+        sd = all_params["static"]["problem"]["sd"]
         x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
-        # x, t = x_batch[:, 0:1], x_batch[:, 1:2]
-        # e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        # s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
-        # s = e
+        x, t = x_batch[:, 0:1], x_batch[:, 1:2]
+        e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
+        s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
+        s = e
         phys1 = jnp.mean((dEdt - dHdx ) ** 2)
         phys2 = jnp.mean((dHdt - dEdx ) ** 2)
         phys = phys1 + phys2
 
-        # start loss
-        _, Ec, E, = constraints[1]
-        if len(Ec):
-            start = jnp.mean(jnp.square(E - Ec))
-        else:
-            start = 0
-        # jax.debug.print("ret{}",0.002 * phys)
-        # jax.debug.print("ret{}---", 0.5 * start)
-        return 1e4* (0.002 * phys + 0.5 * start)
+        return phys
 
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):

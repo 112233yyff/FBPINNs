@@ -69,86 +69,67 @@ from time import sleep
 #         plt.show()
 #         plt.clf()
 #         plt.close()
-xmin = -2
-xmax = 2
-tmin = 0
-tmax = 1
-sd = 0.08
-NX = 240
-NSTEPS = 596
-DELTAX = 0.008368200836820083
-DELTAT = 0.001680672268907563
-eps0 = 1#8.854e-12
-eps = 1
-mu0 = 1#4 * np.pi * 1e-7
-imp = np.sqrt(mu0/(eps0*eps))
-c = 1 / np.sqrt(eps0 * mu0)
+if __name__ == "__main__":
 
-f = 1#3e10
-w = 2 * np.pi * f
-lam = c / f
-imp = np.sqrt(mu0/(eps0*eps))
+    xmin = -2
+    xmax = 2
+    tmin = 0
+    tmax = 1
+    sd = 0.08
+    NX = 240
+    NSTEPS = 596
+    DELTAX = 0.008368200836820083
+    DELTAT = 0.001680672268907563
+    eps0 = 1#8.854e-12
+    eps = 1
+    mu0 = 1#4 * np.pi * 1e-7
+    imp = np.sqrt(mu0/(eps0*eps))
+    c = 1 / np.sqrt(eps0 * mu0)
 
-#MODEL
-dz = DELTAX
-dt = DELTAT
-Zmax=NX
-Nmax=NSTEPS
+    f = 1#3e10
+    w = 2 * np.pi * f
+    lam = c / f
+    imp = np.sqrt(mu0/(eps0*eps))
+
+    #MODEL
+    dz = DELTAX
+    dt = DELTAT
+    Zmax=NX
+    Nmax=NSTEPS
 
 
-Hy = np.zeros((Zmax, Nmax))
-Ex = np.zeros((Zmax, Nmax))
+    Hy = np.zeros((Zmax, Nmax))
+    Ex = np.zeros((Zmax, Nmax))
 
-x_cood = np.linspace(xmin, xmax, Zmax)
-t_cood = np.linspace(tmin, tmax, Nmax)
+    x_cood = np.linspace(xmin, xmax, Zmax)
+    t_cood = np.linspace(tmin, tmax, Nmax)
 
-#source
-def source(x,t,sd):
-    e=-0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-    return 1200 * np.exp(e) * (1 + e) #ricker source
-    # return np.exp(e) # gaussian source
-source_x = range(0,Zmax)#int(Zmax/2.0)
+    #source
+    def source(x,t,sd):
+        e=-0.5 * (x ** 2 + t ** 2) / (sd ** 2)
+        return 1200 * np.exp(e) * (1 + e) #ricker source
 
-#CPML
-R0 = 1e-5
-m = 2.85  # Order of polynomial grading
-pml_width = 5.0
-sxmax = -(m+1)*np.log(R0)/2/imp/(pml_width*dz)
-sx = np.zeros(Zmax)
-sxm = np.zeros(Zmax)
-Phx = np.zeros(Zmax)
-Pex = np.zeros(Zmax)
+    source_x = range(0, Zmax)  # int(Zmax/2.0)
+    # x_cood = np.linspace(xmin, xmax, Zmax)  # 离散化后的空间坐标
+    # Ex[:, 0:1] = np.exp(-(((x_cood / sd) ** 2) / 2)).reshape(-1, 1)
+    # Hy[0:-1, 0:1] = -Ex[1:, 0:1] / imp  # shift by 1 because of stagging grid
+    for t in range(0, Nmax - 1):
+        # 加源
+        Ex[source_x, t] = Ex[source_x, t] + source(x_cood[source_x], t_cood[t], sd) * dt / (eps0 * eps)
+        # 迭代过程
+        Hy[-1, t + 1] = Hy[-2, t]  # abc
+        for z in range(0, Zmax - 1):
+            Hy[z, t + 1] = Hy[z, t] + (Ex[z + 1, t] - Ex[z, t]) * dt / (mu0 * dz)
 
-for mm in range(int(pml_width)):
-    sx[mm+1] = sxmax*((pml_width-mm-0.5)/pml_width)**m
-    sxm[mm] = sxmax*((pml_width-mm)/pml_width)**m  # Shifted to the right
-    sx[Zmax-mm-1] = sxmax*((pml_width-mm-0.5)/pml_width)**m
-    sxm[Zmax-mm-1] = sxmax*((pml_width-mm)/pml_width)**m
-# print(sx, sxm)
-aex = np.exp(-sx*imp)-1
-bex = np.exp(-sx*imp)
-ahx = np.exp(-sxm*imp)-1
-bhx = np.exp(-sxm*imp)
+        Ex[0, t + 1] = Ex[1, t]  # abc
+        for z in range(1, Zmax):
+            Ex[z, t + 1] = Ex[z, t] + (Hy[z, t + 1] - Hy[z - 1, t + 1]) * dt / (eps0 * eps * dz)
 
-for t in range(0, Nmax-1):
-    # 内层循环：在空间维度上的循环
-    # Ex[source_x,t] = Ex[source_x,t]+source(x_cood[source_x],t_cood[t],sd)
-    # Ex[source_x, t] = Ex[source_x, t] + source(x_cood[source_x], t_cood[t], sd)
-    Ex[source_x, t] = Ex[source_x, t] + source(x_cood[source_x], t_cood[t], 0.08) * dt / (eps0 * eps)
-    # Hy[-1, t + 1] = Hy[-2, t]  # abc
-    for z in range(0, Zmax - 1):
-        Phx[z] = bhx[z] * Phx[z] + ahx[z] * (Ex[z + 1:z + 2,t:t+1] - Ex[z:z + 1,t:t+1])
-        Hy[z, t + 1] = Hy[z, t] + (Ex[z + 1, t] - Ex[z, t]) * dt / (mu0 * dz) + + Phx[z]/imp
-
-    # Ex[0, t + 1] = Ex[1, t]  # abc
-    for z in range(1, Zmax):
-        Pex[z + 1] = bex[z + 1] * Pex[z + 1] + aex[z + 1] * (Hy[z + 1:z + 2,t:t+1] - Hy[z:z + 1,t:t+1])
-        Ex[z, t + 1] = Ex[z, t] + (Hy[z, t + 1] - Hy[z - 1, t + 1])*dt / (eps0*eps*dz)
-    if t % 20 == 0:
-        plt.clf()
-        plt.title("Ex after t=%i" % t)
-        plt.plot(x_cood, Ex[:,t+1], x_cood,Hy[:,t+1])
-        # plt.ylim([-8, 8])
-        plt.show()
-        plt.clf()
-        plt.close()
+        if t % 20 == 0:
+            plt.clf()
+            plt.title("Ex after t=%i" % t)
+            plt.plot(x_cood, Ex[:, t + 1], x_cood, Hy[:, t + 1])
+            plt.ylim([-8, 8])
+            plt.show()
+            plt.clf()
+            plt.close()
