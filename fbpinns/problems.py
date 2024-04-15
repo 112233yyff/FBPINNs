@@ -112,7 +112,6 @@ class HarmonicOscillator1D(Problem):
             (0,()),
             (0,(0,)),
         )
-
         return [[x_batch_phys, required_ujs_phys], [x_batch_boundary, u_boundary, ut_boundary, required_ujs_boundary]]
 
     @staticmethod
@@ -309,6 +308,7 @@ class BurgersEquation2D(Problem):
             (0,(1,)),
             (0,(0,0)),
         )
+
         return [[x_batch_phys, required_ujs_phys],]
 
 
@@ -351,13 +351,9 @@ class FDTD1D(Problem):
         ---- - ----  =  s(x,t)
         dt       dx
 
-        Boundary conditions:
+        Start conditions:
         Ez(x,0) = exp( -(1/2)((x/sd)^2) )
-        du
-        --(x,0) = 0
-        dt
     """
-
     @staticmethod
     def init_params(c=1, sd = 0.08):
         static_params = {
@@ -368,7 +364,9 @@ class FDTD1D(Problem):
         return static_params, {}
 
     @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes):
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes):
+        params = all_params["static"]["problem"]
+        sd = params["sd"]
         # physics loss
         x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
         required_ujs_phys = (
@@ -377,65 +375,49 @@ class FDTD1D(Problem):
             (0, (1,)),  # dH / dt
             (1, (1,)),  # dE /dt
         )
-        return [[x_batch_phys, required_ujs_phys], ]
+        # data loss
+        x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
+        x = x_batch_start[:, 0]  # 提取 x 坐标
+        E_start =  jnp.exp(-0.5 * (x ** 2) / (sd ** 2))
+        required_ujs_start = (
+            (1, ()),
+        )
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, E_start, required_ujs_start]]
 
-    @staticmethod
-    def constraining_fn(all_params, x_batch, u):
-        c = all_params["static"]["problem"]["c"]
-        sd = all_params["static"]["problem"]["sd"]
-        t = x_batch[:, 1:2]
-
-        u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u
-        return u
+    # @staticmethod
     # def constraining_fn(all_params, x_batch, u):
-    #     params = all_params["static"]["problem"]
-    #     c, sd = params["c"], params["sd"]
-    #     x, t = x_batch[:,0:1], x_batch[:,1:2]
-    #     tanh, exp = jax.nn.tanh, jnp.exp
+    #     c = all_params["static"]["problem"]["c"]
+    #     sd = all_params["static"]["problem"]["sd"]
+    #     t = x_batch[:, 1:2]
     #
-    #     # get starting wavefield
-    #     # p = jnp.expand_dims(source, axis=1)# (k, 1, 3)
-    #     # x = jnp.expand_dims(x, axis=0)# (1, n, 1)
-    #     f = exp(-0.5 * ((x/sd)**2))# (n, 1)
-    #     # form time-decaying anzatz
-    #     t1 = sd/c
-    #     f = exp(-0.5*(1.5*t/t1)**2) * f
-    #     t = tanh(2.5*t/t1)**2
-    #     # u_new = u
-    #     # u_new[:, 0:1] = t * u[:, 0:1] - f  # 磁场值更新
-    #     # u_new[:, 1:2] = t * u[:, 1:2] + f  # 电场值更新
-    #     u_new = u.at[:, 0:1].set(t * u[:, 0:1] - f)
-    #     u_new = u_new.at[:, 1:2].set(t * u[:, 1:2] + f)
-    #     return u_new
+    #     u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u
+    #     return u
 
     @staticmethod
     def loss_fn(all_params, constraints):
-        c = all_params["static"]["problem"]["c"]
-        sd = all_params["static"]["problem"]["sd"]
+        # physics loss
+        # c = all_params["static"]["problem"]["c"]
+        # sd = all_params["static"]["problem"]["sd"]
         x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
-        x, t = x_batch[:, 0:1], x_batch[:, 1:2]
-        e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
+        # x, t = x_batch[:, 0:1], x_batch[:, 1:2]
+        # e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
+        # s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
         # s = e
-        phys1 = jnp.mean((dEdt - dHdx - s ) ** 2)
+        phys1 = jnp.mean((dEdt - dHdx ) ** 2)
         phys2 = jnp.mean((dHdt - dEdx ) ** 2)
-
         phys = phys1 + phys2
-        return phys
-    # def loss_fn(all_params, constraints):
-    #     c = all_params["static"]["problem"]["c"]
-    #     sd = all_params["static"]["problem"]["sd"]
-    #     x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
-    #     phys1 = jnp.mean((dHdx - dEdt) ** 2)
-    #     phys2 = jnp.mean((dEdx - dHdt ) ** 2)
-    #     phys = phys1 + phys2
-    #     return jnp.mean(phys ** 2)
+
+        # start loss
+        _, Ec, E, = constraints[1]
+        if len(Ec):
+            start = jnp.mean(jnp.square(E - Ec))
+        else:
+            start = 0
+        # jax.debug.print("ret{}",0.002 * phys)
+        # jax.debug.print("ret{}---", 0.5 * start)
+        return 1e4* (0.002 * phys + 0.5 * start)
 
     @staticmethod
-    # def exact_solution(all_params, x_batch, batch_shape):
-    #     key = jax.random.PRNGKey(0)
-    #     return jax.random.normal(key, (x_batch.shape[0], 1))
-
     def exact_solution(all_params, x_batch, batch_shape):
         params = all_params["static"]["problem"]
         c, sd= params["c"], params["sd"]
@@ -472,7 +454,7 @@ class FDTD1D(Problem):
 
         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
         y = jnp.concatenate((Hy, Ex), axis=1)
-        return y # skip computing analytical gradients
+        return y
     @staticmethod
     def c_fn(all_params, x_batch):
         "Computes the velocity model"

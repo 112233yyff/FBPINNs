@@ -130,7 +130,7 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
 
     norm_fn, network_fn, unnorm_fn, window_fn, constraining_fn = model_fns
     m_take, n_take, p_take, np_take, npou = takes
-    # jax.debug.print("ret {}", m_take)
+
     # take x_batch
     x_take = x_batch[n_take]# (s, xd)
     log_ = logger.info if verbose else logger.debug
@@ -159,7 +159,7 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     mask = jnp.zeros_like(m_take, dtype=int)
     # 将 m_take 中值为2的位置设为1
     mask = jnp.where(m_take == 3, 1, mask)
-    jax.debug.print("ret {}", m_take)
+
     # jax.debug.print("ret {}", mask)
     us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, 0, None, None, None, None))(all_params_take, x_take, mask,
                                                                                          norm_fn, network_fn, unnorm_fn, window_fn)  # (s, ud)
@@ -468,12 +468,12 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get global constraints (training points)
     key, subkey = random.split(key)
-    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.ns)
+    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.ns, start_batch_shapes=c.n_start)
     for constraint_ in constraints_global:
         for c_ in constraint_[:-1]:
             assert c_.shape[0] == constraint_[0].shape[0]
     # parse global constraints
-    x_batch_global = jnp.concatenate([constraint_[0] for constraint_ in constraints_global])# (n, xd)
+    x_batch_global = jnp.concatenate([constraint_[0] for constraint_ in constraints_global])# (n, xd)ma
     constraint_offsets_global = jnp.array([0]+[constraint_[0].shape[0] for constraint_ in constraints_global[:-1]], dtype=int).cumsum()# (c,) offset index of each constraint
     constraint_fs_global = jnp.zeros((x_batch_global.shape[0], len(constraints_global)), dtype=bool)# (n, c)
     for ic in range(len(constraints_global)):# fill in constraint filters
@@ -1013,12 +1013,14 @@ if __name__ == "__main__":
         network_init_kwargs=dict(
             layer_sizes=[2,32, 2],
         ),
-        ns=((5, 2),),
-        n_test=(5, 2),
-        n_steps=1700,
+        ns=((500, 400),),#计算物理损失的点
+        n_start=((50, 1),),#表示在t==0时，x取5个点
+        n_boundary=((5, 4),),#表示在边界处的采样点
+        n_test=(500, 400),
+        n_steps=170000,
         optimiser_kwargs=dict(learning_rate=1e-3),
-        summary_freq=50,
-        test_freq=50,
+        summary_freq=5000,
+        test_freq=5000,
         show_figures=False,
         clear_output=True,
         save_figures=True,
@@ -1026,3 +1028,25 @@ if __name__ == "__main__":
     run = FBPINNTrainer(c)
     # run = PINNTrainer(c)
     run.train()
+# if __name__ == "__main__":
+#
+#     from fbpinns.constants import Constants
+#     from fbpinns.problems import HarmonicOscillator1D, HarmonicOscillator1DHardBC, HarmonicOscillator1DInverse
+#
+#     logger.setLevel("DEBUG")
+#
+#     c = Constants(
+#         run="test",
+#         problem=HarmonicOscillator1D,
+#         # problem=HarmonicOscillator1DHardBC,
+#         # problem=HarmonicOscillator1DInverse,
+#         network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
+#         )
+#
+#     run = FBPINNTrainer(c)
+#     #run = PINNTrainer(c)
+#
+#     all_params = run.train()
+#     print(all_params["static"]["problem"])
+#     if "problem" in all_params["trainable"]:
+#         print(all_params["trainable"]["problem"])
