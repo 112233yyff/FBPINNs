@@ -378,7 +378,6 @@ class FDTD1D(Problem):
 
         # data loss
         x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
-        x_batch_start = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
         x = x_batch_start[:, 0]  # 提取 x 坐标
         E_start = jnp.exp(-0.5 * (x ** 2 ) / (sd ** 2))
         H_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
