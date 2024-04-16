@@ -115,7 +115,6 @@ def FDTD1DD(
         # return np.exp(e) # gaussian source
 
     source_x = range(0,Zmax)#int(Zmax/2.0)
-    # x_cood = np.linspace(xmin, xmax, Zmax)  # 离散化后的空间坐标
     Ex[:, 0:1] = np.exp(-(((x_cood / sd) ** 2) / 2)).reshape(-1, 1)
     # Hy[0:-1, 0:1] = -Ex[1:, 0:1] / imp  # shift by 1 because of stagging grid
     for t in range(0, Nmax-1):
