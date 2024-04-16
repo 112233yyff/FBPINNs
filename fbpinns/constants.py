@@ -59,7 +59,7 @@ class Constants(ConstantsBase):
         # Define neural network
         self.network = networks.FCN
         self.network_init_kwargs = dict(
-            layer_sizes=[1, 32, 1],
+            layer_sizes=[1,32,32,32,1],
             )
         # self.network_init_kwargs1 = dict(
         #     layer_sizes=[2, 32, 32, 32, 2],

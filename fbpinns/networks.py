@@ -114,38 +114,38 @@ class FCN(Network):
         b = random.uniform(b_key, (n,), minval=-v, maxval=v)
         return w, b
 
-    # @staticmethod
-    # def network_fn(params, x, mask):
-    #     params = params["trainable"]["network"]["subdomain"]["layers"]
-    #     for w, b in params[:-1]:
-    #         x = jnp.dot(w, x) + b
-    #         x = jnp.tanh(x)
-    #     w, b = params[-1]
-    #     x = jnp.dot(w, x) + b
-    #     return x
-    def network_fn(params, x, mask):
-        params1 = params["trainable"]["network"]["subdomain"]["layers"]
-        def process_special(args):
-            params, x = args
-            for w, b in params[:-1]:
-                w = w[:16, :]
-                b = b[:16]
-                x = jnp.dot(w, x) + b
-                x = jnp.tanh(x)
-            w, b = params[-1]
-            w = w[:, :16]
+    @staticmethod
+    def network_fn(params, x):
+        params = params["trainable"]["network"]["subdomain"]["layers"]
+        for w, b in params[:-1]:
             x = jnp.dot(w, x) + b
-            return x
-        def process_regular(args):
-            params, x = args
-            for w, b in params[:-1]:
-                x = jnp.dot(w, x) + b
-                x = jnp.tanh(x)
-            w, b = params[-1]
-            x = jnp.dot(w, x) + b
-            return x
-        x = lax.cond(mask, process_regular,process_special,  (params1, x))
+            x = jnp.tanh(x)
+        w, b = params[-1]
+        x = jnp.dot(w, x) + b
         return x
+    # def network_fn(params, x, mask):
+    #     params1 = params["trainable"]["network"]["subdomain"]["layers"]
+    #     def process_special(args):
+    #         params, x = args
+    #         for w, b in params[:-1]:
+    #             w = w[:16, :]
+    #             b = b[:16]
+    #             x = jnp.dot(w, x) + b
+    #             x = jnp.tanh(x)
+    #         w, b = params[-1]
+    #         w = w[:, :16]
+    #         x = jnp.dot(w, x) + b
+    #         return x
+    #     def process_regular(args):
+    #         params, x = args
+    #         for w, b in params[:-1]:
+    #             x = jnp.dot(w, x) + b
+    #             x = jnp.tanh(x)
+    #         w, b = params[-1]
+    #         x = jnp.dot(w, x) + b
+    #         return x
+    #     x = lax.cond(mask, process_regular,process_special,  (params1, x))
+    #     return x
 class AdaptiveFCN(Network):
 
     @staticmethod

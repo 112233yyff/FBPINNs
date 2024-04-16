@@ -110,9 +110,17 @@ def get_jmaps(required_ujs):
 
 # JITTED FUNCTIONS
 
-def FBPINN_model_inner(params, x, mask,norm_fn, network_fn, unnorm_fn, window_fn):
+# def FBPINN_model_inner(params, x, mask,norm_fn, network_fn, unnorm_fn, window_fn):
+#     x_norm = norm_fn(params, x)# normalise
+#     u_raw = network_fn(params, x_norm, mask)# network
+#     u = unnorm_fn(params, u_raw)# unnormalise
+#     w = window_fn(params, x)# window
+#     #window_fn 函数的作用是基于给定的参数 params 和输入 x
+#     #返回一个加权和的结果，其中权重由 params[4] 控制。
+#     return u*w, w, u_raw
+def FBPINN_model_inner(params, x,norm_fn, network_fn, unnorm_fn, window_fn):
     x_norm = norm_fn(params, x)# normalise
-    u_raw = network_fn(params, x_norm, mask)# network
+    u_raw = network_fn(params, x_norm)# network
     u = unnorm_fn(params, u_raw)# unnormalise
     w = window_fn(params, x)# window
     #window_fn 函数的作用是基于给定的参数 params 和输入 x
@@ -161,8 +169,10 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     mask = jnp.where(m_take == 3, 1, mask)
 
     # jax.debug.print("ret {}", mask)
-    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, 0, None, None, None, None))(all_params_take, x_take, mask,
-                                                                                         norm_fn, network_fn, unnorm_fn, window_fn)  # (s, ud)
+    # us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, 0, None, None, None, None))(all_params_take, x_take, mask,
+    #                                                                                      norm_fn, network_fn, unnorm_fn, window_fn)  # (s, ud)
+    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, None, None, None, None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)
+
     #思路：先判别点是属于哪个子域的，进入到if-else语句中，然后再利用vmap函数
     #unnormalise * window  window  network
     # us = u*w（在求和之前，每个网络被一个平滑的、可微的窗口函数相乘，该窗口函数将其局部限制在它的子区域内
@@ -194,7 +204,7 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
 
     # then apply constraining operator
     u = constraining_fn(all_params, x_batch, u)# (n, ud)
-    logger.debug(str_tensor(u))
+    # logger.debug(str_tensor(u))
 
     return u, wp, us, ws, us_raw
 
@@ -1011,21 +1021,21 @@ if __name__ == "__main__":
         ),
         network=FCN,
         network_init_kwargs=dict(
-            layer_sizes=[2,32, 2],
+            layer_sizes=[2,32,32,32,32, 2],
         ),
-        ns=((500, 400),),#计算物理损失的点
-        n_start=((50, 1),),  # 表示在t==0时，x取5个点
-        n_test=(500, 400),
+        ns=((50, 40),),#计算物理损失的点
+        n_start=((10000, 1),),  # 表示在t==0时，x取200000个点
+        n_test=(50, 40),
         n_steps=170000,
         optimiser_kwargs=dict(learning_rate=1e-3),
-        summary_freq=5000,
-        test_freq=5000,
+        summary_freq=2000,
+        test_freq=2000,
         show_figures=False,
         clear_output=True,
         save_figures=True,
     )
-    run = FBPINNTrainer(c)
-    # run = PINNTrainer(c)
+    # run = FBPINNTrainer(c)
+    run = PINNTrainer(c)
     run.train()
 # if __name__ == "__main__":
 #
