@@ -128,14 +128,8 @@ def FDTD1DD(
         # Ex[0, t + 1] = -Ex[1, t]  # abc
         for z in range(1, Zmax):
             Ex[z, t + 1] = Ex[z, t] + (Hy[z, t + 1] - Hy[z - 1, t + 1])*dt / (eps0*eps*dz)
-        Ex[59, t + 1] = 0  # pec
-        # if t % 20 == 0:
-        #     plt.clf()
-        #     plt.title("Ex after t=%i" % t)
-        #     plt.plot(x_cood, Ex[:, t + 1], x_cood, Hy[:, t + 1])
-        #     plt.ylim([-8, 8])
-        #     plt.show()
-        #     plt.clf()
-        #     plt.close()
+        Zmax_center = int(Zmax // 2)
+        Ex[Zmax_center, t] = 0  # pec
+
     return Hy, Ex
 

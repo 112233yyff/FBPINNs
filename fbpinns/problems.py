@@ -353,6 +353,10 @@ class FDTD1D(Problem):
 
         Start conditions:
         Ez(x,0) = exp( -(1/2)((x/sd)^2) )
+
+        Boundary conditions:
+        Ez(-1,t) = 0
+       
     """
     @staticmethod
     def init_params(c=1, sd = 0.08):
@@ -364,33 +368,42 @@ class FDTD1D(Problem):
         return static_params, {}
 
     @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes):
-        # params = all_params["static"]["problem"]
-        # sd = params["sd"]
-        # # physics loss
-        # x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
-        # required_ujs_phys = (
-        #     (0, (0,)),  # dH / dx
-        #     (1, (0,)),  # dE / dx
-        #     (0, (1,)),  # dH / dt
-        #     (1, (1,)),  # dE /dt
-        # )
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
+        params = all_params["static"]["problem"]
+        sd = params["sd"]
+        # physics loss
+        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
+        required_ujs_phys = (
+            (0, (0,)),  # dH / dx
+            (1, (0,)),  # dE / dx
+            (0, (1,)),  # dH / dt
+            (1, (1,)),  # dE /dt
+        )
 
-        # data loss
-        # x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
-        # x = x_batch_start[:, 0]  # 提取 x 坐标
-        # E_start = jnp.exp(-0.5 * (x ** 2) / (sd ** 2))
-        # H_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-        x_batch_start = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
-        y_start = FDTD1D.exact_solution(all_params, x_batch_start, batch_shapes[0])
-        H_start = y_start[:, 0].reshape(-1, 1)
-        E_start = y_start[:, 1].reshape(-1, 1)
+        # start loss
+        x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
+        x = x_batch_start[:, 0]  # 提取 x 坐标
+        E_start = jnp.exp(-0.5 * (x ** 2) / (sd ** 2))
+        H_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        # x_batch_start = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
+        # y_start = FDTD1D.exact_solution(all_params, x_batch_start, batch_shapes[0])
+        # H_start = y_start[:, 0].reshape(-1, 1)
+        # E_start = y_start[:, 1].reshape(-1, 1)
         required_ujs_start = (
             (0, ()),
             (1, ()),
         )
-        # return [[x_batch_phys, required_ujs_phys], [x_batch_start, E_start, H_start, required_ujs_start]]
-        return [[x_batch_start, H_start, E_start, required_ujs_start]]
+
+        #boundary loss
+        loc = -1
+        x_batch_boundary = domain.sample_boundary(all_params, key, sampler, boundary_batch_shapes[0], loc)
+        t = x_batch_boundary[:, 1]
+        E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
+        required_ujs_boundary = (
+            (1, ()),
+        )
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, H_start, E_start, required_ujs_start], [x_batch_boundary, E_boundary, required_ujs_boundary]]
+        # return [[x_batch_start, H_start, E_start, required_ujs_start]]
     # @staticmethod
     # def constraining_fn(all_params, x_batch, u):
     #     c = all_params["static"]["problem"]["c"]
@@ -402,28 +415,35 @@ class FDTD1D(Problem):
 
     @staticmethod
     def loss_fn(all_params, constraints):
-        # # physics loss
-        # # c = all_params["static"]["problem"]["c"]
-        # # sd = all_params["static"]["problem"]["sd"]
-        # x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
-        # # x, t = x_batch[:, 0:1], x_batch[:, 1:2]
-        # # e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        # # s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
-        # # s = e
-        # phys1 = jnp.mean((dEdt - dHdx ) ** 2)
-        # phys2 = jnp.mean((dHdt - dEdx ) ** 2)
-        # phys = phys1 + phys2
+        # physics loss
+        # c = all_params["static"]["problem"]["c"]
+        # sd = all_params["static"]["problem"]["sd"]
+        x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
+        # x, t = x_batch[:, 0:1], x_batch[:, 1:2]
+        # e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
+        # s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
+        # s = e
+        phys1 = jnp.mean((dEdt - dHdx ) ** 2)
+        phys2 = jnp.mean((dHdt - dEdx ) ** 2)
+        phys = phys1 + phys2
 
         # start loss
-        _, Hc, Ec, H, E, = constraints[0]
+        x_batch_start, Hc, Ec, H, E = constraints[1]
         if len(Ec):
-            start = jnp.mean(jnp.square(E - Ec) )+ jnp.mean(jnp.square(H - Hc))
+            start = jnp.mean((jnp.squeeze(E) - Ec) **2 )+ jnp.mean((jnp.squeeze(H)-Hc)**2)
         else:
             start = 0
         # jax.debug.print("ret{}", phys)
         # jax.debug.print("ret{}---", start)
-        # return  1e4 * (phys + start)
-        return start
+
+        # boundary loss
+        x_batch_boundary, Eb, EE = constraints[2]
+        if len(Eb):
+            boundary = jnp.mean((jnp.squeeze(EE) - Eb) ** 2)
+        else:
+            boundary = 0
+        return 1e2 * phys + 1e4 * start + 1e6 * boundary
+        # return start
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
         params = all_params["static"]["problem"]
