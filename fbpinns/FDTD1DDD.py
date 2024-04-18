@@ -121,15 +121,17 @@ def FDTD1DD(
         #加源
         # Ex[source_x, t] = Ex[source_x, t] + source(x_cood[source_x], t_cood[t], sd) * dt / (eps0 * eps)
         #迭代过程
-        # Hy[-1, t + 1] = -Hy[-2, t]  # abc
+        # Hy[-1, t +  1] = -Hy[-2, t]  # abc
         for z in range(0, Zmax - 1):
             Hy[z, t + 1] = Hy[z, t] + (Ex[z + 1, t] - Ex[z, t]) * dt / (mu0 *dz)
 
         # Ex[0, t + 1] = -Ex[1, t]  # abc
         for z in range(1, Zmax):
             Ex[z, t + 1] = Ex[z, t] + (Hy[z, t + 1] - Hy[z - 1, t + 1])*dt / (eps0*eps*dz)
-        Zmax_center = int(Zmax // 2)
-        Ex[Zmax_center, t] = 0  # pec
+
+        # Zmax_center = int(Zmax * 5 / 8)
+        Ex[0, t + 1] = 0
+        Ex[Zmax - 1, t+1] = 0  # pec
 
     return Hy, Ex
 

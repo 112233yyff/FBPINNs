@@ -1006,8 +1006,8 @@ if __name__ == "__main__":
         run="test",
         domain=RectangularDomainND,
         domain_init_kwargs=dict(
-            xmin=np.array([-2, 0]),
-            xmax=np.array([2, 1]),
+            xmin=np.array([-0.5, 0]),
+            xmax=np.array([0.5, 1]),
         ),
         problem=FDTD1D,
         problem_init_kwargs=dict(

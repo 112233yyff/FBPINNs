@@ -395,7 +395,7 @@ class FDTD1D(Problem):
         )
 
         #boundary loss
-        loc = -1
+        loc = 0.5
         x_batch_boundary = domain.sample_boundary(all_params, key, sampler, boundary_batch_shapes[0], loc)
         t = x_batch_boundary[:, 1]
         E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
@@ -442,7 +442,7 @@ class FDTD1D(Problem):
             boundary = jnp.mean((jnp.squeeze(EE) - Eb) ** 2)
         else:
             boundary = 0
-        return 1e2 * phys + 1e4 * start + 1e6 * boundary
+        return 1e2 * phys + 1e4 * start + 1e2 * boundary
         # return start
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
