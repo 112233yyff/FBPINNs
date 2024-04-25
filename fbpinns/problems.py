@@ -489,6 +489,97 @@ class FDTD1D(Problem):
         c0 = all_params["static"]["problem"]["c0"]
         return jnp.array([[c0]], dtype=float)  # (1,1) scalar value
 
+class FDTD2D(Problem):
+    # """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
+    #
+    #     u = [Hx, Hy, Ez]
+    #     dHx     dEz
+    #     ---- + -----  =  0
+    #     dt      dy
+    #
+    #     dHy     dEz
+    #     ---- - -----  =  0
+    #     dt      dx
+    #
+    #     dEz     dHy    dHx
+    #     ---- - ---- - ----   =  0
+    #     dt      dx     dy
+    #
+    #     Boundary conditions:
+    #     E(x,0) = exp( -(1/2)((x/sd)^2) )
+    #     du
+    #     --(x,0) = 0
+    #     dt
+    #
+    #
+    #     Ezx[xsource, ysource] = 0.5
+    #     Ezy[xsource, ysource] = 0.5
+    #
+
+    @staticmethod
+    def init_params(c=1, sd=1):
+        static_params = {
+            "dims": (3, 3),
+            "c": c,
+            "sd": sd,
+        }
+        return static_params, {}
+
+    @staticmethod
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
+        # physics loss
+        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
+        required_ujs_phys = (
+            (0, (1,)),  # dHx / dy
+            (0, (2,)),  # dHx / dt
+            (1, (0,)),  # dHy / dx
+            (1, (2,)),  # dHy / dt
+            (2, (0,)),  # dE / dx
+            (2, (1,)),  # dE / dy
+            (2, (2,)),  # dE / dt
+        )
+
+        # start loss
+        x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
+        x = x_batch_start[:, 0:1]  # 提取 x 坐标
+        y = x_batch_start[:, 1:2]
+        E_start = jnp.exp(-0.5 * (x ** 2 + y ** 2) / (0.1 ** 2))
+        Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        required_ujs_start = (
+            (0, ()),
+            (1, ()),
+            (2, ()),
+        )
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
+
+    @staticmethod
+    def loss_fn(all_params, constraints):
+
+        #phys loss
+        c = all_params["static"]["problem"]["c"]
+        sd = all_params["static"]["problem"]["sd"]
+        x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
+        #       jax.debug.print("CHECK {}", dHdt.shape)
+
+        phys1 = jnp.mean((dHxdt + dEdy) ** 2)
+        phys2 = jnp.mean((dHydt - dEdx) ** 2)
+        phys3 = jnp.mean((dEdt - dHydx + dHxdy) ** 2)
+        phys = phys1 + phys2 + phys3
+        #        jax.debug.print("phys {}", dezdx)
+
+        #start loss
+        x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[1]
+        if len(Ec):
+            start = jnp.mean((jnp.squeeze(E) - Ec) **2 ) + jnp.mean((jnp.squeeze(Hx)-Hxc)**2) + jnp.mean((jnp.squeeze(Hy)-Hyc)**2)
+        else:
+            start = 0
+        return 1e2 * phys + 1e4 * start
+
+    @staticmethod
+    def exact_solution(all_params, x_batch, batch_shape):
+        key = jax.random.PRNGKey(0)
+        return jax.random.normal(key, (x_batch.shape[0], 3))
 
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity

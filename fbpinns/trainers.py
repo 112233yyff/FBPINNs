@@ -22,7 +22,6 @@ from fbpinns import networks, plot_trainer
 from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
 
-
 # LABELLING CONVENTIONS
 
 # xd = dimensionality of point
@@ -990,26 +989,66 @@ class PINNTrainer(_Trainer):
 
 
 if __name__ == "__main__":
-    # 2D
-    import numpy as np
+
+    from fbpinns.constants import Constants, get_subdomain_ws
     from fbpinns.domains import RectangularDomainND
-    from fbpinns.problems import FDTD1D
+    from fbpinns.problems import FDTD1D , FDTD2D
     from fbpinns.decompositions import RectangularDecompositionND
     from fbpinns.networks import FCN
     from fbpinns.schedulers import LineSchedulerRectangularND
-    from fbpinns.constants import Constants, get_subdomain_ws
     from fbpinns.trainers import FBPINNTrainer, PINNTrainer
 
-    subdomain_xs = [np.linspace(-2, 2, 3), np.linspace(0, 1, 4)]
-    subdomain_ws = get_subdomain_ws(subdomain_xs, 1.1)
+    # subdomain_xs = [np.linspace(-2, 2, 3), np.linspace(0, 1, 4)]#定义了x和t的范围，以及在x和t上划分的区间个数
+    # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.1)
+    # c = Constants(
+    #     run="test",
+    #     domain=RectangularDomainND,
+    #     domain_init_kwargs=dict(
+    #         xmin=np.array([-0.5, 0]),
+    #         xmax=np.array([0.5, 1]),
+    #     ),
+    #     problem=FDTD1D,
+    #     problem_init_kwargs=dict(
+    #         c=1, sd=0.1,
+    #     ),
+    #     decomposition=RectangularDecompositionND,
+    #     decomposition_init_kwargs=dict(
+    #         subdomain_xs=subdomain_xs,
+    #         subdomain_ws=subdomain_ws,
+    #         unnorm=(0., 1.),
+    #     ),
+    #     network=FCN,
+    #     network_init_kwargs=dict(
+    #         layer_sizes=[2,32,32,32,32, 2],
+    #     ),
+    #     ns=((50, 40),),#计算物理损失的点
+    #     n_start=((100000, 1),),  # 表示在t==0时，x取200000个点
+    #     n_boundary=((1, 100000),),
+    #     n_test=(50, 40),
+    #     n_steps=170000,
+    #     optimiser_kwargs=dict(learning_rate=1e-3),
+    #     summary_freq=2000,
+    #     test_freq=2000,
+    #     show_figures=False,
+    #     clear_output=True,
+    #     save_figures=True,
+    # )
+    # # run = FBPINNTrainer(c)
+    # run = PINNTrainer(c)
+    # run.train()
+
+    #fdtd2d
+    subdomain_xs = [np.linspace(-1, 1, 5), np.linspace(-1, 1, 5), np.linspace(0, 1, 5)]
+    subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
+
     c = Constants(
         run="test",
         domain=RectangularDomainND,
         domain_init_kwargs=dict(
-            xmin=np.array([-0.5, 0]),
-            xmax=np.array([0.5, 1]),
+            xmin=np.array([-1, -1, 0]),
+            xmax=np.array([1, 1, 1]),
         ),
-        problem=FDTD1D,
+        problem=FDTD2D,
         problem_init_kwargs=dict(
             c=1, sd=0.1,
         ),
@@ -1021,42 +1060,22 @@ if __name__ == "__main__":
         ),
         network=FCN,
         network_init_kwargs=dict(
-            layer_sizes=[2,32,32,32,32, 2],
+            layer_sizes=[3, 32, 3],
         ),
-        ns=((50, 40),),#计算物理损失的点
-        n_start=((100000, 1),),  # 表示在t==0时，x取200000个点
-        n_boundary=((1, 100000),),
-        n_test=(50, 40),
-        n_steps=170000,
+        ns=((50, 50, 50),),
+        n_start=((50, 50, 1),),
+        n_test=(100, 100, 5),
+        n_steps=15000,
         optimiser_kwargs=dict(learning_rate=1e-3),
-        summary_freq=2000,
-        test_freq=2000,
-        show_figures=False,
+        summary_freq=200,
+        test_freq=200,
+        show_figures=True,
         clear_output=True,
-        save_figures=True,
     )
+
     # run = FBPINNTrainer(c)
+    # run.train()
+
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 3])
     run = PINNTrainer(c)
     run.train()
-# if __name__ == "__main__":
-#
-#     from fbpinns.constants import Constants
-#     from fbpinns.problems import HarmonicOscillator1D, HarmonicOscillator1DHardBC, HarmonicOscillator1DInverse
-#
-#     logger.setLevel("DEBUG")
-#
-#     c = Constants(
-#         run="test",
-#         problem=HarmonicOscillator1D,
-#         # problem=HarmonicOscillator1DHardBC,
-#         # problem=HarmonicOscillator1DInverse,
-#         network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
-#         )
-#
-#     run = FBPINNTrainer(c)
-#     #run = PINNTrainer(c)
-#
-#     all_params = run.train()
-#     print(all_params["static"]["problem"])
-#     if "problem" in all_params["trainable"]:
-#         print(all_params["trainable"]["problem"])
