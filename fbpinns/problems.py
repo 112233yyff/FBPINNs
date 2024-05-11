@@ -16,7 +16,7 @@ from fbpinns.util.logger import logger
 from fbpinns.traditional_solutions.analytical.burgers_solution import burgers_viscous_time_exact1
 from fbpinns.traditional_solutions.seismic_cpml.seismic_CPML_2D_pressure_second_order import seismicCPML2D
 from FDTD1DDD import FDTD1DD
-from FDTD2DDD import FDTD2DD
+from FDTD2DDD import FDTD2D
 
 
 class Problem:
@@ -522,7 +522,7 @@ class FDTD3D(Problem):
     @staticmethod
     def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
         # physics loss
-        x_batch_phys = domain.sample_interior_cycle(all_params, key, sampler, batch_shapes[0])
+        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
         required_ujs_phys = (
             (0, (1,)),  # dHx / dy
             (0, (2,)),  # dHx / dt
@@ -533,7 +533,7 @@ class FDTD3D(Problem):
             (2, (2,)),  # dE / dt
         )
         # start loss
-        x_batch_start = domain.sample_start2d_cycle(all_params, key, sampler, start_batch_shapes[0])
+        x_batch_start = domain.sample_start2d(all_params, key, sampler, start_batch_shapes[0])
         x = x_batch_start[:, 0:1] # 提取 x 坐标
         y = x_batch_start[:, 1:2]
         E_start = jnp.exp(-0.5 * (x ** 2 + y ** 2 ) / (0.1 ** 2))
@@ -545,7 +545,8 @@ class FDTD3D(Problem):
             (2, ()),
         )
         # boundary loss
-        x_batch_boundary = domain.sample_boundary2d_cycle(all_params, key, sampler, boundary_batch_shapes[0])
+        loc = -0.5
+        x_batch_boundary = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], loc)
         t = x_batch_boundary[:, 2:3]
         E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
         required_ujs_boundary = (
@@ -608,36 +609,26 @@ class FDTD3D(Problem):
     #     dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
     #     DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
     #     NX,NY, NSTEPS = batch_shape[0] * dx - (dx - 1),batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
-    #     Hx, Hy, Ez = FDTD2DD(
+    #     Ez = FDTD2D(
     #         xmin,
     #         xmax,
     #         ymin,
     #         ymax,
     #         tmin,
     #         tmax,
-    #         sd,
     #         NX,
     #         NY,
     #         NSTEPS,
     #         DELTAX,
-    #         DELTAY,
     #         DELTAT,
+    #         sd,
     #     )
-    #     Hx = Hx[::dx, ::dy, ::dt]
-    #     Hx = jnp.ravel(Hx)
-    #     Hx = jnp.reshape(Hx, (-1, 1))
-    #
-    #     Hy = Hy[::dx, ::dy, ::dt]
-    #     Hy = jnp.ravel(Hy)
-    #     Hy = jnp.reshape(Hy, (-1, 1))
-    #
     #     Ez = Ez[::dx, ::dy, ::dt]
     #     Ez = jnp.ravel(Ez)
     #     Ez = jnp.reshape(Ez, (-1, 1))
     #
     #     # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
-    #     y = jnp.concatenate((Hx, Hy, Ez), axis=1)
-    #     return y
+    #     return Ez
 
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
