@@ -545,8 +545,8 @@ class FDTD3D(Problem):
             (2, ()),
         )
         # boundary loss
-        loc = -0.5
-        x_batch_boundary = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], loc)
+        x_batch_boundary = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0])
+        # jax.debug.print("ret{}",x_batch_boundary)
         t = x_batch_boundary[:, 2:3]
         E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
         required_ujs_boundary = (
@@ -587,48 +587,49 @@ class FDTD3D(Problem):
         else:
             boundary = 0
         return 1e2 * phys + 1e4 * start + 1e2 * boundary
-    @staticmethod
-    def exact_solution(all_params, x_batch, batch_shape):
-        key = jax.random.PRNGKey(0)
-        return jax.random.normal(key, (x_batch.shape[0], 3))
     # @staticmethod
     # def exact_solution(all_params, x_batch, batch_shape):
-    #     params = all_params["static"]["problem"]
-    #     c, sd= params["c"], params["sd"]
-    #
-    #     (xmin, ymin, tmin),(xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
-    #
-    #     # get grid spacing
-    #     deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (tmax - tmin) / (batch_shape[2] - 1)
-    #
-    #     # get f0, target deltas of FD simulation
-    #     f0 = c / sd  # approximate frequency of wave
-    #     DELTAX = 1 / (f0 * 10)
-    #     DELTAY = 1 / (f0 * 10)# target fine sampled deltas
-    #     DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
-    #     dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
-    #     DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
-    #     NX,NY, NSTEPS = batch_shape[0] * dx - (dx - 1),batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
-    #     Ez = FDTD2D(
-    #         xmin,
-    #         xmax,
-    #         ymin,
-    #         ymax,
-    #         tmin,
-    #         tmax,
-    #         NX,
-    #         NY,
-    #         NSTEPS,
-    #         DELTAX,
-    #         DELTAT,
-    #         sd,
-    #     )
-    #     Ez = Ez[::dx, ::dy, ::dt]
-    #     Ez = jnp.ravel(Ez)
-    #     Ez = jnp.reshape(Ez, (-1, 1))
-    #
-    #     # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
-    #     return Ez
+    #     key = jax.random.PRNGKey(0)
+    #     return jax.random.normal(key, (x_batch.shape[0], 3))
+    @staticmethod
+    def exact_solution(all_params, x_batch, batch_shape):
+        params = all_params["static"]["problem"]
+        c, sd= params["c"], params["sd"]
+
+        (xmin, ymin, tmin),(xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
+
+        # get grid spacing
+        deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (tmax - tmin) / (batch_shape[2] - 1)
+
+        # get f0, target deltas of FD simulation
+        f0 = c / sd  # approximate frequency of wave
+        DELTAX = 1 / (f0 * 10)
+        DELTAY = 1 / (f0 * 10)# target fine sampled deltas
+        DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
+        dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
+        DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
+        NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
+        Ez = FDTD2D(
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+            tmin,
+            tmax,
+            NX,
+            NY,
+            NSTEPS,
+            DELTAX,
+            DELTAY,
+            DELTAT,
+            sd,
+        )
+        Ez = Ez[::dx, ::dy, ::dt]
+        Ez = jnp.ravel(Ez)
+        Ez = jnp.reshape(Ez, (-1, 1))
+
+        # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
+        return Ez
 
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
