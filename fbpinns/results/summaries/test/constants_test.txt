@@ -7,15 +7,15 @@ decomposition: <class 'fbpinns.decompositions.RectangularDecompositionND'>
 decomposition_init_kwargs: {'subdomain_xs': [array([-0.5 , -0.25,  0.  ,  0.25,  0.5 ]), array([-0.5 , -0.25,  0.  ,  0.25,  0.5 ]), array([0.  , 0.25, 0.5 , 0.75, 1.  ])], 'subdomain_ws': [array([0.475, 0.475, 0.475, 0.475, 0.475]), array([0.475, 0.475, 0.475, 0.475, 0.475]), array([0.475, 0.475, 0.475, 0.475, 0.475])], 'unnorm': (0.0, 1.0)}
 network: <class 'fbpinns.networks.FCN'>
 network_init_kwargs: {'layer_sizes': [3, 128, 128, 64, 3]}
-n_steps: 30000
+n_steps: 50000
 scheduler: <class 'fbpinns.schedulers.AllActiveSchedulerND'>
 scheduler_kwargs: {}
-ns: ((100, 100, 50),)
-n_start: ((500, 500, 1),)
-n_boundary: ((200, 200, 100),)
-n_test: (50, 50, 10)
+ns: ((80, 80, 60),)
+n_start: ((300, 300, 1),)
+n_boundary: ((100, 100, 50),)
+n_test: (100, 100, 10)
 sampler: grid
-optimiser: <function adam at 0x7f8ea75c6d40>
+optimiser: <function adam at 0x7fc569fbad40>
 optimiser_kwargs: {'learning_rate': 0.001}
 seed: 0
 summary_freq: 200
