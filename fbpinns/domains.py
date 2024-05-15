@@ -98,9 +98,9 @@ class RectangularDomainND(Domain):
         return RectangularDomainND._rectangle_sampler2NDD(key, sampler, xmin, xmax, batch_shape)
 
     @staticmethod
-    def sample_boundary2d(all_params, key, sampler, batch_shape):
+    def sample_boundary2d(all_params, key, sampler, batch_shape, dim, loc):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-        return RectangularDomainND._rectangle_sampler2NDDD(key, sampler, xmin, xmax, batch_shape)
+        return RectangularDomainND._rectangle_sampler2NDDD(key, sampler, xmin, xmax, batch_shape, dim, loc)
 
     @staticmethod
     def sample_boundaries(all_params, key, sampler, batch_shapes):
@@ -266,59 +266,28 @@ class RectangularDomainND(Domain):
 
         return jnp.array(x_batch)
 
-    # @staticmethod
-    # def _rectangle_sampler2NDDD(key, sampler, xmin, xmax, batch_shape, loc):
-    #     "Get flattened samples of x in a rectangle, either on mesh or random"
-    #
-    #     assert xmin.shape == xmax.shape
-    #     assert xmin.ndim == 1
-    #     xd = len(xmin)
-    #     assert len(batch_shape) == xd
-    #
-    #     if not sampler in ["grid", "uniform", "sobol", "halton"]:
-    #         raise ValueError("ERROR: unexpected sampler")
-    #
-    #     if sampler == "grid":
-    #         assert xmin[0] <= loc <= xmax[0], "loc must be within the range defined by xmin[0] and xmax[0]"
-    #         xs = [
-    #             jnp.array([loc]) if i == 1 else  # 对于第一个维度，在loc处取值
-    #             jnp.linspace(xmin[i], xmax[i], b)  # 对于其他维度（包括第二个维度），按均匀间隔取样
-    #             for i, b in enumerate(batch_shape)
-    #         ]
-    #         xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)
-    #         x_batch = xx.reshape((-1, xd))
-    #     else:
-    #         if sampler == "halton":
-    #             # use scipy as not implemented in jax (!)
-    #             r = scipy.stats.qmc.Halton(xd)
-    #             s = r.random(np.prod(batch_shape))
-    #         elif sampler == "sobol":
-    #             r = scipy.stats.qmc.Sobol(xd)
-    #             s = r.random(np.prod(batch_shape))
-    #         elif sampler == "uniform":
-    #             s = jax.random.uniform(key, (np.prod(batch_shape), xd))
-    #
-    #         xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-    #         x_batch = xmin + (xmax - xmin) * s
-    #
-    #     return jnp.array(x_batch)
-    def _rectangle_sampler2NDDD(key, sampler, xmin, xmax, batch_shape):
+    @staticmethod
+    @staticmethod
+    def _rectangle_sampler2NDDD(key, sampler, xmin, xmax, batch_shape, dim, loc):
         "Get flattened samples of x in a rectangle, either on mesh or random"
 
         assert xmin.shape == xmax.shape
         assert xmin.ndim == 1
         xd = len(xmin)
+        assert len(batch_shape) == xd
 
         if not sampler in ["grid", "uniform", "sobol", "halton"]:
             raise ValueError("ERROR: unexpected sampler")
 
         if sampler == "grid":
-            xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
-            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+            assert xmin[0] <= loc <= xmax[0], "loc must be within the range defined by xmin[0] and xmax[0]"
+            xs = [
+                jnp.array([loc]) if i == dim else  # 对于第一个维度，在loc处取值
+                jnp.linspace(xmin[i], xmax[i], b)  # 对于其他维度（包括第二个维度），按均匀间隔取样
+                for i, b in enumerate(batch_shape)
+            ]
+            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)
             x_batch = xx.reshape((-1, xd))
-            x_batch = x_batch[(x_batch[:, 0] == xmin[0]) | (x_batch[:, 0] == xmax[0]) |
-                                      (x_batch[:, 1] == xmin[1]) | (x_batch[:, 1] == xmax[1])]
-            jax.debug.print("ret{}", x_batch)
         else:
             if sampler == "halton":
                 # use scipy as not implemented in jax (!)
@@ -334,6 +303,38 @@ class RectangularDomainND(Domain):
             x_batch = xmin + (xmax - xmin) * s
 
         return jnp.array(x_batch)
+
+    # def _rectangle_sampler2NDDD(key, sampler, xmin, xmax, batch_shape):
+    #     "Get flattened samples of x in a rectangle, either on mesh or random"
+    #
+    #     assert xmin.shape == xmax.shape
+    #     assert xmin.ndim == 1
+    #     xd = len(xmin)
+    #
+    #     if not sampler in ["grid", "uniform", "sobol", "halton"]:
+    #         raise ValueError("ERROR: unexpected sampler")
+    #
+    #     if sampler == "grid":
+    #         xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
+    #         xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+    #         x_batch = xx.reshape((-1, xd))
+    #         x_batch = x_batch[(x_batch[:, 0] == xmin[0]) | (x_batch[:, 0] == xmax[0]) |
+    #                                   (x_batch[:, 1] == xmin[1]) | (x_batch[:, 1] == xmax[1])]
+    #     else:
+    #         if sampler == "halton":
+    #             # use scipy as not implemented in jax (!)
+    #             r = scipy.stats.qmc.Halton(xd)
+    #             s = r.random(np.prod(batch_shape))
+    #         elif sampler == "sobol":
+    #             r = scipy.stats.qmc.Sobol(xd)
+    #             s = r.random(np.prod(batch_shape))
+    #         elif sampler == "uniform":
+    #             s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+    #
+    #         xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+    #         x_batch = xmin + (xmax - xmin) * s
+    #
+    #     return jnp.array(x_batch)
 # class RectangularDomainND(Domain):
 #
 #     @staticmethod
