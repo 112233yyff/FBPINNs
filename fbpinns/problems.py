@@ -594,25 +594,25 @@ class FDTD3D(Problem):
             (1, ()),
             (2, ()),
         )
-        # # boundary loss
-        # loc1 = -0.5
-        # loc2 = 0.5
-        # x_batch_boundary1 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc1)
-        # x_batch_boundary2 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1,  loc1)
-        # x_batch_boundary3 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc2)
-        # x_batch_boundary4 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1, loc2)
-        # x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary2, x_batch_boundary3, x_batch_boundary4), axis=0)
-        # # x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary3,),axis=0)
-        # # pdb.set_trace()
-        # t = x_batch_boundary[:, 2:3]
-        # E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
-        # required_ujs_boundary = (
-        #     (2, ()),
-        # )
-        # return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start],
-        #         [x_batch_boundary, E_boundary, required_ujs_boundary]]
+        # boundary loss
+        loc1 = -0.5
+        loc2 = 0.5
+        x_batch_boundary1 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc1)
+        x_batch_boundary2 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1,  loc1)
+        x_batch_boundary3 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc2)
+        x_batch_boundary4 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1, loc2)
+        x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary2, x_batch_boundary3, x_batch_boundary4), axis=0)
+        # x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary3,),axis=0)
+        # pdb.set_trace()
+        t = x_batch_boundary[:, 2:3]
+        E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
+        required_ujs_boundary = (
+            (2, ()),
+        )
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start],
+                [x_batch_boundary, E_boundary, required_ujs_boundary]]
 
-        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
+        # return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
     @staticmethod
     def loss_fn(all_params, constraints):
         # physics loss
@@ -630,14 +630,14 @@ class FDTD3D(Problem):
         else:
             start = 0
 
-        # # boundary loss
-        # x_batch_boundary, Eb, EE = constraints[2]
-        # if len(Eb):
-        #     boundary = jnp.mean((EE - Eb) ** 2)
-        # else:
-        #     boundary = 0
-        # return 1e2 * phys + 1e4 * start + 1e3 * boundary
-        return 1e2 * phys + 1e4 * start
+        # boundary loss
+        x_batch_boundary, Eb, EE = constraints[2]
+        if len(Eb):
+            boundary = jnp.mean((EE - Eb) ** 2)
+        else:
+            boundary = 0
+        return 1e2 * phys + 1e4 * start + 1e3 * boundary
+        # return 1e2 * phys + 1e4 * start
     # @staticmethod
     # def exact_solution(all_params, x_batch, batch_shape):
     #     key = jax.random.PRNGKey(0)
@@ -681,29 +681,6 @@ class FDTD3D(Problem):
 
         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
         return Ez
-    # @staticmethod
-    # def exact_solution(all_params, x_batch, batch_shape):
-    #     params = all_params["static"]["problem"]
-    #     c, sd= params["c"], params["sd"]
-    #
-    #     (xmin, ymin, tmin),(xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
-    #     deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (tmax - tmin) / (batch_shape[2] - 1)
-    #     f0 = c / sd
-    #     DELTAX = 1 / (f0 * 10)
-    #     DELTAY = 1 / (f0 * 10)
-    #     DELTAT = DELTAX / (4 * np.sqrt(2) * c)
-    #     dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAX)),  int(np.ceil(deltat / DELTAT))
-    #
-    #     xdim,ydim, time_tot = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
-    #
-    #     # Hx_out, Hy_out, Ez_out =  FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax,xdim,ydim,time_tot)
-    #     Ez_out =  FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax,xdim,ydim,time_tot)
-    #     Ez = Ez_out[::dx, ::dy, ::dt]
-    #     Ez = jnp.ravel(Ez)
-    #     Ez = jnp.reshape(Ez, (-1, 1))
-    #     Ez = np.repeat(Ez, 3, axis=1)
-    #
-    #     return Ez
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
         d^2 u     1  d^2 u
