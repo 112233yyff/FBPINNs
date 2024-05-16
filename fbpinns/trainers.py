@@ -1069,8 +1069,8 @@ if __name__ == "__main__":
         n_test=(100, 100, 10),
         n_steps=50000,
         optimiser_kwargs=dict(learning_rate=1e-3),
-        summary_freq=200,
-        test_freq=200,
+        summary_freq=500,
+        test_freq=500,
         show_figures=False,
         clear_output=True,
     )
