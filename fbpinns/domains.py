@@ -267,7 +267,6 @@ class RectangularDomainND(Domain):
         return jnp.array(x_batch)
 
     @staticmethod
-    @staticmethod
     def _rectangle_sampler2NDDD(key, sampler, xmin, xmax, batch_shape, dim, loc):
         "Get flattened samples of x in a rectangle, either on mesh or random"
 
