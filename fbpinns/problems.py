@@ -520,6 +520,40 @@ class FDTD3D(Problem):
         }
         return static_params, {}
 
+    @staticmethod
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
+        # physics loss
+        x_batch_phys = domain.sample_interior_cycle(all_params, key, sampler, batch_shapes[0])
+        required_ujs_phys = (
+            (0, (1,)),  # dHx / dy
+            (0, (2,)),  # dHx / dt
+            (1, (0,)),  # dHy / dx
+            (1, (2,)),  # dHy / dt
+            (2, (0,)),  # dE / dx
+            (2, (1,)),  # dE / dy
+            (2, (2,)),  # dE / dt
+        )
+        # start loss
+        x_batch_start = domain.sample_start2d_cycle(all_params, key, sampler, start_batch_shapes[0])
+        x = x_batch_start[:, 0:1] # 提取 x 坐标
+        y = x_batch_start[:, 1:2]
+        E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (0.1 ** 2))
+        Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        required_ujs_start = (
+            (0, ()),
+            (1, ()),
+            (2, ()),
+        )
+        # boundary loss
+        x_batch_boundary = domain.sample_boundary2d_cycle(all_params, key, sampler, boundary_batch_shapes[0])
+        t = x_batch_boundary[:, 2:3]
+#        pdb.set_trace()
+        E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
+        required_ujs_boundary = (
+            (2, ()),
+        )
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start], [x_batch_boundary, E_boundary, required_ujs_boundary]]
     # @staticmethod
     # def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
     #     # physics loss
@@ -535,9 +569,9 @@ class FDTD3D(Problem):
     #     )
     #     # start loss
     #     x_batch_start = domain.sample_start2d(all_params, key, sampler, start_batch_shapes[0])
-    #     x = x_batch_start[:, 0:1] # 提取 x 坐标
+    #     x = x_batch_start[:, 0:1]  # 提取 x 坐标
     #     y = x_batch_start[:, 1:2]
-    #     E_start = jnp.exp(-0.5 * (x ** 2 + y ** 2 ) / (0.1 ** 2))
+    #     E_start = jnp.exp(-0.5 * (x ** 2 + y ** 2) / (0.1 ** 2))
     #     Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
     #     Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
     #     required_ujs_start = (
@@ -546,73 +580,22 @@ class FDTD3D(Problem):
     #         (2, ()),
     #     )
     #     # boundary loss
-    #     loc = -0.5
-    #     # x_batch_boundary1 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc1)
-    #     x_batch_boundary = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], loc)
-    #     # jax.debug.print("ret{}",x_batch_boundary2)
-    #     # x_batch_boundary3 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc2)
-    #     # x_batch_boundary4 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1, loc2)
-    #     # x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary2, x_batch_boundary3, x_batch_boundary4), axis=0)
-    #     t = x_batch_boundary[:, 2:3]
+    #     loc1 = -0.5
+    #     loc2 = 0.5
+    #     x_batch_boundary1 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc1)
+    #     x_batch_boundary2 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1,  loc1)
+    #     x_batch_boundary3 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc2)
+    #     x_batch_boundary4 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1, loc2)
+    #     x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary2, x_batch_boundary3, x_batch_boundary4), axis=0)
+    #     # x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary3,),axis=0)
     #     # pdb.set_trace()
+    #     t = x_batch_boundary[:, 2:3]
     #     E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
     #     required_ujs_boundary = (
     #         (2, ()),
     #     )
-    #     # # boundary loss
-    #     # loc = -0.5
-    #     # x_batch_boundary = domain.sample_boundary2d_cycle(all_params, key, sampler, boundary_batch_shapes[0], loc)
-    #     #
-    #     # t = x_batch_boundary[:, 2:3]
-    #     # E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
-    #     # required_ujs_boundary = (
-    #     #     (2, ()),
-    #     # )
-    #     return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start], [x_batch_boundary, E_boundary, required_ujs_boundary]]
-    @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
-        # physics loss
-        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
-        required_ujs_phys = (
-            (0, (1,)),  # dHx / dy
-            (0, (2,)),  # dHx / dt
-            (1, (0,)),  # dHy / dx
-            (1, (2,)),  # dHy / dt
-            (2, (0,)),  # dE / dx
-            (2, (1,)),  # dE / dy
-            (2, (2,)),  # dE / dt
-        )
-        # start loss
-        x_batch_start = domain.sample_start2d(all_params, key, sampler, start_batch_shapes[0])
-        x = x_batch_start[:, 0:1]  # 提取 x 坐标
-        y = x_batch_start[:, 1:2]
-        E_start = jnp.exp(-0.5 * (x ** 2 + y ** 2) / (0.1 ** 2))
-        Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-        Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-        required_ujs_start = (
-            (0, ()),
-            (1, ()),
-            (2, ()),
-        )
-        # boundary loss
-        loc1 = -0.5
-        loc2 = 0.5
-        x_batch_boundary1 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc1)
-        x_batch_boundary2 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1,  loc1)
-        x_batch_boundary3 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 0, loc2)
-        x_batch_boundary4 = domain.sample_boundary2d(all_params, key, sampler, boundary_batch_shapes[0], 1, loc2)
-        x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary2, x_batch_boundary3, x_batch_boundary4), axis=0)
-        # x_batch_boundary = np.concatenate((x_batch_boundary1, x_batch_boundary3,),axis=0)
-        # pdb.set_trace()
-        t = x_batch_boundary[:, 2:3]
-        E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
-        required_ujs_boundary = (
-            (2, ()),
-        )
-        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start],
-                [x_batch_boundary, E_boundary, required_ujs_boundary]]
-
-        # return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
+    #     return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start],
+    #             [x_batch_boundary, E_boundary, required_ujs_boundary]]
     @staticmethod
     def loss_fn(all_params, constraints):
         # physics loss
@@ -633,7 +616,7 @@ class FDTD3D(Problem):
         # boundary loss
         x_batch_boundary, Eb, EE = constraints[2]
         if len(Eb):
-            boundary = jnp.mean((EE - Eb) ** 2)
+            boundary = jnp.mean((EE - Eb) ** 2)# + jnp.mean((HyE - Eb) ** 2) + jnp.mean((HxE - Eb) ** 2)
         else:
             boundary = 0
         return 1e2 * phys + 1e4 * start + 1e3 * boundary

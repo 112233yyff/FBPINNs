@@ -80,6 +80,31 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     # Courant stability factor
     S = 1 / (2 ** 0.5)
 
+    # Perfect Electric Conductor (PEC) setup
+    pec_cx, pec_cy = xmin + (1 / 2) * (xmax - xmin), ymin + (1 / 4) * (ymax - ymin)
+    pec_rad = (xmax - xmin) / 4.0
+    pec_pt = []
+
+    # # Define PEC area
+    # for i in range(1, NX + 1):
+    #     for j in range(1, NY + 1):
+    #         if np.sqrt((i - pec_cx) ** 2 + (j - pec_cy) ** 2) < pec_rad:
+    #             pec_pt.append((i, j))
+
+    # 使用 numpy.arange 来生成浮点数范围
+    x_values = np.arange(xmin, xmax + deltax, deltax)
+    y_values = np.arange(ymin, ymax + deltay, deltay)
+
+    for i in range(0, NX):
+        for j in range(0, NY):
+            # 计算点 (i, j) 到中心点 (pec_cx, pec_cy) 的距离
+            distance = np.sqrt((x_values[i] - pec_cx) ** 2 + (y_values[j] - pec_cy) ** 2)
+            # 判断该点是否在圆内
+            if distance < pec_rad:
+                pec_pt.append((i, j))
+
+    # pec_pt 现在包含了所有符合条件的点
+
     # Permittivity of vacuum [farad/meter]
     e0 = 1  # 8.854e-12
     # Permeability of vacuum [henry/meter]
@@ -149,7 +174,7 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     xg = np.linspace(xmin, xmax, xdim)
     yg = np.linspace(ymin, ymax, ydim)
     xv, yv = np.meshgrid(xg, yg)
-    zz = np.exp(-0.5 * ((xv - 0.) ** 2 + (yv + 0.) ** 2) / sd ** 2)
+    zz = np.exp(-0.5 * ((xv - 0.5) ** 2 + (yv - 0.5) ** 2) / sd ** 2)
 
     Ez = zz
 
@@ -166,8 +191,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
                                                                                        axis=1)
 
         # Enforce PEC condition
-        # for (px, py) in pec_pt:
-        #     Ez[px, py] = 0
+        for (px, py) in pec_pt:
+            Ez[px, py] = 0
 
         Ez_out[:, :, t - 1] = Ez
     return Ez_out
