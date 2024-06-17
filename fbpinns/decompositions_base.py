@@ -233,18 +233,27 @@ def _inside_take_batch(all_params, x_batch, ims, batch_size, inside_fn, s, irang
     return take
 
 def inside_points_batch(all_params, x_batch, ims, batch_size, inside_fn):
+    # 这段代码定义了一个函数inside_points_batch，
+    # 其目的是确定输入数据批次
+    # x_batch中每个点属于哪些子域（由ims表示），并且计算每个子域内有多少点
     assert batch_size <= x_batch.shape[0]
     (s, inside_ips, inside_ims, d), irange, mask = _inside_sum_batch(all_params, x_batch, ims, batch_size, inside_fn)
     inside_ims = jnp.arange(ims.shape[0])[inside_ims]
     s = s.item()
     take = _inside_take_batch(all_params, x_batch, ims, batch_size, inside_fn, s, irange, mask)
     return take[:,0], take[:,1], inside_ims
+# 最后，函数返回三个结果：
+# 点在原批次中的索引（take[:,0]）、
+# 对应的子域索引（take[:,1]），
+# 以及至少有一个点在其内的子域索引（inside_ims）。
 
 def inside_models_batch(all_params, x_batch, ims, batch_size, inside_fn):
     assert batch_size <= x_batch.shape[0]
     (s, inside_ips, inside_ims, d), irange, mask = _inside_sum_batch(all_params, x_batch, ims, batch_size, inside_fn)
     inside_ips = jnp.arange(x_batch.shape[0])[inside_ips]
     return inside_ips, d
+# 该函数 inside_models_batch 的目的是确定输入数据批次 x_batch 中的哪些点位于给定的多个模型（通过 ims 索引表示）内部，
+# 并返回这些点的索引以及每个模型内点的数量。
 
 
 

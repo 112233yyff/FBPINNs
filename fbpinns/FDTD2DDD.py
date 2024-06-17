@@ -84,13 +84,6 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     pec_cx, pec_cy = xmin + (1 / 2) * (xmax - xmin), ymin + (1 / 4) * (ymax - ymin)
     pec_rad = (xmax - xmin) / 4.0
     pec_pt = []
-
-    # # Define PEC area
-    # for i in range(1, NX + 1):
-    #     for j in range(1, NY + 1):
-    #         if np.sqrt((i - pec_cx) ** 2 + (j - pec_cy) ** 2) < pec_rad:
-    #             pec_pt.append((i, j))
-
     # 使用 numpy.arange 来生成浮点数范围
     x_values = np.arange(xmin, xmax + deltax, deltax)
     y_values = np.arange(ymin, ymax + deltay, deltay)

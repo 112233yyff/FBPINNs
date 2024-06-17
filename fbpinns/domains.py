@@ -504,106 +504,17 @@ class RectangularDomainND(Domain):
 
         return jnp.array(x_filtered)
 
-    def _rectangle_sampler2NDDD_cycle(key, sampler, xmin, xmax, batch_shape):
-        assert xmin.shape == xmax.shape
-        assert xmin.ndim == 1
-        xd = len(xmin)
-        assert len(batch_shape) == xd
-        if not sampler in ["grid", "uniform", "sobol", "halton"]:
-            raise ValueError("ERROR: unexpected sampler")
-        if sampler == "grid":
-            xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
-            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
-            x_batch = xx.reshape((-1, xd))
-        else:
-            if sampler == "halton":
-                # use scipy as not implemented in jax (!)
-                r = scipy.stats.qmc.Halton(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "sobol":
-                r = scipy.stats.qmc.Sobol(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "uniform":
-                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
-            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-            x_batch = xmin + (xmax - xmin) * s
-        # After generating x_batch
-        xmin = xmin[:2]
-        xmax = xmax[:2]
-        x_batch_xy = x_batch[:, :2]
-        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-        xy_center = np.array([[x_center, y_center]])
-        side_lengths = xmax - xmin
-        radius = np.min(side_lengths) / 4.0
-        def generate_circular_boundary_points(center, r, num_points=10):
-            cx = center[0]
-            cy = center[1]
-            theta = np.linspace(0, 2 * np.pi, num_points)
-            x = cx + r * np.cos(theta)
-            y = cy + r * np.sin(theta)
-            circle_points = np.column_stack((x, y))
-            return circle_points.tolist()
-        pboundary = generate_circular_boundary_points([x_center, y_center], radius, 10000)
-
-        #       pdb.set_trace()
-        def foo(input_list):
-            expanded_list = []
-            hw = np.linspace(0, 2, 80)
-            for sublist in input_list:
-                for i in hw:
-                    expanded_list.append(sublist + [i])
-            return expanded_list
-
-        x_filtered = foo(pboundary)
-        #      pdb.set_trace()
-        return jnp.array(x_filtered)
-
     # def _rectangle_sampler2NDDD_cycle(key, sampler, xmin, xmax, batch_shape):
     #     assert xmin.shape == xmax.shape
     #     assert xmin.ndim == 1
     #     xd = len(xmin)
     #     assert len(batch_shape) == xd
-    #
     #     if not sampler in ["grid", "uniform", "sobol", "halton"]:
     #         raise ValueError("ERROR: unexpected sampler")
-    #
-    #     # 空间采样点的数量
-    #     num_space_samples = batch_shape[0] * batch_shape[1]
-    #     # 时间范围和采样点的数量
-    #     time_start = xmin[2]
-    #     time_end = xmax[2]
-    #     num_time_samples = batch_shape[2]
-    #     #get x、y_center radius
-    #     xmin = xmin[:2]
-    #     xmax = xmax[:2]
-    #     x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-    #     y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-    #     xy_center = np.array([[x_center, y_center]])
-    #     # Compute the center of the rectangle
-    #     side_lengths = xmax - xmin
-    #     radius = np.min(side_lengths) / 4.0  # Use the shorter side's forth as radius
-    #
     #     if sampler == "grid":
-    #
-    #         # 生成等间距的角度值，范围从0到2π
-    #         angles = np.linspace(0, 2 * np.pi, num_space_samples)
-    #         # 生成等间距的时间值
-    #         time_samples = np.linspace(time_start, time_end, num_time_samples)
-    #         # 初始化列表以存储所有采样点
-    #         all_samples = []
-    #         # 对每个时间点进行空间采样
-    #         for t in time_samples:
-    #             # 计算圆周上的 (x, y) 坐标
-    #             x_samples = x_center + radius * np.cos(angles)
-    #             y_samples = y_center + radius * np.sin(angles)
-    #
-    #             # 将时间坐标添加到每个空间采样点
-    #             samples_at_t = np.column_stack((x_samples, y_samples, np.full(num_space_samples, t)))
-    #             # 添加到所有采样点的列表
-    #             all_samples.append(samples_at_t)
-    #         # 将所有采样点组合成一个数组
-    #         x_batch = np.vstack(all_samples)
+    #         xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
+    #         xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+    #         x_batch = xx.reshape((-1, xd))
     #     else:
     #         if sampler == "halton":
     #             # use scipy as not implemented in jax (!)
@@ -614,11 +525,100 @@ class RectangularDomainND(Domain):
     #             s = r.random(np.prod(batch_shape))
     #         elif sampler == "uniform":
     #             s = jax.random.uniform(key, (np.prod(batch_shape), xd))
-    #
     #         xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
     #         x_batch = xmin + (xmax - xmin) * s
+    #     # After generating x_batch
+    #     xmin = xmin[:2]
+    #     xmax = xmax[:2]
+    #     x_batch_xy = x_batch[:, :2]
+    #     x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
+    #     y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+    #     xy_center = np.array([[x_center, y_center]])
+    #     side_lengths = xmax - xmin
+    #     radius = np.min(side_lengths) / 4.0
+    #     def generate_circular_boundary_points(center, r, num_points):
+    #         cx = center[0]
+    #         cy = center[1]
+    #         theta = np.linspace(0, 2 * np.pi, num_points)
+    #         x = cx + r * np.cos(theta)
+    #         y = cy + r * np.sin(theta)
+    #         circle_points = np.column_stack((x, y))
+    #         return circle_points.tolist()
+    #     pboundary = generate_circular_boundary_points([x_center, y_center], radius, batch_shape[0] * batch_shape[1])
     #
-    #     return jnp.array(x_batch)
+    #     #       pdb.set_trace()
+    #     def foo(input_list):
+    #         expanded_list = []
+    #         hw = np.linspace(0, 2, 80)
+    #         for sublist in input_list:
+    #             for i in hw:
+    #                 expanded_list.append(sublist + [i])
+    #         return expanded_list
+    #
+    #     x_filtered = foo(pboundary)
+    #     #      pdb.set_trace()
+    #     return jnp.array(x_filtered)
+
+    def _rectangle_sampler2NDDD_cycle(key, sampler, xmin, xmax, batch_shape):
+        assert xmin.shape == xmax.shape
+        assert xmin.ndim == 1
+        xd = len(xmin)
+        assert len(batch_shape) == xd
+
+        if not sampler in ["grid", "uniform", "sobol", "halton"]:
+            raise ValueError("ERROR: unexpected sampler")
+
+        # 空间采样点的数量
+        num_space_samples = batch_shape[0] * batch_shape[1]
+        # 时间范围和采样点的数量
+        time_start = xmin[2]
+        time_end = xmax[2]
+        num_time_samples = batch_shape[2]
+        #get x、y_center radius
+        xmin = xmin[:2]
+        xmax = xmax[:2]
+        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
+        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+        xy_center = np.array([[x_center, y_center]])
+        # Compute the center of the rectangle
+        side_lengths = xmax - xmin
+        radius = np.min(side_lengths) / 4.0  # Use the shorter side's forth as radius
+
+        if sampler == "grid":
+
+            # 生成等间距的角度值，范围从0到2π
+            angles = np.linspace(0, 2 * np.pi, num_space_samples)
+            # 生成等间距的时间值
+            time_samples = np.linspace(time_start, time_end, num_time_samples)
+            # 初始化列表以存储所有采样点
+            all_samples = []
+            # 对每个时间点进行空间采样
+            for t in time_samples:
+                # 计算圆周上的 (x, y) 坐标
+                x_samples = x_center + radius * np.cos(angles)
+                y_samples = y_center + radius * np.sin(angles)
+
+                # 将时间坐标添加到每个空间采样点
+                samples_at_t = np.column_stack((x_samples, y_samples, np.full(num_space_samples, t)))
+                # 添加到所有采样点的列表
+                all_samples.append(samples_at_t)
+            # 将所有采样点组合成一个数组
+            x_batch = np.vstack(all_samples)
+        else:
+            if sampler == "halton":
+                # use scipy as not implemented in jax (!)
+                r = scipy.stats.qmc.Halton(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "sobol":
+                r = scipy.stats.qmc.Sobol(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "uniform":
+                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+
+            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+            x_batch = xmin + (xmax - xmin) * s
+
+        return jnp.array(x_batch)
 
 if __name__ == "__main__":
 

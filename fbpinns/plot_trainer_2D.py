@@ -4,37 +4,25 @@ Defines plotting functions for 2D FBPINN / PINN problems
 This module is used by plot_trainer.py (and subsequently trainers.py)
 """
 
+import pdb
 import matplotlib.pyplot as plt
 
 from fbpinns.plot_trainer_1D import _plot_setup, _to_numpy
 
-def _plot_test_im1(u_test, xlim, ulim, n_test, it=None):
+def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
+#    pdb.set_trace()
     u_test = u_test.reshape(n_test)
     if it is not None:
         u_test = u_test[:,:,it]# for 3D
-    plt.imshow(u_test.T,  # transpose as jnp.meshgrid uses indexing="ij"
+    plt.imshow(u_test.T,# transpose as jnp.meshgrid uses indexing="ij"
                extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
                origin='lower',
                cmap="RdBu")
-    # plt.imshow(u_test.T,  # transpose as jnp.meshgrid uses indexing="ij"
-    #            origin="lower", extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
-    #            cmap="viridis")
     plt.colorbar()
     plt.xlim(xlim[0][0], xlim[1][0])
     plt.ylim(xlim[0][1], xlim[1][1])
     plt.gca().set_aspect("equal")
 
-def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
-    u_test = u_test.reshape(n_test)
-    if it is not None:
-        u_test = u_test[:,:,it]# for 3D
-    plt.imshow(u_test.T,  # transpose as jnp.meshgrid uses indexing="ij"
-               origin="lower", extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
-               cmap="viridis")
-    plt.colorbar()
-    plt.xlim(xlim[0][0], xlim[1][0])
-    plt.ylim(xlim[0][1], xlim[1][1])
-    plt.gca().set_aspect("equal")
 @_to_numpy
 def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test, u_test_lossess, num):
 
@@ -120,10 +108,3 @@ def plot_2D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
 
     plt.tight_layout()
     return (("test",f),)
-
-
-
-
-
-
-
