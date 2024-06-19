@@ -24,7 +24,7 @@ def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
     plt.gca().set_aspect("equal")
 
 @_to_numpy
-def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test, u_test_lossess, num):
+def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test):
 
     xlim, ulim = _plot_setup(x_batch_test, u_exact)
     xlim0 = x_batch_test.min(0), x_batch_test.max(0)
@@ -52,12 +52,6 @@ def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
     plt.subplot(3,2,4)
     plt.title(f"[{i}] Ground truth")
     _plot_test_im(u_exact[:,0], xlim0, ulim, n_test)
-
-    # plot loss
-    plt.subplot(3, 2, 5)
-    plt.title("Lossess")
-    x_values = range(((i + 1) // num) + 1)
-    plt.plot(x_values, u_test_lossess)
 
     # plot raw hist
     plt.subplot(3,2,6)

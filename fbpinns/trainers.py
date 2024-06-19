@@ -7,7 +7,7 @@ To train a FBPINN / PINN, use a Constants object to set up the problem and defin
 to one of the trainer classes defined here
 """
 
-import time
+import time, pdb
 from functools import partial
 
 import jax
@@ -21,7 +21,8 @@ from fbpinns.trainers_base import _Trainer
 from fbpinns import networks, plot_trainer
 from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
-
+from scipy.spatial.distance import cdist
+import matplotlib.pyplot as plt
 # LABELLING CONVENTIONS
 
 # xd = dimensionality of point
@@ -117,13 +118,11 @@ def get_jmaps(required_ujs):
 #     #window_fn 函数的作用是基于给定的参数 params 和输入 x
 #     #返回一个加权和的结果，其中权重由 params[4] 控制。
 #     return u*w, w, u_raw
-def FBPINN_model_inner(params, x,norm_fn, network_fn, unnorm_fn, window_fn):
+def FBPINN_model_inner(params, x, norm_fn, network_fn, unnorm_fn, window_fn):
     x_norm = norm_fn(params, x)# normalise
     u_raw = network_fn(params, x_norm)# network
     u = unnorm_fn(params, u_raw)# unnormalise
     w = window_fn(params, x)# window
-    #window_fn 函数的作用是基于给定的参数 params 和输入 x
-    #返回一个加权和的结果，其中权重由 params[4] 控制。
     return u*w, w, u_raw
 
 def PINN_model_inner(all_params, x,  norm_fn, network_fn, unnorm_fn):
@@ -132,6 +131,80 @@ def PINN_model_inner(all_params, x,  norm_fn, network_fn, unnorm_fn):
     u = unnorm_fn(u_raw)# unnormalise
     return u, u_raw
 
+# def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
+#     "Defines FBPINN model"
+#
+#     norm_fn, network_fn, unnorm_fn, window_fn, constraining_fn = model_fns
+#     m_take, n_take, p_take, np_take, npou = takes
+#
+#     # take x_batch
+#     x_take = x_batch[n_take]# (s, xd)
+#     log_ = logger.info if verbose else logger.debug
+#     log_("x_batch")
+#     log_(str_tensor(x_batch))# (n, xd)
+#     log_("x_take")
+#     log_(str_tensor(x_take))
+#
+#     # take subdomain params
+#     d = all_params
+#     all_params_take = {t_k: {cl_k: {k: jax.tree_map(lambda p:p[m_take], d[t_k][cl_k][k]) if k=="subdomain" else d[t_k][cl_k][k]
+#         for k in d[t_k][cl_k]}
+#         for cl_k in d[t_k]}
+#         for t_k in ["static", "trainable"]}
+#     f = {t_k: {cl_k: {k: jax.tree_map(lambda p: 0, d[t_k][cl_k][k]) if k=="subdomain" else jax.tree_map(lambda p: None, d[t_k][cl_k][k])
+#         for k in d[t_k][cl_k]}
+#         for cl_k in d[t_k]}
+#         for t_k in ["static", "trainable"]}
+#     logger.debug("all_params")
+#     logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
+#     logger.debug("all_params_take")
+#     logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params_take))
+#     logger.debug("vmap f")
+#     logger.debug(f)
+#     # 创建一个与 m_take 相同长度的零数组
+#     mask = jnp.zeros_like(m_take, dtype=int)
+#     # 将 m_take 中值为2的位置设为1
+#     mask = jnp.where(m_take == 3, 1, mask)
+#
+#     # jax.debug.print("ret {}", mask)
+#     # us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, 0, None, None, None, None))(all_params_take, x_take, mask,
+#     #                                                                                      norm_fn, network_fn, unnorm_fn, window_fn)  # (s, ud)
+#     us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, None, None, None, None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)
+#
+#     #思路：先判别点是属于哪个子域的，进入到if-else语句中，然后再利用vmap函数
+#     #unnormalise * window  window  network
+#     # us = u*w（在求和之前，每个网络被一个平滑的、可微的窗口函数相乘，该窗口函数将其局部限制在它的子区域内
+#     # ws = w（原始的x经过窗函数处理的值，更像是一个系数）
+#     # us_raw = u_raw(经过标准化然后神经网络输出的值）
+#     logger.debug("u")
+#     logger.debug(str_tensor(us))
+#     # apply POU and sum
+#     u = jnp.concatenate([us, ws], axis=1)# (s, ud+1)
+#     # unnormalise * window  window
+#     # 其中 s 是样本数量，ud 是数据维度。
+#     u = jax.ops.segment_sum(u, p_take, indices_are_sorted=False, num_segments=len(np_take))# (_, ud+1)
+#     #p_take = Array([0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9], dtype=int32)
+#     #np_take = Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
+#     # 这行代码应用了segment_sum操作，它根据p_take数组中的索引将u中的元素分组求和。
+#     # p_take指定了每个元素属于哪个子域，num_segments=len(np_take)指定了总共有多少个不同子域。
+#     wp = u[:,-1:]
+#     #将数组 u 的最后一列提取出来,最后一列是window
+#     u = u[:,:-1]/wp
+#     #这一行代码是将数组 u 中除了最后一列之外的所有列除以 wp，也就是unnormalise * window / window
+#     logger.debug(str_tensor(u))
+#     u = jax.ops.segment_sum(u, np_take, indices_are_sorted=False, num_segments=len(x_batch))# (n, ud)
+#     #np_take = Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
+#     logger.debug(str_tensor(u))
+#     u = u/npou
+#     ##npou：1
+#     #npou 计算了所有不同处理单元索引的数量，因此它代表了总的处理单元数量。
+#     logger.debug(str_tensor(u))
+#
+#     # then apply constraining operator
+#     u = constraining_fn(all_params, x_batch, u)# (n, ud)
+#     # logger.debug(str_tensor(u))
+#
+#     return u, wp, us, ws, us_raw
 def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     "Defines FBPINN model"
 
@@ -162,51 +235,35 @@ def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params_take))
     logger.debug("vmap f")
     logger.debug(f)
-    # 创建一个与 m_take 相同长度的零数组
-    mask = jnp.zeros_like(m_take, dtype=int)
-    # 将 m_take 中值为2的位置设为1
-    mask = jnp.where(m_take == 3, 1, mask)
 
-    # jax.debug.print("ret {}", mask)
-    # us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, 0, None, None, None, None))(all_params_take, x_take, mask,
-    #                                                                                      norm_fn, network_fn, unnorm_fn, window_fn)  # (s, ud)
-    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, None, None, None, None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)
-
-    #思路：先判别点是属于哪个子域的，进入到if-else语句中，然后再利用vmap函数
-    #unnormalise * window  window  network
-    # us = u*w（在求和之前，每个网络被一个平滑的、可微的窗口函数相乘，该窗口函数将其局部限制在它的子区域内
-    # ws = w（原始的x经过窗函数处理的值，更像是一个系数）
-    # us_raw = u_raw(经过标准化然后神经网络输出的值）
+    # batch over parameters and points
+    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f,0,None,None,None,None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)# (s, ud)
+    #us是神经网络输出的N*unnorm*窗函数w
+    #ws是窗函数
+    #us_raw是神经网络原始输出的N
     logger.debug("u")
     logger.debug(str_tensor(us))
     # apply POU and sum
     u = jnp.concatenate([us, ws], axis=1)# (s, ud+1)
-    # unnormalise * window  window
-    # 其中 s 是样本数量，ud 是数据维度。
     u = jax.ops.segment_sum(u, p_take, indices_are_sorted=False, num_segments=len(np_take))# (_, ud+1)
-    #p_take = Array([0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9], dtype=int32)
-    #np_take = Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
-    # 这行代码应用了segment_sum操作，它根据p_take数组中的索引将u中的元素分组求和。
-    # p_take指定了每个元素属于哪个子域，num_segments=len(np_take)指定了总共有多少个不同子域。
+    # p_take：点与POU组合的唯一索引。点在原批次中的索引。
+    # np_take：点的次序索引。
+    #     #p_take = Array([0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9], dtype=int32)
+    #     #np_take = Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
+    #     # 这行代码应用了segment_sum操作，它根据p_take数组中的索引将u中的元素分组求和。
     wp = u[:,-1:]
-    #将数组 u 的最后一列提取出来,最后一列是window
     u = u[:,:-1]/wp
-    #这一行代码是将数组 u 中除了最后一列之外的所有列除以 wp，也就是unnormalise * window / window
     logger.debug(str_tensor(u))
     u = jax.ops.segment_sum(u, np_take, indices_are_sorted=False, num_segments=len(x_batch))# (n, ud)
-    #np_take = Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
     logger.debug(str_tensor(u))
     u = u/npou
-    ##npou：1
-    #npou 计算了所有不同处理单元索引的数量，因此它代表了总的处理单元数量。
     logger.debug(str_tensor(u))
 
     # then apply constraining operator
-    u = constraining_fn(all_params, x_batch, u)# (n, ud)
-    # logger.debug(str_tensor(u))
+    # u = constraining_fn(all_params, x_batch, u)# (n, ud)
+    logger.debug(str_tensor(u))
 
     return u, wp, us, ws, us_raw
-
 def PINN_model(all_params, x_batch, model_fns, verbose=True):
     "Defines PINN model"
 
@@ -362,9 +419,17 @@ def PINN_model_jit(all_params, x_batch, model_fns, verbose=True):
 
 def get_inputs(x_batch, active, all_params, decomposition):
     "Get the inputs to the FBPINN model based on x_batch and the active models"
+    #基于 `x_batch` 和活跃模型，获取 FB-PINN 模型的输入数据。
 
     # get the ims inside x_batch
     n_take, m_take, training_ims = decomposition.inside_points(all_params, x_batch)# (nc, m)
+    #函数返回三个结果：
+    # n_take：点在原批次中的索引（take[:,0]）
+    #len(n_take)>len(x_batch)是因为无论是n_take还是m_take都是看每个点出现在子域的次数
+    #有的点可能会出现两次所以导致维度的扩张
+    # m_take:对应的子域索引（take[:,1]），
+    # training_ims:以及至少有一个点在其内的子域索引（inside_ims）。
+    # 输入数据批次 x_batch 中每个点属于哪些子域
 
     # get active_ims and fixed_ims
     # scheduler should return
@@ -392,6 +457,7 @@ def get_inputs(x_batch, active, all_params, decomposition):
     logger.debug(active_ims)
     logger.debug("fixed_ims")
     logger.debug(fixed_ims)
+    #于模型初始状态和当前训练点信息，最终区分并获取了活跃模型和固定模型的索引
 
     # note, numbers in all_ims == numbers in training_ims == numbers in m_take
     # which also means we need all m_take points above
@@ -409,8 +475,9 @@ def get_inputs(x_batch, active, all_params, decomposition):
 
     # get POUs
     pous = all_params["static"]["decomposition"]["subdomain"]["pou"][all_ims].astype(int)
+    # 这一行从参数字典all_params中抽取了所有活跃和固定模型的POU信息，并将结果存储在pous数组中。
+    # all_ims是一个包含了所有当前考虑的模型索引的数组，这里通过索引all_ims来选择出与之相关的POU信息。
     np = jnp.stack([n_take, pous[m_take,0]], axis=-1).astype(int)# points and pous
-    #Array([[0, 0],[1, 0],[2, 0],[3, 0],[4, 0],[4, 0],[5, 0],[5, 0],[6, 0],[7, 0],[8, 0],[9, 0]], dtype=int32)
     #每一行表示一个数据点的索引和其对应的处理单元索引。
     # `pous[m_take, 0]`这个表达式的含义是从名为`pous`的数组中选取特定行和列的元素。
     # - `m_take`是一个索引数组或列表，用于选取`pous`数组的行。- `0`表示选取列的索引，这里始终选择第一列。
@@ -418,10 +485,7 @@ def get_inputs(x_batch, active, all_params, decomposition):
     #np是一个二维数组（12，2）。第一个坐标表示的是第几个点的索引，第二个坐标表示的是pou，也就是显示单元。
     logger.debug(str_tensor(np))
     npu,p_take = jnp.unique(np, axis=0, return_inverse=True)# unique points and pous (sorted), point-pou takes
-    # npu = Array([[0, 0],[1, 0],[2, 0],[3, 0],[4, 0],[5, 0],[6, 0],[7, 0],[8, 0],[9, 0]], dtype=int32)
-    #p_take = Array([0, 1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 9], dtype=int32)
     np_take = npu[:,0]
-    #Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=int32)
     #np_take 包含了所有点的次序的索引
     logger.debug(str_tensor(p_take))
     logger.debug(str_tensor(np_take))
@@ -431,6 +495,11 @@ def get_inputs(x_batch, active, all_params, decomposition):
     logger.debug(f"Total number of POUs: {npou}")
 
     takes = (m_take, n_take, p_take, np_take, npou)
+    # m_take：重新索引后的点所属子域的索引。
+    # n_take：点在原批次中的索引。
+    # p_take：点与POU组合的唯一索引。
+    # np_take：所有点的次序索引。
+    # npou：总的POU数量。
 
     # cut active and fixed parameter trees
     def cut_active(d):
@@ -467,29 +536,55 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
     logger.info("Total number of trainable parameters:")
     for k in all_params["trainable"]:
         logger.info(f'\t{k}: {total_size(all_params["trainable"][k]):,}')
+    #logger.info: 记录日志信息。
+    #all_params["trainable"]: 可训练参数的字典。
+    #total_size: 计算参数的总大小。
 
     # initialise optimiser
     optimiser = optax.adam(**c.optimiser_kwargs)
+    #创建一个 Adam 优化器实例，使用 c.optimiser_kwargs 中的参数。
     all_opt_states = optimiser.init(all_params["trainable"])
+    #初始化优化器状态，基于所有可训练参数。
     logger.debug("all_opt_states")
     logger.debug(jax.tree_map(lambda x: str_tensor(x), all_opt_states))
     optimiser_fn, loss_fn = optimiser.update, problem.loss_fn
+    #优化器的更新函数，用于在每次迭代中更新参数。
+    #损失函数，用于计算模型的误差。
+
+    # 优化器是机器学习和深度学习中的一个重要组成部分。
+    # 它负责调整模型的可训练参数，以最小化损失函数，从而提高模型的性能。
+    # 在神经网络训练过程中，优化器通过使用损失函数的梯度信息来更新模型参数，使模型的预测结果更加准确。
 
     # get global constraints (training points)
     key, subkey = random.split(key)
     constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.ns, start_batch_shapes=c.n_start, boundary_batch_shapes=c.n_boundary)
-    for constraint_ in constraints_global:
-        for c_ in constraint_[:-1]:
+    #调用 problem.sample_constraints 方法，生成全局约束。
+    #返回的 constraints_global 是一个列表，每个元素是一个约束。
+    for constraint_ in constraints_global:#遍历 constraints_global 中的每个约束。constraint_ 是当前遍历的约束。
+        for c_ in constraint_[:-1]:#遍历 constraint_ 的所有部分，但不包括最后一个部分（通过 [:-1] 实现切片操作）。例如，如果 constraint_ 有三个部分 [a, b, c]，那么 constraint_[:-1] 只包含 [a, b]。
             assert c_.shape[0] == constraint_[0].shape[0]
+            #确认当前部分 c_ 的第一个维度（采样点批次大小）与 constraint_ 的第一个部分（即 constraint_[0]）的第一个维度相同。
     # parse global constraints
     x_batch_global = jnp.concatenate([constraint_[0] for constraint_ in constraints_global])# (n, xd)ma
+    #constraint_[0] 表示每个约束的第一个部分，通常是输入数据 x。
+    #jnp.concatenate 将所有约束的输入数据沿第一个维度连接起来，形成一个大的输入批量 x_batch_global。
+    #结果是一个形状为 (n, xd) 的张量
+    #其中 n 是所有约束中样本数量的总和，xd 是输入数据的特征维度。
     constraint_offsets_global = jnp.array([0]+[constraint_[0].shape[0] for constraint_ in constraints_global[:-1]], dtype=int).cumsum()# (c,) offset index of each constraint
+    #每个约束列表的偏移量，用于在 x_batch_global 中定位。
     constraint_fs_global = jnp.zeros((x_batch_global.shape[0], len(constraints_global)), dtype=bool)# (n, c)
-    for ic in range(len(constraints_global)):# fill in constraint filters
+    # constraint_fs_global是一个布尔矩阵，表示每个样本属于哪些约束。
+    # 矩阵的形状为(n, c)，其中n是样本的总数，c是约束的数量。
+    # 初始值全为False，后续代码会填充这个矩阵，将特定位置的值设置为True。
+    # 这个矩阵在训练过程中用于指示每个样本和约束的关系，有助于模型根据约束信息进行训练。
+
+    for ic in range(len(constraints_global)):# fill in constraint filters 布尔矩阵用于指示每个样本属于哪些约束，通过遍历 constraints_global 填充矩阵。
         constraint_fs_global = constraint_fs_global.at[
             constraint_offsets_global[ic]:constraint_offsets_global[ic]+constraints_global[ic][0].shape[0], ic].set(True)
     required_ujss = [constraint_[-1] for constraint_ in constraints_global]
+    #从 constraints_global 列表中提取每个约束列表相应的导数约束条件。
     constraints_global = [constraint_[:-1] for constraint_ in constraints_global]
+    #从 constraints_global 列表中提取每个约束条件的除最后一个元素外的部分，并将其组成一个新的列表 constraints_global
     logger.info(f"Total number of constraints: {len(constraints_global)}")
     logger.debug("constraints_global")
     logger.debug(jax.tree_map(lambda x: str_tensor(x), constraints_global))
@@ -501,8 +596,11 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get jac maps
     jmapss = tuple(get_jmaps(required_ujs) for required_ujs in required_ujss)
+    # 根据给定的约束条件required_ujss，使用函数get_jmaps()计算得到对应的Jacobian映射，
+    # 并将结果存储在元组jmapss中。每个元素都是一个Jacobian映射。
 
     # get test points - for now, just use global interior points
+    # 只是简单地使用全局内部点作为测试点
     x_batch_test = domain.sample_interior(all_params=all_params, key=None, sampler="grid", batch_shape=c.n_test)
     logger.debug("x_batch_test")
     logger.debug(str_tensor(x_batch_test))
@@ -527,6 +625,8 @@ class FBPINNTrainer(_Trainer):
         # cut active points out of x_batch_global
         ims = jnp.arange(all_params["static"]["decomposition"]["m"])[active==1]
         training_ips, _d = decomposition.inside_models(all_params, x_batch_global, ims)# (n, mc)
+        # 该函数 inside_models_batch 的目的是确定输入数据批次 x_batch 中的哪些点位于给定的多个模型（通过 ims 索引表示）内部，
+        # 并返回这些点的索引以及每个模型内点的数量。
         x_batch = x_batch_global[training_ips]
 
         # report
@@ -538,6 +638,7 @@ class FBPINNTrainer(_Trainer):
         constraint_fs = constraint_fs_global[training_ips]# for each training point, whether in constraint
         ix_ = jnp.arange(x_batch.shape[0])
         constraint_ips = [ix_[f] for f in constraint_fs.T]# indices of training points in each constraint
+        #将属于活跃模型的训练点切割为三个部分，因为有三个约束条件
         constraints = [[c_[training_ips[constraint_ips[ic]]-constraint_offsets_global[ic]]
                         for c_ in constraints_global[ic]]
                        for ic in range(len(constraints_global))]# cut constraints
@@ -620,13 +721,20 @@ class FBPINNTrainer(_Trainer):
         "Train model"
 
         c, writer = self.c, self.writer
+        #行代码从类实例（假设是某个类的方法内部）中获取两个属性c和writer，
+        #并将它们赋给同名的局部变量。
 
         # generate root key
         key = random.PRNGKey(c.seed)
+        # 使用来自配置c中的随机种子c.seed初始化一个伪随机数生成器（PRNG）的密钥。
+        # 这在随机初始化模型参数时非常关键，确保实验的可重复性。
         np.random.seed(c.seed)
+        #同样地，设置NumPy的随机种子为c.seed，确保NumPy相关的随机操作也是确定性的。
 
         # define all_params
         all_params = {"static":{},"trainable":{}}
+        #创建一个字典all_params，它有两个键："static" 和 "trainable"，
+        #分别用来存放不可训练（静态）参数和可训练参数。
 
         # initialise domain, problem and decomposition params
         domain, problem, decomposition = c.domain, c.problem, c.decomposition
@@ -635,32 +743,54 @@ class FBPINNTrainer(_Trainer):
             ps_ = cl.init_params(**kwargs)
             if ps_[0]: all_params["static"][tag] = ps_[0]
             if ps_[1]: all_params["trainable"][tag] = ps_[1]
+        #对于每一个组件，使用特定的初始化参数调用其初始化方法，得到一组参数，其中可能包含静态和可训练参数。
+        #接下来，根据ps_中返回的参数类型（静态或可训练），将其分别添加到all_params的相应部分。
         assert (all_params["static"]["domain"]["xd"] ==\
                 all_params["static"]["problem"]["dims"][1] ==\
                 all_params["static"]["decomposition"]["xd"])
+        #确保子域、问题和分解的维度一致性，即它们都具有相同的空间维度xd。
+        # 这是保证模型正确配置的重要一步。
         logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
-
         # initialise subdomain network params
         network = c.network
         key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
         ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
+        #使用JAX的vmap函数，这允许我们并行地对每个子域应用network.init_params函数，使用对应的subkeys作为随机密钥，并传入网络初始化的关键字参数值
         if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0],0)# grab first set of static params only
         if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
         model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
+        #定义一个包含多个模型函数的元组 model_fns。
+        # 这些函数包括标准化函数、网络函数、去标准化函数、窗口函数和约束函数，
+        # 分别来自 decomposition、network 和 problem。
 
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
+        #初始化调度器 scheduler，用于控制训练过程中的调度策略。
+        # 调用配置中的 scheduler，传入所有参数 all_params、步数 n_steps 以及其他调度器的关键字参数 scheduler_kwargs。
 
         # common initialisation
         (optimiser, all_opt_states, optimiser_fn, loss_fn, key,
         constraints_global, x_batch_global, constraint_offsets_global, constraint_fs_global, jmapss,
         x_batch_test, u_exact) = _common_train_initialisation(c, key, all_params, problem, domain)
+        # optimiser: 优化器对象，用于优化模型参数。
+        # all_opt_states: 优化器的状态。
+        # optimiser_fn: 优化器函数，用于执行参数更新。
+        # loss_fn: 损失函数。
+        # key: 随机数生成器的 key。
+        # constraints_global: 所有约束条件的列表。去除约束条件中的导数信息
+        # x_batch_global: 全局数据点。
+        # constraint_offsets_global: 每个约束条件的偏移量索引。个数是约束列表的约束条件个数
+        # constraint_fs_global: 约束矩阵，表明所有采样点所属的约束列表的信息（n,c)
+        # jmapss: Jacobian映射。
+        # x_batch_test: 测试点。
+        # u_exact: 实际解
 
         # fix test data inputs
         logger.info("Getting test data inputs..")
         active_test_ = jnp.ones(all_params["static"]["decomposition"]["m"], dtype=int)
+        #创建一个全为 1 的数组，长度为 all_params["static"]["decomposition"]["m"]。这个数组用于表示哪些子域是活跃的。
         takes_, all_ims_, (_, _, _, cut_all_, _)  = get_inputs(x_batch_test, active_test_, all_params, decomposition)
         test_inputs = (takes_, all_ims_, cut_all_)
 
@@ -671,20 +801,16 @@ class FBPINNTrainer(_Trainer):
         merge_active, active_params, active_opt_states, fixed_params = None, None, None, None
         lossval = None
         for i,active_ in enumerate(scheduler):
-
             # update active
             if active_ is not None:
                 active = active_
-
                 # first merge latest all_params / all_opt_states
                 if i != 0:
                     all_params["trainable"] = merge_active(active_params, all_params["trainable"])
                     all_opt_states = tree_map_dicts(merge_active, active_opt_states, all_opt_states)
-
                 # then get new inputs to update step
                 active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch = \
                      self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global, constraint_fs_global, constraint_offsets_global, decomposition, problem)
-
                 # AOT compile update function
                 startc = time.time()
                 logger.info(f"[i: {i}/{self.c.n_steps}] Compiling update step..")
@@ -736,15 +862,14 @@ class FBPINNTrainer(_Trainer):
         "Report results"
 
         c = self.c
-        summary_,test_,model_save_ = [(i % f == 0) for f in
-                                      [c.summary_freq, c.test_freq, c.model_save_freq]]
-        if summary_ or test_ or model_save_:
+        summary_, test_, model_save_ = [(i % f == 0) for f in
+                                        [c.summary_freq, c.test_freq, c.model_save_freq]]
+        if i != 0:
+            rate = c.summary_freq / (time.time() - start1 - report_time)
+            self._print_summary(i, lossval.item(), rate, start0, summary_)
+            start1, report_time = time.time(), 0.
 
-            # print summary
-            if i != 0 and summary_:
-                rate = c.summary_freq / (time.time()-start1-report_time)
-                self._print_summary(i, lossval.item(), rate, start0)
-                start1, report_time = time.time(), 0.
+        if test_ or model_save_:
 
             if test_ or model_save_:
 
@@ -801,6 +926,20 @@ class FBPINNTrainer(_Trainer):
         else:
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
 
+        xmin = [-1.0, -1.0]
+        xmax = [1.0, 1.0]
+
+        x_batch_xy = x_batch_test[:, :2]
+        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
+        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+        xy_center = np.array([[x_center, y_center]])
+        # Compute the center of the rectangle
+        side_lengths = xmax[0] - xmin[0]
+        radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+        distances = cdist(x_batch_xy, xy_center, metric='euclidean')
+        mask = distances <= radius  # Points inside the circle
+        #        pdb.set_trace()
+        u_test = u_test.at[np.squeeze(mask)].set(0.0)
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
         l1n = l1 / u_exact.std().item()
@@ -810,9 +949,9 @@ class FBPINNTrainer(_Trainer):
 
         # create figures
         if i % (c.test_freq * 5) == 0:
-        # if i % (c.test_freq * 5) == 0 and i != 0:
             fs = plot_trainer.plot("FBPINN", all_params["static"]["problem"]["dims"],
-                x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test, u_test_lossess, num)
+                                   x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i,
+                                   active, decomposition, n_test)
             if fs is not None:
                 self._save_figs(i, fs)
 
@@ -885,7 +1024,7 @@ class PINNTrainer(_Trainer):
         logger.debug((p,f))
 
         # train loop
-        pstep, fstep, u_test_losses = 0, 0, []
+        pstep, fstep, u_test_losses, losses = 0, 0, [], []
         start0, start1, report_time = time.time(), time.time(), 0.
         lossval = None
         for i in range(c.n_steps):
@@ -897,21 +1036,21 @@ class PINNTrainer(_Trainer):
                             u_exact, x_batch_test, all_params, all_opt_states, model_fns, problem,
                             active_opt_states, active_params,
                             x_batch,
-                            lossval)
+                            lossval, losses)
 
             #take a training step
             lossval, active_opt_states, active_params = update(active_opt_states,
                                        active_params, static_params_dynamic,
                                        constraints)# note compiled function only accepts dynamic arguments
             pstep, fstep = pstep+p, fstep+f
-
+            losses.append([i, lossval])
             # report
             u_test_losses, start1, report_time = \
             self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
                         u_exact, x_batch_test, all_params, all_opt_states, model_fns, problem,
                         active_opt_states, active_params,
                         x_batch,
-                        lossval)
+                        lossval, losses)
 
         # cleanup
         writer.close()
@@ -927,19 +1066,18 @@ class PINNTrainer(_Trainer):
                 u_exact, x_batch_test, all_params, all_opt_states, model_fns, problem,
                 active_opt_states, active_params,
                 x_batch,
-                lossval):
+                lossval, losses):
         "Report results"
 
         c = self.c
         summary_,test_,model_save_ = [(i % f == 0) for f in
                                       [c.summary_freq, c.test_freq, c.model_save_freq]]
-        if summary_ or test_ or model_save_:
+        if i != 0:
+            rate = c.summary_freq / (time.time() - start1 - report_time)
+            self._print_summary(i, lossval.item(), rate, start0, summary_)
+            start1, report_time = time.time(), 0.
 
-            # print summary
-            if i != 0 and summary_:
-                rate = c.summary_freq / (time.time()-start1-report_time)
-                self._print_summary(i, lossval.item(), rate, start0)
-                start1, report_time = time.time(), 0.
+        if  test_ or model_save_:
 
             if test_ or model_save_:
 
@@ -952,7 +1090,7 @@ class PINNTrainer(_Trainer):
                 # take test step
                 if test_:
                     u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
+                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem, losses)
 
                 # save model
                 if model_save_:
@@ -962,15 +1100,25 @@ class PINNTrainer(_Trainer):
 
         return u_test_losses, start1, report_time
 
-    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem):
+    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem, losses):
         "Test step"
-
         c, writer = self.c, self.writer
         n_test = c.n_test
-
         # get PINN solution using test data
         u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
-
+        xmin = [-1.0, -1.0]
+        xmax = [1.0, 1.0]
+        x_batch_xy = x_batch_test[:, :2]
+        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
+        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+        xy_center = np.array([[x_center, y_center]])
+        # Compute the center of the rectangle
+        side_lengths = xmax[0] - xmin[0]
+        radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+        distances = cdist(x_batch_xy, xy_center, metric='euclidean')
+        mask = distances <= radius  # Points inside the circle
+        #        pdb.set_trace()
+        u_test = u_test.at[np.squeeze(mask)].set(0.0)
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
         l1n = l1 / u_exact.std().item()
@@ -980,7 +1128,7 @@ class PINNTrainer(_Trainer):
         # create figures
         if i % (c.test_freq * 5) == 0:
             fs = plot_trainer.plot("PINN", all_params["static"]["problem"]["dims"],
-                x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test)
+                x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test, losses)
             if fs is not None:
                 self._save_figs(i, fs)
 
@@ -1038,15 +1186,15 @@ if __name__ == "__main__":
     # run.train()
 
     # fdtd2d
-    subdomain_xs = [np.linspace(-0.5, 0.5, 5), np.linspace(-0.5, 0.5, 5), np.linspace(0, 1, 5)]
+    subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 2, 3)]
     subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
 
     c = Constants(
         run="test",
         domain=RectangularDomainND,
         domain_init_kwargs=dict(
-            xmin=np.array([-0.5, -0.5, 0]),
-            xmax=np.array([0.5, 0.5, 1]),
+            xmin=np.array([-1, -1, 0]),
+            xmax=np.array([1, 1, 2]),
         ),
         problem=FDTD3D,
         problem_init_kwargs=dict(
@@ -1060,20 +1208,21 @@ if __name__ == "__main__":
         ),
         network=FCN,
         network_init_kwargs=dict(
-            layer_sizes=[3, 32, 32, 32, 32, 32, 3],
+            layer_sizes=[3, 16, 32, 32, 3],
         ),
-        ns=((80, 80, 60),),
-        n_start=((300, 300, 1),),
-        n_boundary=((100, 100, 20),),
+        ns=((60, 60, 40),),
+        n_start=((200, 200, 1),),
+        n_boundary=((80, 80, 20),),
         # n_boundary = ((100, 1, 50),),
         n_test=(100, 100, 10),
-        n_steps=50000,
+        n_steps=70000,
         optimiser_kwargs=dict(learning_rate=1e-3),
-        summary_freq=500,
-        test_freq=500,
+        summary_freq=5000,
+        test_freq=5000,
         show_figures=False,
         clear_output=True,
     )
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 64, 3])
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 32, 32, 32, 3])
     run = PINNTrainer(c)
+    # run = FBPINNTrainer(c)
     run.train()
