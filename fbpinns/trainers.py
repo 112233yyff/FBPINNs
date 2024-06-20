@@ -1024,7 +1024,7 @@ class PINNTrainer(_Trainer):
         logger.debug((p,f))
 
         # train loop
-        pstep, fstep, u_test_losses, losses = 0, 0, [], []
+        pstep, fstep, u_test_losses = 0, 0, []
         start0, start1, report_time = time.time(), time.time(), 0.
         lossval = None
         for i in range(c.n_steps):
@@ -1036,21 +1036,20 @@ class PINNTrainer(_Trainer):
                             u_exact, x_batch_test, all_params, all_opt_states, model_fns, problem,
                             active_opt_states, active_params,
                             x_batch,
-                            lossval, losses)
+                            lossval)
 
             #take a training step
             lossval, active_opt_states, active_params = update(active_opt_states,
                                        active_params, static_params_dynamic,
                                        constraints)# note compiled function only accepts dynamic arguments
             pstep, fstep = pstep+p, fstep+f
-            losses.append([i, lossval])
             # report
             u_test_losses, start1, report_time = \
             self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
                         u_exact, x_batch_test, all_params, all_opt_states, model_fns, problem,
                         active_opt_states, active_params,
                         x_batch,
-                        lossval, losses)
+                        lossval)
 
         # cleanup
         writer.close()
@@ -1066,7 +1065,7 @@ class PINNTrainer(_Trainer):
                 u_exact, x_batch_test, all_params, all_opt_states, model_fns, problem,
                 active_opt_states, active_params,
                 x_batch,
-                lossval, losses):
+                lossval):
         "Report results"
 
         c = self.c
@@ -1090,7 +1089,7 @@ class PINNTrainer(_Trainer):
                 # take test step
                 if test_:
                     u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem, losses)
+                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
 
                 # save model
                 if model_save_:
@@ -1100,7 +1099,7 @@ class PINNTrainer(_Trainer):
 
         return u_test_losses, start1, report_time
 
-    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem, losses):
+    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem):
         "Test step"
         c, writer = self.c, self.writer
         n_test = c.n_test
@@ -1128,7 +1127,7 @@ class PINNTrainer(_Trainer):
         # create figures
         if i % (c.test_freq * 5) == 0:
             fs = plot_trainer.plot("PINN", all_params["static"]["problem"]["dims"],
-                x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test, losses)
+                x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test)
             if fs is not None:
                 self._save_figs(i, fs)
 
@@ -1223,6 +1222,6 @@ if __name__ == "__main__":
         clear_output=True,
     )
     c["network_init_kwargs"] = dict(layer_sizes=[3, 32, 32, 32, 3])
-    run = PINNTrainer(c)
-    # run = FBPINNTrainer(c)
+    # run = PINNTrainer(c)
+    run = FBPINNTrainer(c)
     run.train()

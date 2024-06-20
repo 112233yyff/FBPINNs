@@ -67,7 +67,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import draw, show
 
-def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd):
+def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd,c):
     f0 = 1
     Lf = 1
     xdim, ydim, time_tot = NX, NY, NSTEPS
@@ -106,7 +106,7 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     c0 = 1  # 1 / np.sqrt(e0 * u0)
     L0 = c0 / f0
     t0 = 1 / f0
-    epsilon = e0 * np.ones((xdim, ydim))
+    epsilon = c
     mu = u0 * np.ones((xdim, ydim))
 
     # PML setup
