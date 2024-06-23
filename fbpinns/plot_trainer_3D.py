@@ -57,12 +57,13 @@ def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
     return (("test",f),)
 
 @_to_numpy
-def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test, losses):
+def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test):
 
-    xlim, ulim = _plot_setup(x_batch_test, u_exact)
+    xlim, ulim1 = _plot_setup(x_batch_test, u_exact)
     xlim0 = x_batch.min(0), x_batch.max(0)
-
+    num = n_test[0] * n_test[1] * n_test[2]
     nt = n_test[-1]# slice across last dimension
+    batch = num / nt
     shape = (1+nt+1, 3)# nrows, ncols
     f = plt.figure(figsize=(8,8*shape[0]/3))
 
@@ -77,18 +78,24 @@ def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
 
     # plot full solution
     for it in range(nt):
+        it_start = int(it * batch)
+        it_end = int((it + 1) * batch)
+        xlim, ulim = _plot_setup(x_batch_test[it_start:it_end], u_exact[it_start:it_end])
+        differencelim = [[0], [0.1]]
+
         plt.subplot2grid(shape,(1+it,0))
-        plt.title(f"[{i}] Full solution")
+        plt.title(f"[{i}] Pinn solution")
         _plot_test_im(u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+        # _plot_test_im(u_test[:, 2], xlim0, ulim, n_test, it=it)
 
         plt.subplot2grid(shape,(1+it,1))
-        plt.title(f"[{i}] Ground truth")
+        plt.title(f" FDTD truth")
         _plot_test_im(u_exact, xlim0, ulim, n_test, it=it)
 
-        plt.subplot2grid(shape, (1 + it, 2))
+        plt.subplot2grid(shape,(1+it,2))
         plt.title(f"[{i}] Difference")
-        _plot_test_im(u_exact - u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-
+        # _plot_test_im(np.abs(u_exact - u_test[:,2].reshape(-1, 1)), xlim0, differencelim, n_test, it=it)
+        _plot_test_im(u_exact - u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
 
     # plot raw hist
     plt.subplot2grid(shape,(1+nt,0))
@@ -97,13 +104,6 @@ def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
     plt.legend(loc=1)
     plt.xlim(-5,5)
 
-    # plt.subplot2grid(shape,(1+nt,1))
-    # plt.title(f"[{i}] losses")
-    # iterations = [entry[0] for entry in losses]
-    # l1_values = [entry[-1] for entry in losses]  # 注意：-2 是因为 L1 损失在元组中的位置
-    # plt.xlabel('Iteration')
-    # plt.ylabel('L1 Loss')
-    # plt.plot(iterations, l1_values)  # steps
-    # # plt.show()
+    plt.tight_layout()
 
     return (("test",f),)
