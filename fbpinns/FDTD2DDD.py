@@ -112,7 +112,7 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     # PML setup
     pml_width_dim = 25
     gradingorder = 6
-    refl_coeff = 1e-4
+    refl_coeff = 1e-8
     sigmamax_x = (-np.log10(refl_coeff) * (gradingorder + 1) * e0 * c0) / (2 * pml_width_dim * deltax)
     sigmamax_y = (-np.log10(refl_coeff) * (gradingorder + 1) * e0 * c0) / (2 * pml_width_dim * deltay)
 

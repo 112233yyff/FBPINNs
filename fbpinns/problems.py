@@ -766,12 +766,12 @@ class FDTD3D(Problem):
         # Initialize c with zeros
         c = jnp.zeros_like(x)
         # # Define regions and their corresponding c values
-        # c = jnp.where((x <= 0) & (y <= 0), 1.1, c)  # Bottom-left region
-        # c = jnp.where((x > 0) & (y <= 0), 1.8, c)  # Bottom-right region
-        # c = jnp.where((x <= 0) & (y > 0), 1.3, c)  # Top-left region
-        # c = jnp.where((x > 0) & (y > 0), 1.95, c)  # Top-right region
-        c = jnp.where((x <= 0) , 1, c)  # Top-left region
-        c = jnp.where((x > 0), 2, c)  # Top-right region
+        c = jnp.where((x <= 0) & (y <= 0), 1, c)  # Bottom-left region
+        c = jnp.where((x > 0) & (y <= 0), 2, c)  # Bottom-right region
+        c = jnp.where((x <= 0) & (y > 0), 4, c)  # Top-left region
+        c = jnp.where((x > 0) & (y > 0), 9, c)  # Top-right region
+        # c = jnp.where((x <= 0) , 1, c)  # Top-left region
+        # c = jnp.where((x > 0), 2, c)  # Top-right region
         # Reshape c to match the expected output shape (n, 1)
         c = jnp.expand_dims(c, axis=1)
 
