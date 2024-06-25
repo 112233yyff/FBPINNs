@@ -701,10 +701,14 @@ class FDTD3D(Problem):
         c_fn = all_params["static"]["problem"]["c_fn"]
         # physics loss
         x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
-
+        c = c_fn(x_batch)
+        assert dHxdy.shape == c.shape
+        assert dHydx.shape == c.shape
+        # jax.debug.print("x_batch:ret{}", x_batch)
+        # jax.debug.print("c:ret{}",c)
         phys1 = jnp.mean((dHxdt + dEdy) ** 2)
         phys2 = jnp.mean((dHydt - dEdx) ** 2)
-        phys3 = jnp.mean((dEdt - (1/c_fn(all_params, x_batch)) * (dHydx - dHxdy)) ** 2)
+        phys3 = jnp.mean((dEdt - (1/c) * (dHydx - dHxdy)) ** 2)
         phys = phys1 + phys2 + phys3
 
         # start loss
@@ -714,29 +718,65 @@ class FDTD3D(Problem):
         else:
             start = 0
 
-        return 1e3 * phys + 1e4 * start
+        return 1e6 * phys + 1e7 * start
 
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
-        key = jax.random.PRNGKey(0)
-        return jax.random.normal(key, (x_batch.shape[0], 1))
+        params = all_params["static"]["problem"]
+        c, sd= params["c"], params["sd"]
+        c_fn = params["c_fn"]
+
+        (xmin, ymin, tmin),(xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
+
+        # get grid spacing
+        deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (tmax - tmin) / (batch_shape[2] - 1)
+
+        # get f0, target deltas of FD simulation
+        f0 = c / sd  # approximate frequency of wave
+        DELTAX = 1 / (f0 * 10)
+        DELTAY = 1 / (f0 * 10)# target fine sampled deltas
+        DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
+        dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
+        DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
+        NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
+
+        xx, yy = np.meshgrid(np.linspace(xmin, xmax, NX), np.linspace(ymin, ymax, NY), indexing="ij")  # (NX, NY)
+
+        # get velocity model
+        x = np.stack([xx.ravel(), yy.ravel()], axis=1)  # (n, 2)
+        c = np.array(c_fn(x))
+        if c.shape[0] > 1:
+            c = c.reshape((NX, NY))
+        else:
+            c = c * np.ones_like(xx)
+        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, c,)
+        Ez = Ez[::dx, ::dy, ::dt]
+        Ez = jnp.ravel(Ez)
+        Ez = jnp.reshape(Ez, (-1, 1))
+
+        # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
+        return Ez
+    # @staticmethod
+    # def exact_solution(all_params, x_batch, batch_shape):
+    #     key = jax.random.PRNGKey(0)
+    #     return jax.random.normal(key, (x_batch.shape[0], 1))
     @staticmethod
-    def c_fn(all_params, x_batch):
-        "Computes the velocity model"
-        # Extract coordinates from x_batch
-        x = x_batch[:, 0]  # x-coordinates
-        y = x_batch[:, 1]  # y-coordinates
+    def c_fn(x_batch):
+        x, y = x_batch[:, 0], x_batch[:, 1]
         # Initialize c with zeros
         c = jnp.zeros_like(x)
-        # Define regions and their corresponding c values
-        c = jnp.where((x <= 0) & (y <= 0), 1.2, c)  # Bottom-left region
-        c = jnp.where((x > 0) & (y <= 0), 1.6, c)  # Bottom-right region
-        c = jnp.where((x <= 0) & (y > 0), 1.3, c)  # Top-left region
-        c = jnp.where((x > 0) & (y > 0), 1.5, c)  # Top-right region
+        # # Define regions and their corresponding c values
+        # c = jnp.where((x <= 0) & (y <= 0), 1.1, c)  # Bottom-left region
+        # c = jnp.where((x > 0) & (y <= 0), 1.8, c)  # Bottom-right region
+        # c = jnp.where((x <= 0) & (y > 0), 1.3, c)  # Top-left region
+        # c = jnp.where((x > 0) & (y > 0), 1.95, c)  # Top-right region
+        c = jnp.where((x <= 0) , 1, c)  # Top-left region
+        c = jnp.where((x > 0), 2, c)  # Top-right region
         # Reshape c to match the expected output shape (n, 1)
         c = jnp.expand_dims(c, axis=1)
 
         return c
+
 
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
