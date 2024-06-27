@@ -1250,9 +1250,7 @@ if __name__ == "__main__":
             xmax=np.array([1, 1, 2]),
         ),
         problem=FDTD3D,
-        problem_init_kwargs=dict(
-            c=1, sd=0.1,
-        ),
+        problem_init_kwargs=dict(),
         decomposition=RectangularDecompositionND,
         decomposition_init_kwargs=dict(
             subdomain_xs=subdomain_xs,
@@ -1263,6 +1261,7 @@ if __name__ == "__main__":
         network_init_kwargs=dict(
             layer_sizes=[3, 16, 32, 32, 3],
         ),
+
         ns=((100, 100, 60),),
         n_start=((200, 200, 1),),
         n_boundary=((80, 80, 20),),

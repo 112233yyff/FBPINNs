@@ -658,19 +658,31 @@ class FDTD3D(Problem):
         Boundary conditions:
 
     """
-
+    # @staticmethod
+    # def init_params(c=1, sd=0.1):
+    #     static_params = {
+    #         "dims": (3, 3),
+    #         "c": c,
+    #         "c_fn": FDTD3D.c_fn,  # velocity function
+    #         "sd": sd,
+    #     }
+    #     return static_params, {}
     @staticmethod
-    def init_params(c=1, sd=1):
+    def init_params(c0=1, source=np.array([[0.5, 0.5, 0.1, 1.]]), mixture=np.array([[0, 0, 0.1, 1]])):
+
         static_params = {
-            "dims": (3, 3),
-            "c": c,
-            "c_fn": FDTD3D.c_fn,  # velocity function
-            "sd": sd,
-        }
+            "dims":(3,3),
+            "c0":c0,
+            "c_fn":WaveEquationGaussianVelocity3D.c_fn,# velocity function
+            "source":jnp.array(source),# location, width and amplitude of initial gaussian sources (k, 4)
+            "mixture":jnp.array(mixture),# location, width and amplitude of gaussian pertubations in velocity model (l, 4)
+            }
         return static_params, {}
 
     @staticmethod
     def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
+        params = all_params["static"]["problem"]
+        source = params["source"]
         # physics loss
         x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
         required_ujs_phys = (
@@ -684,9 +696,9 @@ class FDTD3D(Problem):
         )
         # start loss
         x_batch_start = domain.sample_start2d(all_params, key, sampler, start_batch_shapes[0])
-        x = x_batch_start[:, 0:1] # 提取 x 坐标
-        y = x_batch_start[:, 1:2]
-        E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (0.1 ** 2))
+        x, t = x_batch_start[:,0:2], x_batch_start[:,2:3]
+        p = jnp.expand_dims(source, axis=1)  # (k, 1, 4)
+        E_start = (p[:,:,3:4]*jnp.exp(-0.5 * ((x-p[:,:,0:2])**2).sum(2, keepdims=True)/(p[:,:,2:3]**2))).sum(0)# (n, 1)
         Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
         Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
         required_ujs_start = (
@@ -701,7 +713,7 @@ class FDTD3D(Problem):
         c_fn = all_params["static"]["problem"]["c_fn"]
         # physics loss
         x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
-        c = c_fn(x_batch)
+        c = c_fn(all_params, x_batch)
         assert dHxdy.shape == c.shape
         assert dHydx.shape == c.shape
         # jax.debug.print("x_batch:ret{}", x_batch)
@@ -723,33 +735,51 @@ class FDTD3D(Problem):
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
         params = all_params["static"]["problem"]
-        c, sd= params["c"], params["sd"]
+        c0, source = params["c0"], params["source"]
         c_fn = params["c_fn"]
 
-        (xmin, ymin, tmin),(xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
+        (xmin, ymin, tmin), (xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
 
         # get grid spacing
-        deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (tmax - tmin) / (batch_shape[2] - 1)
+        deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (
+                    tmax - tmin) / (batch_shape[2] - 1)
 
         # get f0, target deltas of FD simulation
-        f0 = c / sd  # approximate frequency of wave
-        DELTAX = 1 / (f0 * 10)
-        DELTAY = 1 / (f0 * 10)# target fine sampled deltas
-        DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
-        dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
-        DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
-        NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
+        f0 = c0 / source[:, 2].min()  # approximate frequency of wave
+        DELTAX = DELTAY = 1 / (f0 * 10)  # target fine sampled deltas
+        DELTAT = DELTAX / (4 * np.sqrt(2) * c0)  # target fine sampled deltas
+        dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(
+            np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
+        DELTAX, DELTAY, DELTAT = deltax / dx, deltay / dy, deltat / dt
+        NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1), batch_shape[2] * dt - (dt - 1)
 
+        # get starting wavefield
         xx, yy = np.meshgrid(np.linspace(xmin, xmax, NX), np.linspace(ymin, ymax, NY), indexing="ij")  # (NX, NY)
+        x = np.stack([xx.ravel(), yy.ravel()], axis=1)  # (n, 2)
+        exp = np.exp
+        p = np.expand_dims(source, axis=1)  # (k, 1, 4)
+        x = np.expand_dims(x, axis=0)  # (1, n, 2)
+        f = (p[:, :, 3:4] * exp(-0.5 * ((x - p[:, :, 0:2]) ** 2).sum(2, keepdims=True) / (p[:, :, 2:3] ** 2))).sum(
+            0)  # (n, 1)
+        p0 = f.reshape((NX, NY))
 
         # get velocity model
         x = np.stack([xx.ravel(), yy.ravel()], axis=1)  # (n, 2)
-        c = np.array(c_fn(x))
+        c = np.array(c_fn(all_params, x))
         if c.shape[0] > 1:
             c = c.reshape((NX, NY))
         else:
             c = c * np.ones_like(xx)
-        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, c,)
+
+        Ez = FDTD2D(NX,
+                    NY,
+                    NSTEPS,
+                    DELTAX,
+                    DELTAY,
+                    DELTAT,
+                    c,
+                    p0,
+                    f0,)
         Ez = Ez[::dx, ::dy, ::dt]
         Ez = jnp.ravel(Ez)
         Ez = jnp.reshape(Ez, (-1, 1))
@@ -760,21 +790,35 @@ class FDTD3D(Problem):
     # def exact_solution(all_params, x_batch, batch_shape):
     #     key = jax.random.PRNGKey(0)
     #     return jax.random.normal(key, (x_batch.shape[0], 1))
+    # @staticmethod
+    # def c_fn(x_batch):
+    #     x, y = x_batch[:, 0], x_batch[:, 1]
+    #     # Initialize c with zeros
+    #     c = jnp.zeros_like(x)
+    #     # # Define regions and their corresponding c values
+    #     c = jnp.where((x <= 0) & (y <= 0), 1, c)  # Bottom-left region
+    #     c = jnp.where((x > 0) & (y <= 0), 2, c)  # Bottom-right region
+    #     c = jnp.where((x <= 0) & (y > 0), 4, c)  # Top-left region
+    #     c = jnp.where((x > 0) & (y > 0), 9, c)  # Top-right region
+    #     # c = jnp.where((x <= 0) , 1, c)  # Top-left region
+    #     # c = jnp.where((x > 0), 2, c)  # Top-right region
+    #     # Reshape c to match the expected output shape (n, 1)
+    #     c = jnp.expand_dims(c, axis=1)
+    #
+    #     return c
     @staticmethod
-    def c_fn(x_batch):
-        x, y = x_batch[:, 0], x_batch[:, 1]
-        # Initialize c with zeros
-        c = jnp.zeros_like(x)
-        # # Define regions and their corresponding c values
-        c = jnp.where((x <= 0) & (y <= 0), 1, c)  # Bottom-left region
-        c = jnp.where((x > 0) & (y <= 0), 2, c)  # Bottom-right region
-        c = jnp.where((x <= 0) & (y > 0), 4, c)  # Top-left region
-        c = jnp.where((x > 0) & (y > 0), 9, c)  # Top-right region
-        # c = jnp.where((x <= 0) , 1, c)  # Top-left region
-        # c = jnp.where((x > 0), 2, c)  # Top-right region
-        # Reshape c to match the expected output shape (n, 1)
-        c = jnp.expand_dims(c, axis=1)
+    def c_fn(all_params, x_batch):
+        "Computes the velocity model"
 
+        c0, mixture = all_params["static"]["problem"]["c0"], all_params["static"]["problem"]["mixture"]
+        x = x_batch[:,0:2]# (n, 2)
+        exp = jnp.exp
+
+        # get velocity model
+        p = jnp.expand_dims(mixture, axis=1)# (l, 1, 4)
+        x = jnp.expand_dims(x, axis=0)# (1, n, 2)
+        f = (p[:,:,3:4]*exp(-0.5 * ((x-p[:,:,0:2])**2).sum(2, keepdims=True)/(p[:,:,2:3]**2))).sum(0)# (n, 1)
+        c =  f# (n, 1)
         return c
 
 

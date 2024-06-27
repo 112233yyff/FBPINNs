@@ -64,21 +64,17 @@ import matplotlib.pyplot as plt
 #     return Ez_out
 
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import draw, show
 
-def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd,c):
-    f0 = 1
-    Lf = 1
+def FDTD2D(NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT,velocity,inital_source, f0):
+
     xdim, ydim, time_tot = NX, NY, NSTEPS
     deltax, deltay, deltat = DELTAX, DELTAY, DELTAT
     Ez_out = np.zeros((xdim, ydim, time_tot))
     # Initialize magnetic and electric fields
     Hx = np.zeros((xdim, ydim))
     Hy = np.zeros((xdim, ydim))
-    Ez = np.zeros((xdim, ydim))
-    # Courant stability factor
-    S = 1 / (2 ** 0.5)
+    inital_source = np.array(inital_source)
+    Ez = inital_source.astype(np.float64)
 
     # # Perfect Electric Conductor (PEC) setup
     # pec_cx, pec_cy = xmin + (1 / 2) * (xmax - xmin), ymin + (1 / 4) * (ymax - ymin)
@@ -106,7 +102,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     c0 = 1  # 1 / np.sqrt(e0 * u0)
     L0 = c0 / f0
     t0 = 1 / f0
-    epsilon = c
+    velocity = np.array(velocity)
+    epsilon = velocity.astype(np.float64)
     mu = u0 * np.ones((xdim, ydim))
 
     # PML setup
@@ -162,14 +159,6 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
         Cx[i, :] = (epsilon[i, :] - 0.5 * deltat * sigmax[i, :]) / (epsilon[i, :] + 0.5 * deltat * sigmax[i, :])
     for j in range(pml_width_dim, ydim - pml_width_dim):
         Cx[:, j] = (epsilon[:, j] - 0.5 * deltat * sigmay[:, j]) / (epsilon[:, j] + 0.5 * deltat * sigmay[:, j])
-
-    # Create initial Gaussian profile for Ez
-    xg = np.linspace(xmin, xmax, xdim)
-    yg = np.linspace(ymin, ymax, ydim)
-    xv, yv = np.meshgrid(xg, yg)
-    zz = np.exp(-0.5 * ((xv - 0.5) ** 2 + (yv - 0.5) ** 2) / sd ** 2)
-
-    Ez = zz
 
     # Simulation loop
     for t in range(1, time_tot + 1):
