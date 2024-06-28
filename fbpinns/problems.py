@@ -668,14 +668,19 @@ class FDTD3D(Problem):
     #     }
     #     return static_params, {}
     @staticmethod
-    def init_params(c0=1, source=np.array([[0.5, 0.5, 0.1, 1.]]), mixture=np.array([[0, 0, 0.1, 1]])):
+    def init_params(c0=1, source=np.array([[0.5, 0.5, 0.1, 1.]])):
 
         static_params = {
             "dims":(3,3),
             "c0":c0,
-            "c_fn":WaveEquationGaussianVelocity3D.c_fn,# velocity function
+            "c_fn":FDTD3D.c_fn,# velocity function
             "source":jnp.array(source),# location, width and amplitude of initial gaussian sources (k, 4)
-            "mixture":jnp.array(mixture),# location, width and amplitude of gaussian pertubations in velocity model (l, 4)
+             "mixture": [
+                [0.0, 0.0, 1.0, 1.0],  # bottom-left Gaussian parameters [cx, cy, sigma, amplitude]
+                [1.0, 0.0, 1.0, 2.0],  # bottom-right Gaussian parameters
+                [0.0, 1.0, 1.0, 4.0],  # top-left Gaussian parameters
+                [1.0, 1.0, 1.0, 9.0]   # top-right Gaussian parameters
+            ],# location, width and amplitude of gaussian pertubations in velocity model (l, 4)
             }
         return static_params, {}
 
@@ -790,6 +795,7 @@ class FDTD3D(Problem):
     # def exact_solution(all_params, x_batch, batch_shape):
     #     key = jax.random.PRNGKey(0)
     #     return jax.random.normal(key, (x_batch.shape[0], 1))
+
     # @staticmethod
     # def c_fn(x_batch):
     #     x, y = x_batch[:, 0], x_batch[:, 1]
@@ -807,18 +813,44 @@ class FDTD3D(Problem):
     #
     #     return c
     @staticmethod
+    # #single_gaussian
+    # def c_fn(all_params, x_batch):
+    #     "Computes the velocity model"
+    #
+    #     c0, mixture = all_params["static"]["problem"]["c0"], all_params["static"]["problem"]["mixture"]
+    #     x = x_batch[:,0:2]# (n, 2)
+    #     exp = jnp.exp
+    #
+    #     # get velocity model
+    #     p = jnp.expand_dims(mixture, axis=1)# (l, 1, 4)
+    #     x = jnp.expand_dims(x, axis=0)# (1, n, 2)
+    #     c = (p[:,:,3:4]*exp(-0.5 * ((x-p[:,:,0:2])**2).sum(2, keepdims=True)/(p[:,:,2:3]**2))).sum(0)# (n, 1)
+    #     return c
+    #mixture_gaussian
     def c_fn(all_params, x_batch):
         "Computes the velocity model"
 
         c0, mixture = all_params["static"]["problem"]["c0"], all_params["static"]["problem"]["mixture"]
-        x = x_batch[:,0:2]# (n, 2)
+        x, y = x_batch[:, 0], x_batch[:, 1]  # 分别提取x和y坐标
         exp = jnp.exp
 
-        # get velocity model
-        p = jnp.expand_dims(mixture, axis=1)# (l, 1, 4)
-        x = jnp.expand_dims(x, axis=0)# (1, n, 2)
-        f = (p[:,:,3:4]*exp(-0.5 * ((x-p[:,:,0:2])**2).sum(2, keepdims=True)/(p[:,:,2:3]**2))).sum(0)# (n, 1)
-        c =  f# (n, 1)
+        # 定义每个区域的高斯函数参数
+        params_bottom_left = mixture[0]
+        params_bottom_right = mixture[1]
+        params_top_left = mixture[2]
+        params_top_right = mixture[3]
+        def gaussian(params, x, y):
+            cx, cy, sigma, amplitude = params
+            return amplitude * exp(-0.5 * (((x - cx) ** 2 + (y - cy) ** 2) / (sigma ** 2)))
+        # 初始化 c
+        c = jnp.zeros_like(x)
+        # 计算每个区域的高斯函数并合并
+        c = jnp.where((x <= 0) & (y <= 0), gaussian(params_bottom_left, x, y), c)  # Bottom-left region
+        c = jnp.where((x > 0) & (y <= 0), gaussian(params_bottom_right, x, y), c)  # Bottom-right region
+        c = jnp.where((x <= 0) & (y > 0), gaussian(params_top_left, x, y), c)  # Top-left region
+        c = jnp.where((x > 0) & (y > 0), gaussian(params_top_right, x, y), c)  # Top-right region
+        c = jnp.expand_dims(c, axis=1)
+
         return c
 
 
