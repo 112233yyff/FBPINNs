@@ -354,7 +354,10 @@ class RectangularDomainND(Domain):
     def sample_interior(all_params, key, sampler, batch_shape):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_samplerND(key, sampler, xmin, xmax, batch_shape)
-
+    @staticmethod
+    def sample_interior_dense(all_params, key, sampler, batch_shape):
+        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+        return RectangularDomainND._rectangle_samplerND_dense(key, sampler, xmin, xmax, batch_shape)
     def sample_start2d(all_params, key, sampler, batch_shape):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_sampler2NDD(key, sampler, xmin, xmax, batch_shape)
@@ -396,6 +399,118 @@ class RectangularDomainND(Domain):
             x_batch = xmin + (xmax - xmin) * s
 
         return jnp.array(x_batch)
+
+
+    @staticmethod
+    # two_parts_dense
+    def _rectangle_samplerND_dense(key, sampler, xmin, xmax, batch_shape):
+        "Get flattened samples of x in a rectangle, either on mesh or random, with dense sampling in a specified x range"
+
+        assert xmin.shape == xmax.shape
+        assert xmin.ndim == 1
+        xd = len(xmin)
+        assert len(batch_shape) == xd
+
+        if not sampler in ["grid", "uniform", "sobol", "halton"]:
+            raise ValueError("ERROR: unexpected sampler")
+
+        def generate_samples(sampler, key, xmin, xmax, batch_shape):
+            if sampler == "grid":
+                xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
+                xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+                x_batch = xx.reshape((-1, xd))
+            else:
+                if sampler == "halton":
+                    # use scipy as not implemented in jax (!)
+                    r = scipy.stats.qmc.Halton(xd)
+                    s = r.random(np.prod(batch_shape))
+                elif sampler == "sobol":
+                    r = scipy.stats.qmc.Sobol(xd)
+                    s = r.random(np.prod(batch_shape))
+                elif sampler == "uniform":
+                    s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+
+                xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+                x_batch = xmin + (xmax - xmin) * s
+
+            return x_batch
+
+        # Generate uniform samples for the entire range
+        x_batch_uniform = generate_samples(sampler, key, xmin, xmax, batch_shape)
+        dense_x_range = (-0.1, 0.1)
+        dense_multiplier = 5
+        # Generate dense samples for the specified x range
+        xmin_dense = xmin.at[0].set(dense_x_range[0])
+        xmax_dense = xmax.at[0].set(dense_x_range[1])
+        batch_shape_dense = [dense_multiplier * b if xmin[i] == dense_x_range[0] and xmax[i] == dense_x_range[1] else b
+                             for i, b in enumerate(batch_shape)]
+
+        x_batch_dense = generate_samples(sampler, key, xmin_dense, xmax_dense, batch_shape_dense)
+
+        # Combine uniform and dense samples
+        x_batch = jnp.concatenate([x_batch_uniform, x_batch_dense], axis=0)
+
+        return jnp.array(x_batch)
+
+    @staticmethod
+    # four_parts_dense
+    def _rectangle_samplerND_dense(key, sampler, xmin, xmax, batch_shape):
+        "Get flattened samples of x in a rectangle, either on mesh or random, with dense sampling in specified ranges"
+
+        assert xmin.shape == xmax.shape
+        assert xmin.ndim == 1
+        xd = len(xmin)
+        assert len(batch_shape) == xd
+
+        if sampler not in ["grid", "uniform", "sobol", "halton"]:
+            raise ValueError("ERROR: unexpected sampler")
+
+        def generate_samples(sampler, key, xmin, xmax, batch_shape):
+            if sampler == "grid":
+                xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
+                xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+                x_batch = xx.reshape((-1, xd))
+            else:
+                if sampler == "halton":
+                    r = scipy.stats.qmc.Halton(xd)
+                    s = r.random(np.prod(batch_shape))
+                elif sampler == "sobol":
+                    r = scipy.stats.qmc.Sobol(xd)
+                    s = r.random(np.prod(batch_shape))
+                elif sampler == "uniform":
+                    s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+
+                xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+                x_batch = xmin + (xmax - xmin) * s
+
+            return x_batch
+
+        # Generate uniform samples for the entire range
+        x_batch_uniform = generate_samples(sampler, key, xmin, xmax, batch_shape)
+
+        # Dense sampling ranges and multipliers
+        dense_ranges = [((-0.1, 0.1), (-1, 1)), ((-1, 1), (-0.1, 0.1))]
+        dense_multipliers = [3, 3]
+
+        x_batch_dense_all = []
+        for dense_range, multiplier in zip(dense_ranges, dense_multipliers):
+            xmin_dense = xmin.copy()
+            xmax_dense = xmax.copy()
+            batch_shape_dense = batch_shape.copy()
+
+            for i, (dense_min, dense_max) in enumerate(dense_range):
+                xmin_dense = xmin_dense.at[i].set(dense_min)
+                xmax_dense = xmax_dense.at[i].set(dense_max)
+                batch_shape_dense[i] *= multiplier
+
+            x_batch_dense = generate_samples(sampler, key, xmin_dense, xmax_dense, batch_shape_dense)
+            x_batch_dense_all.append(x_batch_dense)
+
+        # Combine uniform and dense samples
+        x_batch = jnp.concatenate([x_batch_uniform] + x_batch_dense_all, axis=0)
+
+        return jnp.array(x_batch)
+
 
     def _rectangle_sampler2NDD(key, sampler, xmin, xmax, batch_shape):
         "Get flattened samples of x in a rectangle, either on mesh or random"
