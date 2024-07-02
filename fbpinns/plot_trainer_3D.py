@@ -244,7 +244,7 @@ def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
 #自适应每一行的最大值和最小值
 def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test):
 
-
+    xlim, ulim1 = _plot_setup(x_batch_test, u_exact)
     xlim0 = x_batch.min(0), x_batch.max(0)
 
     num = n_test[0] * n_test[1] * n_test[2]
@@ -264,12 +264,12 @@ def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
     ]
 
     # plot x_batch
-    for iplot, (a, b) in enumerate([[0, 1], [0, 2], [1, 2]]):
-        plt.subplot2grid(shape, (0, iplot))
+    for iplot, (a,b) in enumerate([[0,1],[0,2],[1,2]]):
+        plt.subplot2grid(shape,(0,iplot))
         plt.title(f"[{i}] Training points")
-        plt.scatter(x_batch[:, a], x_batch[:, b], alpha=0.5, color="k", s=1)
-        plt.xlim(common_xlim)
-        plt.ylim(common_ylim)
+        plt.scatter(x_batch[:,a], x_batch[:,b], alpha=0.5, color="k", s=1)
+        plt.xlim(xlim[0][a], xlim[1][a])
+        plt.ylim(xlim[0][b], xlim[1][b])
         plt.gca().set_aspect("equal")
 
         # plot full solution
