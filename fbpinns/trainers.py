@@ -1262,19 +1262,18 @@ if __name__ == "__main__":
             layer_sizes=[3, 16, 32, 32, 3],
         ),
 
-        ns=((100, 100, 60),),
-        n_start=((200, 200, 1),),
-        n_boundary=((80, 80, 20),),
-        # n_boundary = ((100, 1, 50),),
+        ns=((100, 80, 30),),
+        n_start=((100, 100, 1),),
+        n_boundary=((100, 100, 30),),
         n_test=(100, 100, 10),
-        n_steps=100000,
+        n_steps=70000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=2000,
         test_freq=2000,
         show_figures=False,
         clear_output=True,
     )
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 32, 32, 32, 3])
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 3])
     run = PINNTrainer(c)
     # run = FBPINNTrainer(c)
     run.train()
