@@ -1061,21 +1061,18 @@ class FDTD1D(Problem):
 #         c_fn = all_params["static"]["problem"]["c_fn"]
 #         # physics loss
 #         x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
-#
 #         phys1 = jnp.mean((dHxdt + dEdy) ** 2)
 #         phys2 = jnp.mean((dHydt - dEdx) ** 2)
 #         phys3 = jnp.mean((dEdt - (1/c_fn(all_params, x_batch)) * (dHydx - dHxdy)) ** 2)
 #         phys = phys1 + phys2 + phys3
-#
 #         # start loss
 #         x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[1]
 #         if len(Ec):
 #             start = jnp.mean((E - Ec) ** 2) + jnp.mean((Hx - Hxc) ** 2) + jnp.mean((Hy - Hyc) ** 2)
 #         else:
 #             start = 0
-#
 #         return 1e6 * phys + 1e7 * start
-#
+# #
 #     @staticmethod
 #     def exact_solution(all_params, x_batch, batch_shape):
 #         params = all_params["static"]["problem"]
@@ -1226,7 +1223,7 @@ class FDTD3D(Problem):
         boundary3 = jnp.mean((dEdt_bou - (1 / c_fn(all_params, x_batch_boundary)) * (dHydx_bou - dHxdy_bou)) ** 2)
         boundary = boundary1 + boundary2 + boundary3
 
-        return 1e5 * phys + 1e5 * start + 1e6 * boundary
+        return 1e4 * phys + 1e5 * start + 1e8 * boundary
 
     # @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):

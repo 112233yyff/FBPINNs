@@ -59,11 +59,10 @@ def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
 @_to_numpy
 def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test):
 
-    xlim, ulim1 = _plot_setup(x_batch_test, u_exact)
-    xlim0 = x_batch.min(0), x_batch.max(0)
-    num = n_test[0] * n_test[1] * n_test[2]
+    xlim, ulim = _plot_setup(x_batch_test, u_exact)#测试点的最大值最小值；实际解的最大值和最小值
+    xlim0 = x_batch.min(0), x_batch.max(0)#采样点的横坐标x的最大值和最小值
+
     nt = n_test[-1]# slice across last dimension
-    batch = num / nt
     shape = (1+nt+1, 3)# nrows, ncols
     f = plt.figure(figsize=(8,8*shape[0]/3))
 
@@ -78,10 +77,6 @@ def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
 
     # plot full solution
     for it in range(nt):
-        it_start = int(it * batch)
-        it_end = int((it + 1) * batch)
-        xlim, ulim = _plot_setup(x_batch_test[it_start:it_end], u_exact[it_start:it_end])
-        differencelim = [[0], [0.1]]
 
         plt.subplot2grid(shape,(1+it,0))
         plt.title(f"[{i}] Pinn solution")
