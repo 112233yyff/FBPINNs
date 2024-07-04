@@ -1224,7 +1224,7 @@ class FDTD3D(Problem):
         # jax.debug.print("phy_c:ret{}", phy_c)
         # jax.debug.print("bou_c:ret{}", bou_c)
         # boundary4 = jnp.mean((dEdt_bou - (1 / c_values) * (dHydx_bou - dHxdy_bou)) ** 2)
-        boundary = boundary1 + boundary2 + boundary3 + boundary4 + boundary1 + boundary2
+        boundary = boundary1 + boundary2 + boundary3
 
         # loss = 1e4 * phys + 1e5 * start + 1e6 * boundary
         # jax.debug.print("c_values_minus_1:ret{}", boundary1)
@@ -1236,7 +1236,7 @@ class FDTD3D(Problem):
         # jax.debug.print("start:ret{}", start)
         # jax.debug.print("boundary:ret{}", boundary)
         # jax.debug.print("loss:ret{}", loss)
-        return 1e4 * phys + 1e5 * start + 1e6 * boundary
+        return phys + 1e6 * start + 1e2 * boundary
 
     # @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
@@ -1513,34 +1513,34 @@ class WaveEquationGaussianVelocity3D(WaveEquationConstantVelocity3D):
         return static_params, {}
 
     @staticmethod
+    # def c_fn(all_params, x_batch):
+    #     "Computes the velocity model"
+    #
+    #     c0, mixture = all_params["static"]["problem"]["c0"], all_params["static"]["problem"]["mixture"]
+    #     x = x_batch[:,0:2]# (n, 2)
+    #     exp = jnp.exp
+    #
+    #     # get velocity model
+    #     p = jnp.expand_dims(mixture, axis=1)# (l, 1, 4)
+    #     x = jnp.expand_dims(x, axis=0)# (1, n, 2)
+    #     f = (p[:,:,3:4]*exp(-0.5 * ((x-p[:,:,0:2])**2).sum(2, keepdims=True)/(p[:,:,2:3]**2))).sum(0)# (n, 1)
+    #     c = c0 + f# (n, 1)
+    #     return c
     def c_fn(all_params, x_batch):
         "Computes the velocity model"
+        # Extract coordinates from x_batch
+        x = x_batch[:, 0]  # x-coordinates
+        y = x_batch[:, 1]  # y-coordinates
+        # Compute the distance from the point to the center (0, -0.5)
+        distance = jnp.sqrt((x - 0) ** 2 + (y + 0.5) ** 2)
+        # Initialize c with default value 1
+        c = jnp.ones_like(x)
+        # Set c to 2 for points inside the circle of radius 0.5 centered at (0, -0.5)
+        c = jnp.where(distance <= 0.5, 2.0, c)
+        # Reshape c to match the expected output shape (n, 1)
+        c = jnp.expand_dims(c, axis=1)
 
-        c0, mixture = all_params["static"]["problem"]["c0"], all_params["static"]["problem"]["mixture"]
-        x = x_batch[:,0:2]# (n, 2)
-        exp = jnp.exp
-
-        # get velocity model
-        p = jnp.expand_dims(mixture, axis=1)# (l, 1, 4)
-        x = jnp.expand_dims(x, axis=0)# (1, n, 2)
-        f = (p[:,:,3:4]*exp(-0.5 * ((x-p[:,:,0:2])**2).sum(2, keepdims=True)/(p[:,:,2:3]**2))).sum(0)# (n, 1)
-        c = c0 + f# (n, 1)
         return c
-    # def c_fn(all_params, x_batch):
-    #     x, y = x_batch[:, 0], x_batch[:, 1]
-    #     # Initialize c with zeros
-    #     c = jnp.zeros_like(x)
-    #     # # Define regions and their corresponding c values
-    #     # c = jnp.where((x <= 0) & (y <= 0), 1.1, c)  # Bottom-left region
-    #     # c = jnp.where((x > 0) & (y <= 0), 1.8, c)  # Bottom-right region
-    #     # c = jnp.where((x <= 0) & (y > 0), 1.3, c)  # Top-left region
-    #     # c = jnp.where((x > 0) & (y > 0), 1.95, c)  # Top-right region
-    #     c = jnp.where((x <= 0) , 1, c)  # Top-left region
-    #     c = jnp.where((x > 0), 2, c)  # Top-right region
-    #     # Reshape c to match the expected output shape (n, 1)
-    #     c = jnp.expand_dims(c, axis=1)
-    #
-    #     return c
 
 
 

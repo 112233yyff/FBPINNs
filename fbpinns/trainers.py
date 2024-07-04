@@ -585,11 +585,11 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get global constraints (training points)
     key, subkey = random.split(key)
-    # constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler,
-    #                                                 batch_shapes=c.ns, start_batch_shapes=c.n_start,
-    #                                                 boundary_batch_shapes=c.n_boundary)
     constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler,
-                                                    batch_shapes=c.ns)
+                                                    batch_shapes=c.ns, start_batch_shapes=c.n_start,
+                                                    boundary_batch_shapes=c.n_boundary)
+    # constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler,
+    #                                                 batch_shapes=c.ns)
     # 调用 problem.sample_constraints 方法，生成全局约束。
     # 返回的 constraints_global 是一个列表，每个元素是一个约束。
     for constraint_ in constraints_global:  # 遍历 constraints_global 中的每个约束。constraint_ 是当前遍历的约束。
@@ -1236,47 +1236,8 @@ if __name__ == "__main__":
     # run = PINNTrainer(c)
     # run.train()
 
-    # # fdtd2d
-    # subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 2, 3)]
-    # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
-    #
-    # c = Constants(
-    #     run="test",
-    #     domain=RectangularDomainND,
-    #     domain_init_kwargs=dict(
-    #         xmin=np.array([-1, -1, 0]),
-    #         xmax=np.array([1, 1, 2]),
-    #     ),
-    #     problem=FDTD3D,
-    #     problem_init_kwargs=dict(),
-    #     decomposition=RectangularDecompositionND,
-    #     decomposition_init_kwargs=dict(
-    #         subdomain_xs=subdomain_xs,
-    #         subdomain_ws=subdomain_ws,
-    #         unnorm=(0., 1.),
-    #     ),
-    #     network=FCN,
-    #     network_init_kwargs=dict(
-    #         layer_sizes=[3, 16, 32, 32, 3],
-    #     ),
-    #
-    #     ns=((80, 80, 30),),
-    #     n_start=((100, 100, 1),),
-    #     n_boundary=((100, 100, 40),),
-    #     n_test=(100, 100, 10),
-    #     n_steps=70000,
-    #     optimiser_kwargs=dict(learning_rate=1e-3),
-    #     summary_freq=2000,
-    #     test_freq=2000,
-    #     show_figures=False,
-    #     clear_output=True,
-    # )
-    # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 3])
-    # run = PINNTrainer(c)
-    # # run = FBPINNTrainer(c)
-    # run.train()
-
-    subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 1, 3)]
+    # fdtd2d
+    subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 2, 3)]
     subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
 
     c = Constants(
@@ -1284,9 +1245,9 @@ if __name__ == "__main__":
         domain=RectangularDomainND,
         domain_init_kwargs=dict(
             xmin=np.array([-1, -1, 0]),
-            xmax=np.array([1, 1, 1]),
+            xmax=np.array([1, 1, 2]),
         ),
-        problem=WaveEquationGaussianVelocity3D,
+        problem=FDTD3D,
         problem_init_kwargs=dict(),
         decomposition=RectangularDecompositionND,
         decomposition_init_kwargs=dict(
@@ -1300,15 +1261,54 @@ if __name__ == "__main__":
         ),
 
         ns=((58, 58, 58),),
+        n_start=((100, 100, 1),),
+        n_boundary=((100, 100, 40),),
         n_test=(100, 100, 10),
-        n_steps=75000,
+        n_steps=100000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=2000,
         test_freq=2000,
         show_figures=False,
         clear_output=True,
     )
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 1])
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 3])
     run = PINNTrainer(c)
     # run = FBPINNTrainer(c)
     run.train()
+
+    # subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 1, 3)]
+    # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
+    #
+    # c = Constants(
+    #     run="test",
+    #     domain=RectangularDomainND,
+    #     domain_init_kwargs=dict(
+    #         xmin=np.array([-1, -1, 0]),
+    #         xmax=np.array([1, 1, 1]),
+    #     ),
+    #     problem=WaveEquationGaussianVelocity3D,
+    #     problem_init_kwargs=dict(),
+    #     decomposition=RectangularDecompositionND,
+    #     decomposition_init_kwargs=dict(
+    #         subdomain_xs=subdomain_xs,
+    #         subdomain_ws=subdomain_ws,
+    #         unnorm=(0., 1.),
+    #     ),
+    #     network=FCN,
+    #     network_init_kwargs=dict(
+    #         layer_sizes=[3, 16, 32, 32, 3],
+    #     ),
+    #
+    #     ns=((58, 58, 58),),
+    #     n_test=(100, 100, 10),
+    #     n_steps=75000,
+    #     optimiser_kwargs=dict(learning_rate=1e-3),
+    #     summary_freq=2000,
+    #     test_freq=2000,
+    #     show_figures=False,
+    #     clear_output=True,
+    # )
+    # c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 1])
+    # run = PINNTrainer(c)
+    # # run = FBPINNTrainer(c)
+    # run.train()

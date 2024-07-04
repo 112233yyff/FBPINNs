@@ -665,28 +665,28 @@ class RectangularDomainND(Domain):
         assert xmin.ndim == 1
         xd = len(xmin)
         assert len(batch_shape) == xd
-        if not sampler in ["grid", "uniform", "sobol", "halton"]:
-            raise ValueError("ERROR: unexpected sampler")
-        if sampler == "grid":
-            xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
-            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
-            x_batch = xx.reshape((-1, xd))
-        else:
-            if sampler == "halton":
-                # use scipy as not implemented in jax (!)
-                r = scipy.stats.qmc.Halton(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "sobol":
-                r = scipy.stats.qmc.Sobol(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "uniform":
-                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
-            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-            x_batch = xmin + (xmax - xmin) * s
+        # if not sampler in ["grid", "uniform", "sobol", "halton"]:
+        #     raise ValueError("ERROR: unexpected sampler")
+        # if sampler == "grid":
+        #     xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
+        #     xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+        #     x_batch = xx.reshape((-1, xd))
+        # else:
+        #     if sampler == "halton":
+        #         # use scipy as not implemented in jax (!)
+        #         r = scipy.stats.qmc.Halton(xd)
+        #         s = r.random(np.prod(batch_shape))
+        #     elif sampler == "sobol":
+        #         r = scipy.stats.qmc.Sobol(xd)
+        #         s = r.random(np.prod(batch_shape))
+        #     elif sampler == "uniform":
+        #         s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+        #     xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+        #     x_batch = xmin + (xmax - xmin) * s
         # After generating x_batch
         xmin = xmin[:2]
         xmax = xmax[:2]
-        x_batch_xy = x_batch[:, :2]
+        # x_batch_xy = x_batch[:, :2]
         x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
         y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
         xy_center = np.array([[x_center, y_center]])
