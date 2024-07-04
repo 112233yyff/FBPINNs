@@ -194,5 +194,4 @@ if __name__ == "__main__":
     for it in range(0, NSTEPS, NSTEPS//10):
         plt.figure(figsize=(10,6))
         plt.imshow(-wavefields[it,:,:].T, vmin=-s, vmax=s)
-
-
+    plt.show()  # 显示图像

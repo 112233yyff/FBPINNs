@@ -1213,6 +1213,9 @@ class FDTD3D(Problem):
         x_batch_boundary, dHxdy_bou, dHxdt_bou, dHydx_bou, dHydt_bou, dEdx_bou, dEdy_bou, dEdt_bou = constraints[2]
         boundary1 = jnp.mean((dHxdt_bou + dEdy_bou) ** 2)
         boundary2 = jnp.mean((dHydt_bou - dEdx_bou) ** 2)
+        boundary3 = jnp.mean((dEdt_bou - (1 / c_fn(all_params, x_batch_boundary)) * (dHydx_bou - dHxdy_bou)) ** 2)
+        boundary4 = jnp.mean((dEdt_bou - (dHydx_bou - dHxdy_bou)) ** 2)
+
         # phy_c = c_fn(all_params, x_batch_phys)
         # bou_c = c_fn(all_params, x_batch_boundary)
         # jax.debug.print("x_batch_phys:ret{}", x_batch_phys)
@@ -1220,10 +1223,20 @@ class FDTD3D(Problem):
         # jax.debug.print("x_batch_boundary:ret{}", x_batch_boundary)
         # jax.debug.print("phy_c:ret{}", phy_c)
         # jax.debug.print("bou_c:ret{}", bou_c)
-        boundary3 = jnp.mean((dEdt_bou - (1 / c_fn(all_params, x_batch_boundary)) * (dHydx_bou - dHxdy_bou)) ** 2)
-        boundary = boundary1 + boundary2 + boundary3
+        # boundary4 = jnp.mean((dEdt_bou - (1 / c_values) * (dHydx_bou - dHxdy_bou)) ** 2)
+        boundary = boundary1 + boundary2 + boundary3 + boundary4 + boundary1 + boundary2
 
-        return 1e4 * phys + 1e5 * start + 1e8 * boundary
+        # loss = 1e4 * phys + 1e5 * start + 1e6 * boundary
+        # jax.debug.print("c_values_minus_1:ret{}", boundary1)
+        # jax.debug.print("boundary1:ret{}", boundary1)
+        # jax.debug.print("boundary2:ret{}", boundary2)
+        # jax.debug.print("boundary3:ret{}", boundary3)
+        # jax.debug.print("boundary4:ret{}", boundary4)
+        # jax.debug.print("phys:ret{}", phys)
+        # jax.debug.print("start:ret{}", start)
+        # jax.debug.print("boundary:ret{}", boundary)
+        # jax.debug.print("loss:ret{}", loss)
+        return 1e4 * phys + 1e5 * start + 1e6 * boundary
 
     # @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
@@ -1395,9 +1408,6 @@ class WaveEquationConstantVelocity3D(Problem):
     def loss_fn(all_params, constraints):
         c_fn = all_params["static"]["problem"]["c_fn"]
         x_batch, uxx, uyy, utt = constraints[0]
-
-        jax.debug.print("uxx_: {}", uxx)
-
         phys = (uxx + uyy) - (1/c_fn(all_params, x_batch)**2)*utt
         return jnp.mean(phys**2)
 
@@ -1441,7 +1451,7 @@ class WaveEquationConstantVelocity3D(Problem):
         # add padded CPML boundary
         NPOINTS_PML = 10
         p0 = np.pad(p0, [(NPOINTS_PML,NPOINTS_PML),(NPOINTS_PML,NPOINTS_PML)], mode="edge")
-        c =  np.pad(c, [(NPOINTS_PML,NPOINTS_PML),(NPOINTS_PML,NPOINTS_PML)], mode="edge")
+        c = np.pad(c, [(NPOINTS_PML,NPOINTS_PML),(NPOINTS_PML,NPOINTS_PML)], mode="edge")
 
         # run simulation
         logger.info(f'Running seismicCPML2D {(NX, NY, NSTEPS)}..')
@@ -1476,7 +1486,6 @@ class WaveEquationConstantVelocity3D(Problem):
 
         c0 = all_params["static"]["problem"]["c0"]
         return jnp.array([[c0]], dtype=float)# (1,1) scalar value
-
 
 class WaveEquationGaussianVelocity3D(WaveEquationConstantVelocity3D):
     """Solves the time-dependent (2+1)D wave equation with gaussian mixture velocity
@@ -1517,6 +1526,21 @@ class WaveEquationGaussianVelocity3D(WaveEquationConstantVelocity3D):
         f = (p[:,:,3:4]*exp(-0.5 * ((x-p[:,:,0:2])**2).sum(2, keepdims=True)/(p[:,:,2:3]**2))).sum(0)# (n, 1)
         c = c0 + f# (n, 1)
         return c
+    # def c_fn(all_params, x_batch):
+    #     x, y = x_batch[:, 0], x_batch[:, 1]
+    #     # Initialize c with zeros
+    #     c = jnp.zeros_like(x)
+    #     # # Define regions and their corresponding c values
+    #     # c = jnp.where((x <= 0) & (y <= 0), 1.1, c)  # Bottom-left region
+    #     # c = jnp.where((x > 0) & (y <= 0), 1.8, c)  # Bottom-right region
+    #     # c = jnp.where((x <= 0) & (y > 0), 1.3, c)  # Top-left region
+    #     # c = jnp.where((x > 0) & (y > 0), 1.95, c)  # Top-right region
+    #     c = jnp.where((x <= 0) , 1, c)  # Top-left region
+    #     c = jnp.where((x > 0), 2, c)  # Top-right region
+    #     # Reshape c to match the expected output shape (n, 1)
+    #     c = jnp.expand_dims(c, axis=1)
+    #
+    #     return c
 
 
 

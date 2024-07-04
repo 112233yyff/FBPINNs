@@ -282,11 +282,10 @@ def PINN_model(all_params, x_batch, model_fns, verbose=True):
     norm_fn, network_fn, unnorm_fn, constraining_fn = model_fns
     log_ = logger.info if verbose else logger.debug
     log_("x_batch")
-    log_(str_tensor(x_batch))  # (n, xd)
+    log_(str_tensor(x_batch))# (n, xd)
 
     # batch over parameters and points
-    u, u_raw = vmap(PINN_model_inner, in_axes=(None, 0, None, None, None))(all_params, x_batch, norm_fn, network_fn,
-                                                                           unnorm_fn)  # (n, ud)
+    u, u_raw = vmap(PINN_model_inner, in_axes=(None,0,None,None,None))(all_params, x_batch, norm_fn, network_fn, unnorm_fn)# (n, ud)
     logger.debug("u")
     logger.debug(str_tensor(u))
 
@@ -312,46 +311,43 @@ def PINN_forward(all_params, x_batch, model_fns, jmaps):
     # isolate model function
     def u(x_batch):
         return PINN_model(all_params, x_batch, model_fns)[0], ()
-
     return _get_ujs(x_batch, jmaps, u)
 
 
 def _get_ujs(x_batch, jmaps, u):
+
     nodes, leaves, jac_is = jmaps
-    vs = jnp.tile(jnp.eye(x_batch.shape[1]), (x_batch.shape[0], 1, 1))
+    vs = jnp.tile(jnp.eye(x_batch.shape[1]), (x_batch.shape[0],1,1))
 
     # chain required jacobian functions
     fs = [u]
     for (ni, ix), _, _ in nodes:
-        fs.append(jacfwd(fs[ni], vs[:, ix]))
+        fs.append(jacfwd(fs[ni], vs[:,ix]))
 
     # evaluate required jacobian functions
     jacs = []
-    for ie, _ in leaves:
+    for ie,_ in leaves:
         fin, jac = fs[ie](x_batch)
-        jacs.append(jac + (fin,))
+        jacs.append(jac+(fin,))
 
     # index required jacobians
-    ujs = [jacs[il][io][:, iu:iu + 1] for il, io, iu in jac_is]
+    ujs = [jacs[il][io][:,iu:iu+1] for il,io,iu in jac_is]
 
     logger.debug("fs")
     logger.debug(fs)
     logger.debug("jacs")
-    for jac in jacs: logger.debug([j.shape for j in jac])  # (n, ud)
+    for jac in jacs: logger.debug([j.shape for j in jac])# (n, ud)
     logger.debug("ujs")
     for uj in ujs: logger.debug(str_tensor(uj))
 
     return ujs
 
-
 def jacfwd(f, v):
     "Computes jacobian for single x, for all y, fully chained"
-
     def jacfun(x):
         y, j, aux = jvp(f, (x,), (v,), has_aux=True)
         aux = aux + (y,)
         return j, aux
-
     return jacfun
 
 
@@ -378,8 +374,9 @@ def FBPINN_loss(active_params, fixed_params, static_params, takess, constraints,
 
 
 def PINN_loss(active_params, static_params, constraints, model_fns, jmapss, loss_fn):
+
     # recombine all_params
-    all_params = {"static": static_params, "trainable": active_params}
+    all_params = {"static":static_params, "trainable":active_params}
 
     # run PINN for each constraint, with shared params
     constraints_ = []
@@ -389,8 +386,9 @@ def PINN_loss(active_params, static_params, constraints, model_fns, jmapss, loss
             logger.debug(str_tensor(c_))
         x_batch = constraint[0]
         ujs = PINN_forward(all_params, x_batch, model_fns, jmaps)
-        constraints_.append(constraint + ujs)
+        constraints_.append(constraint+ujs)
     return loss_fn(all_params, constraints_)
+
 
 
 @partial(jit, static_argnums=(0, 5, 8, 9, 10))
@@ -435,12 +433,10 @@ def FBPINN_model_jit(all_params, x_batch, takes, model_fns, verbose=True):
     return _FBPINN_model_jit(all_params_dynamic, all_params_static, x_batch, takes, model_fns, verbose)
 
 
-@partial(jax.jit, static_argnums=(1, 3, 4))
+@partial(jax.jit, static_argnums=(1,3,4))
 def _PINN_model_jit(all_params_dynamic, all_params_static, x_batch, model_fns, verbose):
     all_params = combine(all_params_dynamic, all_params_static)
     return PINN_model(all_params, x_batch, model_fns, verbose)
-
-
 def PINN_model_jit(all_params, x_batch, model_fns, verbose=True):
     all_params_dynamic, all_params_static = partition(all_params)
     return _PINN_model_jit(all_params_dynamic, all_params_static, x_batch, model_fns, verbose)
@@ -589,9 +585,11 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get global constraints (training points)
     key, subkey = random.split(key)
+    # constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler,
+    #                                                 batch_shapes=c.ns, start_batch_shapes=c.n_start,
+    #                                                 boundary_batch_shapes=c.n_boundary)
     constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler,
-                                                    batch_shapes=c.ns, start_batch_shapes=c.n_start,
-                                                    boundary_batch_shapes=c.n_boundary)
+                                                    batch_shapes=c.ns)
     # 调用 problem.sample_constraints 方法，生成全局约束。
     # 返回的 constraints_global 是一个列表，每个元素是一个约束。
     for constraint_ in constraints_global:  # 遍历 constraints_global 中的每个约束。constraint_ 是当前遍历的约束。
@@ -1193,7 +1191,7 @@ class PINNTrainer(_Trainer):
 if __name__ == "__main__":
     from fbpinns.constants import Constants, get_subdomain_ws
     from fbpinns.domains import RectangularDomainND
-    from fbpinns.problems import FDTD1D, FDTD3D
+    from fbpinns.problems import FDTD1D, FDTD3D,WaveEquationGaussianVelocity3D
     from fbpinns.decompositions import RectangularDecompositionND
     from fbpinns.networks import FCN
     from fbpinns.schedulers import LineSchedulerRectangularND
@@ -1238,8 +1236,47 @@ if __name__ == "__main__":
     # run = PINNTrainer(c)
     # run.train()
 
-    # fdtd2d
-    subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 2, 3)]
+    # # fdtd2d
+    # subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 2, 3)]
+    # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
+    #
+    # c = Constants(
+    #     run="test",
+    #     domain=RectangularDomainND,
+    #     domain_init_kwargs=dict(
+    #         xmin=np.array([-1, -1, 0]),
+    #         xmax=np.array([1, 1, 2]),
+    #     ),
+    #     problem=FDTD3D,
+    #     problem_init_kwargs=dict(),
+    #     decomposition=RectangularDecompositionND,
+    #     decomposition_init_kwargs=dict(
+    #         subdomain_xs=subdomain_xs,
+    #         subdomain_ws=subdomain_ws,
+    #         unnorm=(0., 1.),
+    #     ),
+    #     network=FCN,
+    #     network_init_kwargs=dict(
+    #         layer_sizes=[3, 16, 32, 32, 3],
+    #     ),
+    #
+    #     ns=((80, 80, 30),),
+    #     n_start=((100, 100, 1),),
+    #     n_boundary=((100, 100, 40),),
+    #     n_test=(100, 100, 10),
+    #     n_steps=70000,
+    #     optimiser_kwargs=dict(learning_rate=1e-3),
+    #     summary_freq=2000,
+    #     test_freq=2000,
+    #     show_figures=False,
+    #     clear_output=True,
+    # )
+    # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 3])
+    # run = PINNTrainer(c)
+    # # run = FBPINNTrainer(c)
+    # run.train()
+
+    subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 2), np.linspace(0, 1, 3)]
     subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
 
     c = Constants(
@@ -1247,9 +1284,9 @@ if __name__ == "__main__":
         domain=RectangularDomainND,
         domain_init_kwargs=dict(
             xmin=np.array([-1, -1, 0]),
-            xmax=np.array([1, 1, 2]),
+            xmax=np.array([1, 1, 1]),
         ),
-        problem=FDTD3D,
+        problem=WaveEquationGaussianVelocity3D,
         problem_init_kwargs=dict(),
         decomposition=RectangularDecompositionND,
         decomposition_init_kwargs=dict(
@@ -1262,18 +1299,16 @@ if __name__ == "__main__":
             layer_sizes=[3, 16, 32, 32, 3],
         ),
 
-        ns=((100, 80, 30),),
-        n_start=((100, 100, 1),),
-        n_boundary=((100, 100, 30),),
+        ns=((58, 58, 58),),
         n_test=(100, 100, 10),
-        n_steps=70000,
+        n_steps=75000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=2000,
         test_freq=2000,
         show_figures=False,
         clear_output=True,
     )
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 3])
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 1])
     run = PINNTrainer(c)
     # run = FBPINNTrainer(c)
     run.train()
