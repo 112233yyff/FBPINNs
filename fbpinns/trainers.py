@@ -16,13 +16,12 @@ from jax import jit, vmap, value_and_grad, jvp
 from jax import random
 import optax
 import numpy as np
-
+from shapely.geometry import Point, Polygon
 from fbpinns.trainers_base import _Trainer
 from fbpinns import networks, plot_trainer
 from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
 from scipy.spatial.distance import cdist
-import matplotlib.pyplot as plt
 
 
 # LABELLING CONVENTIONS
@@ -637,7 +636,7 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get test points - for now, just use global interior points
     # 只是简单地使用全局内部点作为测试点
-    x_batch_test = domain.sample_interior(all_params=all_params, key=None, sampler="grid", batch_shape=c.n_test)
+    x_batch_test = np.load('x_batch_test.npy')
     logger.debug("x_batch_test")
     logger.debug(str_tensor(x_batch_test))
 
@@ -1159,19 +1158,57 @@ class PINNTrainer(_Trainer):
         n_test = c.n_test
         # get PINN solution using test data
         u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
-        # xmin = [-1.0, -1.0]
-        # xmax = [1.0, 1.0]
-        # x_batch_xy = x_batch_test[:, :2]
-        # x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-        # y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-        # xy_center = np.array([[x_center, y_center]])
-        # # Compute the center of the rectangle
-        # side_lengths = xmax[0] - xmin[0]
-        # radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
-        # distances = cdist(x_batch_xy, xy_center, metric='euclidean')
-        # mask = distances <= radius  # Points inside the circle
-        #        pdb.set_trace()
-        # u_test = u_test.at[np.squeeze(mask)].set(0.0)
+############1111111111111111
+        # def set_u_test_to_zero(u_test, x_batch_test, boundary_points):
+        #     # 将过滤操作放在 CPU 上进行
+        #     x_batch_test_np = np.array(x_batch_test)
+        #     filtered_points_mask = filter_points(x_batch_test_np, boundary_points)
+        #
+        #     # 将掩码传回 JAX 环境中
+        #     mask = jnp.array(filtered_points_mask, dtype=bool)
+        #
+        #     # 使用掩码将u_test中这些点的值设置为0
+        #     u_test = jnp.where(mask[:, None], 0.0, u_test)
+        #
+        #     return u_test
+        #
+        # # 从文件中读取边界点数据
+        # boundary_points = from_file_get_boundary_points("five.tri")
+        # # 更新u_test
+        # u_test = set_u_test_to_zero(u_test, x_batch_test, boundary_points)
+
+####2222222222222222222222222
+        # x_batch_test_depec = np.load('x_batch_test_depec.npy')
+        # # 将掩码传回 JAX 环境中
+        # mask = jnp.array(x_batch_test_depec, dtype=bool)
+        # # 使用掩码将u_test中这些点的值设置为0
+        # u_test = jnp.where(mask[:, None], 0.0, u_test)
+
+        def set_u_test_to_zero(u_test, x_batch_test_depec, batch_size=10000):
+            """
+            将落在边界点区域内的 u_test 设置为 0，分批处理以减少内存占用
+            """
+            mask = jnp.array(x_batch_test_depec, dtype=bool)
+
+            # 确保 mask 和 u_test 的形状匹配
+            mask = mask.reshape(-1, 1)
+
+            # 分批次处理 u_test
+            u_test_out = jnp.empty_like(u_test)
+            num_batches = (u_test.shape[0] + batch_size - 1) // batch_size  # 计算批次数量
+
+            for i in range(num_batches):
+                start = i * batch_size
+                end = min((i + 1) * batch_size, u_test.shape[0])
+                u_test_batch = u_test[start:end]
+                mask_batch = mask[start:end]
+                u_test_out = u_test_out.at[start:end].set(jnp.where(mask_batch, 0.0, u_test_batch))
+
+            return u_test_out
+
+        # 示例用法
+        x_batch_test_depec = np.load('x_batch_test_depec.npy')
+        u_test = set_u_test_to_zero(u_test, x_batch_test_depec)
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact - u_test)).item()
         l1n = l1 / u_exact.std().item()
@@ -1248,7 +1285,9 @@ if __name__ == "__main__":
             xmax=np.array([1, 1, 2]),
         ),
         problem=FDTD3D,
-        problem_init_kwargs=dict(),
+        problem_init_kwargs=dict(
+            c=1, sd=0.1,
+        ),
         decomposition=RectangularDecompositionND,
         decomposition_init_kwargs=dict(
             subdomain_xs=subdomain_xs,
@@ -1260,10 +1299,10 @@ if __name__ == "__main__":
             layer_sizes=[3, 16, 32, 32, 3],
         ),
 
-        ns=((58, 58, 58),),
+        ns=((50, 50, 30),),
         n_start=((100, 100, 1),),
-        n_boundary=((100, 100, 40),),
-        n_test=(100, 100, 10),
+        n_boundary=((100, 100, 80),),
+        n_test=(100, 100, 20),
         n_steps=100000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=2000,
@@ -1271,7 +1310,7 @@ if __name__ == "__main__":
         show_figures=False,
         clear_output=True,
     )
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 3])
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 64, 3])
     run = PINNTrainer(c)
     # run = FBPINNTrainer(c)
     run.train()

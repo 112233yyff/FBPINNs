@@ -123,7 +123,6 @@ def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
 #         plt.subplot2grid(shape,(1+it,0))
 #         plt.title(f"[{i}] Pinn solution")
 #         _plot_test_im(u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-#         # _plot_test_im(u_test[:, 2], xlim0, ulim, n_test, it=it)
 #
 #         plt.subplot2grid(shape,(1+it,1))
 #         plt.title(f" FDTD truth")
