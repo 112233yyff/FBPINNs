@@ -456,8 +456,6 @@ class RectangularDecompositionND(Decomposition):
         pous = il*np.ones(s)
 
         return [xmins, xmaxs, wmins, wmaxs, flags, unnorms, pous]
-    # 函数返回一个包含所有计算出的参数的列表，包括子域的最小坐标、最大坐标、最小重叠宽度、最大重叠宽度、窗口应用标志、非标准化参数以及处理单元索引。
-    # 这些参数是设置和配置FBPINN模型不可或缺的部分。
 
     @staticmethod
     def norm_fn(params, x):

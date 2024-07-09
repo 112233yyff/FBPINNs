@@ -22,20 +22,9 @@ def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
     plt.xlim(xlim[0][0], xlim[1][0])
     plt.ylim(xlim[0][1], xlim[1][1])
     plt.gca().set_aspect("equal")
-# def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
-#     u_test = u_test.reshape(n_test)
-#     if it is not None:
-#         u_test = u_test[:,:,it]# for 3D
-#     plt.imshow(u_test.T,# transpose as jnp.meshgrid uses indexing="ij"
-#                origin="lower", extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
-#                cmap="viridis", vmin=ulim[0], vmax=ulim[1])
-#     plt.colorbar()
-#     plt.xlim(xlim[0][0], xlim[1][0])
-#     plt.ylim(xlim[0][1], xlim[1][1])
-#     plt.gca().set_aspect("equal")
 
 @_to_numpy
-def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test):
+def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test, u_test_lossess, num):
 
     xlim, ulim = _plot_setup(x_batch_test, u_exact)
     xlim0 = x_batch_test.min(0), x_batch_test.max(0)
@@ -63,6 +52,12 @@ def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
     plt.subplot(3,2,4)
     plt.title(f"[{i}] Ground truth")
     _plot_test_im(u_exact[:,0], xlim0, ulim, n_test)
+
+    # plot loss
+    plt.subplot(3, 2, 5)
+    plt.title("Lossess")
+    x_values = range(((i + 1) // num) + 1)
+    plt.plot(x_values, u_test_lossess)
 
     # plot raw hist
     plt.subplot(3,2,6)
@@ -113,3 +108,10 @@ def plot_2D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
 
     plt.tight_layout()
     return (("test",f),)
+
+
+
+
+
+
+

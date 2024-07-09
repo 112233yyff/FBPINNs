@@ -35,28 +35,20 @@ class _Trainer:
 
         self.c, self.writer = c, writer
 
-        # Initialize the file for saving i and loss
-        self.file_path = self.c.summary_out_dir + "training_log.txt"
-        with open(self.file_path, "w") as file:
-            file.write("i,loss\n")  # Write the header
-
-    def _print_summary(self, i, loss, rate, start, summary_):
+    def _print_summary(self, i, loss, rate, start):
         "Prints training summary"
-        if summary_ :
-            logger.info("[i: %i/%i] loss: %.4f rate: %.1f elapsed: %.2f hr %s" % (
-                   i,
-                   self.c.n_steps,
-                   loss,
-                   rate,
-                   (time.time()-start)/(60*60),
-                   self.c.run,
-                    ))
-            self.writer.add_scalar("loss/train", loss, i)
-            self.writer.add_scalar("stats/rate", rate, i)
 
-        # Append i and loss to the file
-        with open(self.file_path, "a") as file:
-            file.write(f"{i},{loss}\n")
+        logger.info("[i: %i/%i] loss: %.4f rate: %.1f elapsed: %.2f hr %s" % (
+               i,
+               self.c.n_steps,
+               loss,
+               rate,
+               (time.time()-start)/(60*60),
+               self.c.run,
+                ))
+        self.writer.add_scalar("loss/train", loss, i)
+        self.writer.add_scalar("stats/rate", rate, i)
+
     def _save_figs(self, i, fs):
         "Saves figures"
 
