@@ -609,7 +609,7 @@ class FDTD3D(Problem):
         return Ez
 
 
-# #two_part_c_fn
+# #c_fn
 # class FDTD3D(Problem):
 #     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 #
@@ -643,7 +643,7 @@ class FDTD3D(Problem):
 #     @staticmethod
 #     def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
 #         # physics loss
-#         x_batch_phys = domain.sample_interior_decircle(all_params, key, sampler, batch_shapes[0])
+#         x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
 #         required_ujs_phys = (
 #             (0, (1,)),  # dHx / dy
 #             (0, (2,)),  # dHx / dt
@@ -654,7 +654,7 @@ class FDTD3D(Problem):
 #             (2, (2,)),  # dE / dt
 #         )
 #         # start loss
-#         x_batch_start = domain.sample_start_decircle(all_params, key, sampler, start_batch_shapes[0])
+#         x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
 #         x = x_batch_start[:, 0:1] # 提取 x 坐标
 #         y = x_batch_start[:, 1:2]
 #         E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (0.1 ** 2))
@@ -682,7 +682,7 @@ class FDTD3D(Problem):
 #         else:
 #             start = 0
 #
-#         return 1e2 * phys + 1e4 * start
+#         return 1e5 * phys + 1e5 * start
 #
 #     @staticmethod
 #     def exact_solution(all_params, x_batch, batch_shape):
@@ -708,7 +708,7 @@ class FDTD3D(Problem):
 #
 #         # get velocity model
 #         x = np.stack([xx.ravel(), yy.ravel()], axis=1)  # (n, 2)
-#         velocity = np.array(c_fn(x))
+#         velocity = np.array(c_fn(all_params, x))
 #         if velocity.shape[0] > 1:
 #             velocity = velocity.reshape((NX, NY))
 #         else:
@@ -721,16 +721,63 @@ class FDTD3D(Problem):
 #         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
 #         return Ez
 #     @staticmethod
+#
+#     # #x==0
+#     # def c_fn(all_params, x_batch):
+#     #     x, y = x_batch[:, 0], x_batch[:, 1]
+#     #     # Initialize c with zeros
+#     #     c = jnp.zeros_like(x)
+#     #     c = jnp.where((x <= 0) , 1, c)  # Top-left region
+#     #     c = jnp.where((x > 0), 2, c)  # Top-right region
+#     #     # Reshape c to match the expected output shape (n, 1)
+#     #     c = jnp.expand_dims(c, axis=1)
+#     #
+#     #     return c
+#     #
+#     # #circle
+#     # def c_fn(all_params, x_batch):
+#     #     "Computes the velocity model"
+#     #     # Extract coordinates from x_batch
+#     #     x = x_batch[:, 0]  # x-coordinates
+#     #     y = x_batch[:, 1]  # y-coordinates
+#     #     # Compute the distance from the point to the center (0, -0.5)
+#     #     distance = jnp.sqrt((x - 0) ** 2 + (y + 0.5) ** 2)
+#     #     # Initialize c with default value 1
+#     #     c = jnp.ones_like(x)
+#     #     # Set c to 2 for points inside the circle of radius 0.5 centered at (0, -0.5)
+#     #     c = jnp.where(distance <= 0.5, 2.0, c)
+#     #     # Reshape c to match the expected output shape (n, 1)
+#     #     c = jnp.expand_dims(c, axis=1)
+#     #
+#     #     return c
+#
+#
+#     # rectangle
 #     def c_fn(all_params, x_batch):
 #         x, y = x_batch[:, 0], x_batch[:, 1]
 #         # Initialize c with zeros
 #         c = jnp.zeros_like(x)
-#         c = jnp.where((x <= 0) , 1, c)  # Top-left region
-#         c = jnp.where((x > 0), 2, c)  # Top-right region
+#
+#         # Define the center and size of the small rectangle
+#         rect_center = (-0.5, 0.5)  # center of the small rectangle
+#         rect_width, rect_height = 0.4, 0.4  # width and height of the small rectangle
+#
+#         # Calculate the boundaries of the small rectangle
+#         x_min, x_max = rect_center[0] - rect_width / 2, rect_center[0] + rect_width / 2
+#         y_min, y_max = rect_center[1] - rect_height / 2, rect_center[1] + rect_height / 2
+#
+#         # Check if points are within the small rectangle
+#         in_small_rect = (x >= x_min) & (x <= x_max) & (y >= y_min) & (y <= y_max)
+#
+#         # Assign values to c based on the small rectangle and the rest of the domain
+#         c = jnp.where(in_small_rect, 2, 1)
+#
 #         # Reshape c to match the expected output shape (n, 1)
 #         c = jnp.expand_dims(c, axis=1)
 #
 #         return c
+
+
 
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity

@@ -118,6 +118,43 @@ class RectangularDomainND(Domain):
 
         return jnp.array(x_batch)
 
+    @staticmethod
+    def sample_start(all_params, key, sampler, batch_shape):
+        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+        return RectangularDomainND._rectangle_start(key, sampler, xmin, xmax, batch_shape)
+
+    @staticmethod
+    def _rectangle_start(key, sampler, xmin, xmax, batch_shape):
+        "Get flattened samples of x in a rectangle, either on mesh or random"
+
+        assert xmin.shape == xmax.shape
+        assert xmin.ndim == 1
+        xd = len(xmin)
+        assert len(batch_shape) == xd
+
+        if not sampler in ["grid", "uniform", "sobol", "halton"]:
+            raise ValueError("ERROR: unexpected sampler")
+
+        if sampler == "grid":
+            xs = [jnp.linspace(xmin[i], xmax[i], b) if i != 2 else jnp.array([xmin[i]]) for i, b in
+                  enumerate(batch_shape)]
+            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+            x_batch = xx.reshape((-1, xd))
+        else:
+            if sampler == "halton":
+                # use scipy as not implemented in jax (!)
+                r = scipy.stats.qmc.Halton(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "sobol":
+                r = scipy.stats.qmc.Sobol(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "uniform":
+                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+
+            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+            x_batch = xmin + (xmax - xmin) * s
+
+        return jnp.array(x_batch)
     def sample_interior_decircle(all_params, key, sampler, batch_shape):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_interior_decircle(key, sampler, xmin, xmax, batch_shape)
