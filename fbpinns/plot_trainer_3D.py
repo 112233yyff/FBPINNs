@@ -77,9 +77,9 @@ def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
     for it in range(nt):
         plt.subplot2grid(shape,(1+it,0))
         plt.title(f"[{i}] Full solution")
-        # _plot_test_im(u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+        _plot_test_im(u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
         # _plot_test_im(u_test[:, 0].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-        _plot_test_im(u_test[:, 1].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+        # _plot_test_im(u_test[:, 1].reshape(-1, 1), xlim0, ulim, n_test, it=it)
 
         plt.subplot2grid(shape,(1+it,1))
         plt.title(f"[{i}] Ground truth")
@@ -87,9 +87,9 @@ def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
 
         plt.subplot2grid(shape,(1+it,2))
         plt.title(f"[{i}] Difference")
-        # _plot_test_im(u_exact - u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+        _plot_test_im(u_exact - u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
         # _plot_test_im(u_exact - u_test[:, 0].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-        _plot_test_im(u_exact - u_test[:, 1].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+        # _plot_test_im(u_exact - u_test[:, 1].reshape(-1, 1), xlim0, ulim, n_test, it=it)
 
     # plot raw hist
     plt.subplot2grid(shape,(1+nt,0))

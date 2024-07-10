@@ -347,10 +347,7 @@ class RectangularDomainND(Domain):
         x_batch_xy = x_batch[:, :2]
         x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
         y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-        # Compute the center of the rectangle
-        side_lengths = xmax - xmin
-        radius = np.min(side_lengths) / 4.
-        rect_width, rect_height = radius, radius
+        rect_width, rect_height = 1, 1
         rect_xmin = x_center - rect_width / 2
         rect_xmax = x_center + rect_width / 2
         rect_ymin = y_center - rect_height / 2
@@ -399,10 +396,7 @@ class RectangularDomainND(Domain):
         x_batch_xy = x_batch[:, :2]
         x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
         y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-        # Compute the center of the rectangle
-        side_lengths = xmax - xmin
-        radius = np.min(side_lengths) / 4.
-        rect_width, rect_height = radius, radius
+        rect_width, rect_height = 1, 1
         rect_xmin = x_center - rect_width / 2
         rect_xmax = x_center + rect_width / 2
         rect_ymin = y_center - rect_height / 2
@@ -416,35 +410,30 @@ class RectangularDomainND(Domain):
         return jnp.array(x_filtered)
 
     def _rectangle_boundary_rectangle(key, sampler, xmin, xmax, batch_shape):
-        xmin = xmin[:2]
-        xmax = xmax[:2]
-        x_center = xmin[0] + (xmax[0] - xmin[0]) / 2
-        y_center = xmin[1] + (xmax[1] - xmin[1]) / 2
-        side_lengths = xmax - xmin
-        rect_width = side_lengths[0] / 4
-        rect_height = side_lengths[1] / 4
+        xmin_xy = xmin[:2]
+        xmax_xy = xmax[:2]
+        x_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
+        y_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
+        side_length = 1
 
-        def generate_rectangular_boundary_points(x_center, y_center, width, height, num_points):
-            points = []
-            num_points_per_side = num_points // 4
+        def generate_square_boundary_points(center, side_length, num_points_per_side=10):
+            half_side_length = side_length / 2
+            vertices = [(center[0] - half_side_length * 1, center[1] - half_side_length),  # Bottom left
+                        (center[0] + half_side_length * 1, center[1] - half_side_length),  # Bottom right
+                        (center[0] + half_side_length * 1, center[1] + half_side_length),  # Top right
+                        (center[0] - half_side_length * 1, center[1] + half_side_length)]  # Top left
 
-            # Generate points for the bottom side
-            for i in range(num_points_per_side):
-                points.append([x_center - width / 2 + i * (width / num_points_per_side), y_center - height / 2])
-            # Generate points for the top side
-            for i in range(num_points_per_side):
-                points.append([x_center - width / 2 + i * (width / num_points_per_side), y_center + height / 2])
-            # Generate points for the left side
-            for i in range(num_points_per_side):
-                points.append([x_center - width / 2, y_center - height / 2 + i * (height / num_points_per_side)])
-            # Generate points for the right side
-            for i in range(num_points_per_side):
-                points.append([x_center + width / 2, y_center - height / 2 + i * (height / num_points_per_side)])
+            # Generate points along each side of the square
+            boundary_points = []
+            for i in range(4):
+                start_point = vertices[i]
+                end_point = vertices[(i + 1) % 4]
+                side_points = np.linspace(start_point, end_point, num_points_per_side + 1)
+                boundary_points.extend(side_points[:-1].tolist())  # Exclude the last point to avoid duplicates
 
-            return points
+            return boundary_points
 
-        pboundary = generate_rectangular_boundary_points(x_center, y_center, rect_width, rect_height,
-                                                         batch_shape[0] * batch_shape[1])
+        pboundary = generate_square_boundary_points([x_center, y_center], side_length, batch_shape[0] * batch_shape[1])
 
         def foo(input_list, time_start, time_end, num_time_samples):
             expanded_list = []
