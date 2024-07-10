@@ -972,21 +972,21 @@ class PINNTrainer(_Trainer):
         # get PINN solution using test data
         u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
  #       pdb.set_trace()
-##############圆形PEC
-        xmin = [-1.0, -1.0]
-        xmax = [1.0, 1.0]
-
-        x_batch_xy = x_batch_test[:, :2]
-        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-        xy_center = np.array([[x_center, y_center]])
-        # Compute the center of the rectangle
-        side_lengths = xmax[0] - xmin[0]
-        radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
-        distances = cdist(x_batch_xy, xy_center, metric='euclidean')
-        mask = distances <= radius  # Points inside the circle
-#        pdb.set_trace()
-        u_test = u_test.at[np.squeeze(mask)].set(0.0)
+# ##############圆形PEC
+#         xmin = [-1.0, -1.0]
+#         xmax = [1.0, 1.0]
+#
+#         x_batch_xy = x_batch_test[:, :2]
+#         x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
+#         y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+#         xy_center = np.array([[x_center, y_center]])
+#         # Compute the center of the rectangle
+#         side_lengths = xmax[0] - xmin[0]
+#         radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+#         distances = cdist(x_batch_xy, xy_center, metric='euclidean')
+#         mask = distances <= radius  # Points inside the circle
+# #        pdb.set_trace()
+#         u_test = u_test.at[np.squeeze(mask)].set(0.0)
 # ##############方形PEC
 #         xmin = [-1.0, -1.0]
 #         xmax = [1.0, 1.0]
@@ -1099,10 +1099,10 @@ if __name__ == "__main__":
         network_init_kwargs=dict(
             layer_sizes=[3, 32, 32, 32, 32, 32, 3],
         ),
-        ns=((50, 50, 30),),
+        ns=((80, 80, 30),),
         n_start=((100, 100, 1),),
         n_boundary = ((40, 40, 80),),
-        n_test=(100, 100, 20),
+        n_test=(100, 100, 10),
         n_steps=100000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=2000,
