@@ -10,6 +10,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     xdim, ydim, time_tot = NX, NY, NSTEPS
     deltax, deltay, deltat = DELTAX, DELTAY, DELTAT
     Ez_out = np.zeros((xdim, ydim, time_tot))
+    Hx_out = np.zeros((xdim, ydim, time_tot))
+    Hy_out = np.zeros((xdim, ydim, time_tot))
     # Initialize magnetic and electric fields
     Hx = np.zeros((xdim, ydim))
     Hy = np.zeros((xdim, ydim))
@@ -20,7 +22,7 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
 #####PEC
     # Perfect Electric Conductor (PEC) setup
     x_center, y_center = xmin + (1 / 2) * (xmax - xmin), ymin + (1 / 4) * (ymax - ymin)
-    rect_width, rect_height = 0.5, 0.5
+    rect_width, rect_height = 1, 1
     rect_xmin = x_center - rect_width / 2
     rect_xmax = x_center + rect_width / 2
     rect_ymin = y_center - rect_height / 2
@@ -112,8 +114,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     zz = np.exp(-0.5 * ((xv - 0.5) ** 2 + (yv - 0.5) ** 2) / sd ** 2)
 
     Ez = zz
-    Hx = -((yv - 0.5) / sd ** 2) * np.exp(-0.5 * ((xv - 0.5) ** 2 + (yv - 0.5) ** 2) / sd ** 2)
-    Hy = -((xv - 0.5) / sd ** 2) * np.exp(-0.5 * ((xv - 0.5) ** 2 + (yv - 0.5) ** 2) / sd ** 2)
+    # Hx = -((yv - 0.5) / sd ** 2) * np.exp(-0.5 * ((xv - 0.5) ** 2 + (yv - 0.5) ** 2) / sd ** 2)
+    # Hy = -((xv - 0.5) / sd ** 2) * np.exp(-0.5 * ((xv - 0.5) ** 2 + (yv - 0.5) ** 2) / sd ** 2)
     # Simulation loop
     for t in range(1, time_tot + 1):
         # Magnetic field update
@@ -131,7 +133,11 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
             Ez[px, py] = 0
 
         Ez_out[:, :, t - 1] = Ez
+        Hx_out[:, :, t - 1] = Hx
+        Hy_out[:, :, t - 1] = Hy
     return Ez_out
+    # return Hx_out
+    # return Hy_out
 
 
 # #c_fn

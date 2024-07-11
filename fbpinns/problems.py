@@ -540,10 +540,10 @@ class FDTD3D(Problem):
         x = x_batch_start[:, 0:1] # 提取 x 坐标
         y = x_batch_start[:, 1:2]
         E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (sd ** 2))
-        Hx_start = -((y - 0.5) / sd ** 2) * jnp.exp(-0.5 * ((x - 0.5) ** 2 + (y - 0.5) ** 2) / sd ** 2)
-        Hy_start = -((x - 0.5) / sd ** 2) * jnp.exp(-0.5 * ((x - 0.5) ** 2 + (y - 0.5) ** 2) / sd ** 2)
-        # Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-        # Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        # Hx_start = -((y - 0.5) / sd ** 2) * jnp.exp(-0.5 * ((x - 0.5) ** 2 + (y - 0.5) ** 2) / sd ** 2)
+        # Hy_start = -((x - 0.5) / sd ** 2) * jnp.exp(-0.5 * ((x - 0.5) ** 2 + (y - 0.5) ** 2) / sd ** 2)
+        Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
         required_ujs_start = (
             (0, ()),
             (1, ()),

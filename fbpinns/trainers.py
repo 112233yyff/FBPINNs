@@ -1072,7 +1072,7 @@ if __name__ == "__main__":
     # run.train()
 
     # fdtd2d
-    subdomain_xs = [np.linspace(-1, 1, 5), np.linspace(-1, 1, 5), np.linspace(0, 2, 3)]
+    subdomain_xs = [np.linspace(-1, 1, 5), np.linspace(-1, 1, 5), np.linspace(0, 1, 3)]
     subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
 
     c = Constants(
