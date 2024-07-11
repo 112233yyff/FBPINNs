@@ -271,8 +271,8 @@ class RectangularDomainND(Domain):
         # generating x_batch
         xmin_xy = xmin[:2]
         xmax_xy = xmax[:2]
-        x_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
-        y_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
+        x_center = xmin_xy[0] + (1 / 4) * (xmax_xy[0] - xmin_xy[0])
+        y_center = xmax_xy[1] - (1 / 4) * (xmax_xy[1] - xmin_xy[1])
         radius = np.min(xmax_xy - xmin_xy) / 4.0
 
         def generate_circular_boundary_points(center, r, num_points):
@@ -342,11 +342,11 @@ class RectangularDomainND(Domain):
             x_batch = xmin + (xmax - xmin) * s
 
         # After generating x_batch
-        xmin = xmin[:2]
-        xmax = xmax[:2]
+        xmin_xy = xmin[:2]
+        xmax_xy = xmax[:2]
         x_batch_xy = x_batch[:, :2]
-        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+        x_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
+        y_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
         rect_width, rect_height = 1, 1
         rect_xmin = x_center - rect_width / 2
         rect_xmax = x_center + rect_width / 2
@@ -354,9 +354,9 @@ class RectangularDomainND(Domain):
         rect_ymax = y_center + rect_height / 2
 
         # Filter out points that fall within the rectangle
-        mask = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
+        mask1 = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
                     x_batch_xy[:, 1] > rect_ymax)
-        x_filtered = x_batch[mask]
+        x_filtered = x_batch[mask1]
 
         return jnp.array(x_filtered)
     @staticmethod
@@ -391,11 +391,11 @@ class RectangularDomainND(Domain):
             x_batch = xmin + (xmax - xmin) * s
 
         # After generating x_batch
-        xmin = xmin[:2]
-        xmax = xmax[:2]
+        xmin_xy = xmin[:2]
+        xmax_xy = xmax[:2]
         x_batch_xy = x_batch[:, :2]
-        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+        x_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
+        y_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
         rect_width, rect_height = 1, 1
         rect_xmin = x_center - rect_width / 2
         rect_xmax = x_center + rect_width / 2
@@ -446,6 +446,156 @@ class RectangularDomainND(Domain):
         x_filtered = foo(pboundary, xmin[2], xmax[2], batch_shape[2])
 
         return jnp.array(x_filtered)
+###############combined PEC2
+    def sample_interior_depec(all_params, key, sampler, batch_shape):
+        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+        return RectangularDomainND._rectangle_interior_depec(key, sampler, xmin, xmax, batch_shape)
+
+    @staticmethod
+    def sample_start_depec(all_params, key, sampler, batch_shape):
+        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+        return RectangularDomainND._rectangle_start_depec(key, sampler, xmin, xmax, batch_shape)
+
+    @staticmethod
+    def sample_boundary_pec(all_params, key, sampler, batch_shape):
+        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+        return RectangularDomainND._rectangle_boundary_pec(key, sampler, xmin, xmax, batch_shape)
+
+    @staticmethod
+    def _rectangle_interior_depec(key, sampler, xmin, xmax, batch_shape):
+        "Get flattened samples of x in a rectangle, either on mesh or random"
+
+        assert xmin.shape == xmax.shape
+        assert xmin.ndim == 1
+        xd = len(xmin)
+        assert len(batch_shape) == xd
+
+        if not sampler in ["grid", "uniform", "sobol", "halton"]:
+            raise ValueError("ERROR: unexpected sampler")
+
+        if sampler == "grid":
+            xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
+            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+            x_batch = xx.reshape((-1, xd))
+        else:
+            if sampler == "halton":
+                # use scipy as not implemented in jax (!)
+                r = scipy.stats.qmc.Halton(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "sobol":
+                r = scipy.stats.qmc.Sobol(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "uniform":
+                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+
+            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+            x_batch = xmin + (xmax - xmin) * s
+
+        # After generating x_batch
+        xmin_xy = xmin[:2]
+        xmax_xy = xmax[:2]
+        x_batch_xy = x_batch[:, :2]
+        x_rectangle_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
+        y__rectangle_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
+        rect_width, rect_height = 1, 1
+        rect_xmin = x_rectangle_center - rect_width / 2
+        rect_xmax = x_rectangle_center + rect_width / 2
+        rect_ymin = y__rectangle_center - rect_height / 2
+        rect_ymax = y__rectangle_center + rect_height / 2
+
+        # Filter out points that fall within the rectangle
+        mask1 = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
+                    x_batch_xy[:, 1] > rect_ymax)
+        x_rectangle_filtered = x_batch[mask1]
+        x_batch_xy_outrect= x_rectangle_filtered[:, :2]
+
+        x_circle_center = xmin_xy[0] + (1 / 4) * (xmax_xy[0] - xmin_xy[0])
+        y_circle_center = xmax_xy[1] - (1 / 4) * (xmax_xy[1] - xmin_xy[1])
+        xy_circle_center = np.array([[x_circle_center, y_circle_center]])
+        # Compute the center of the rectangle
+        side_lengths = xmax - xmin
+        radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+
+        # Filter out points that fall within the circle
+        distances = cdist(x_batch_xy_outrect, xy_circle_center, metric='euclidean')
+        mask2 = distances > radius  # Points outside the circle
+        x_circle_filtered = x_rectangle_filtered[mask2.all(axis=1)]
+
+        return jnp.array(x_circle_filtered)
+    @staticmethod
+    def _rectangle_start_depec(key, sampler, xmin, xmax, batch_shape):
+        "Get flattened samples of x in a rectangle, either on mesh or random"
+
+        assert xmin.shape == xmax.shape
+        assert xmin.ndim == 1
+        xd = len(xmin)
+        assert len(batch_shape) == xd
+
+        if not sampler in ["grid", "uniform", "sobol", "halton"]:
+            raise ValueError("ERROR: unexpected sampler")
+
+        if sampler == "grid":
+            xs = [jnp.linspace(xmin[i], xmax[i], b) if i != 2 else jnp.array([xmin[i]]) for i, b in
+                  enumerate(batch_shape)]
+            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+            x_batch = xx.reshape((-1, xd))
+        else:
+            if sampler == "halton":
+                # use scipy as not implemented in jax (!)
+                r = scipy.stats.qmc.Halton(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "sobol":
+                r = scipy.stats.qmc.Sobol(xd)
+                s = r.random(np.prod(batch_shape))
+            elif sampler == "uniform":
+                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+
+            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+            x_batch = xmin + (xmax - xmin) * s
+
+        # After generating x_batch
+        xmin_xy = xmin[:2]
+        xmax_xy = xmax[:2]
+        x_batch_xy = x_batch[:, :2]
+        x_rectangle_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
+        y__rectangle_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
+        rect_width, rect_height = 1, 1
+        rect_xmin = x_rectangle_center - rect_width / 2
+        rect_xmax = x_rectangle_center + rect_width / 2
+        rect_ymin = y__rectangle_center - rect_height / 2
+        rect_ymax = y__rectangle_center + rect_height / 2
+
+        # Filter out points that fall within the rectangle
+        mask1 = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
+                x_batch_xy[:, 1] > rect_ymax)
+        x_rectangle_filtered = x_batch[mask1]
+        x_batch_xy_outrect = x_rectangle_filtered[:, :2]
+
+        x_circle_center = xmin_xy[0] + (1 / 4) * (xmax_xy[0] - xmin_xy[0])
+        y_circle_center = xmax_xy[1] - (1 / 4) * (xmax_xy[1] - xmin_xy[1])
+        xy_circle_center = np.array([[x_circle_center, y_circle_center]])
+        # Compute the center of the rectangle
+        side_lengths = xmax - xmin
+        radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+
+        # Filter out points that fall within the circle
+        distances = cdist(x_batch_xy_outrect, xy_circle_center, metric='euclidean')
+        mask2 = distances > radius  # Points outside the circle
+        x_circle_filtered = x_rectangle_filtered[mask2.all(axis=1)]
+
+        return jnp.array(x_circle_filtered)
+
+    def _rectangle_boundary_pec(key, sampler, xmin, xmax, batch_shape):
+        # 调用 _rectangle_boundary_circle 函数
+        result_circle = RectangularDomainND._rectangle_boundary_circle(key, sampler, xmin, xmax, batch_shape)
+
+        # 调用 _rectangle_boundary_rectangle 函数
+        result_rectangle = RectangularDomainND._rectangle_boundary_rectangle(key, sampler, xmin, xmax, batch_shape)
+
+        # 将两个结果合并
+        result_combined = jnp.concatenate([result_circle, result_rectangle], axis=0)
+
+        return result_combined
 
 if __name__ == "__main__":
 

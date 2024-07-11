@@ -19,7 +19,7 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     # Courant stability factor
     S = 1 / (2 ** 0.5)
 
-#####PEC
+#####方形PEC
     # Perfect Electric Conductor (PEC) setup
     x_center, y_center = xmin + (1 / 2) * (xmax - xmin), ymin + (1 / 4) * (ymax - ymin)
     rect_width, rect_height = 1, 1
@@ -39,7 +39,17 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
             if ~((x_values[i] < rect_xmin) | (x_values[i] > rect_xmax) | (y_values[j] < rect_ymin) | (
                 y_values[j] > rect_ymax)):
                 pec_pt.append((i, j))
+        # Perfect Electric Conductor (PEC) setup
+    pec_cx, pec_cy = xmin + (1 / 4) * (xmax - xmin), ymax - (1 / 4) * (ymax - ymin)
+    pec_rad = (xmax - xmin) / 4.0
 
+    for i in range(0, NX):
+        for j in range(0, NY):
+            # 计算点 (i, j) 到中心点 (pec_cx, pec_cy) 的距离
+            distance = np.sqrt((x_values[i] - pec_cx) ** 2 + (y_values[j] - pec_cy) ** 2)
+            # 判断该点是否在圆内
+            if distance < pec_rad:
+                pec_pt.append((i, j))
     # pec_pt 现在包含了所有符合条件的点
 
     # Permittivity of vacuum [farad/meter]
