@@ -11,6 +11,7 @@ import jax, pdb
 import jax.numpy as jnp
 import numpy as np
 import scipy.stats
+from scipy.spatial.distance import cdist
 from shapely.geometry import Point, Polygon
 from concurrent.futures import ThreadPoolExecutor
 import matplotlib.pyplot as plt
@@ -444,6 +445,154 @@ class Domain:
 #         x_filtered = foo(pboundary, xmin[2], xmax[2], batch_shape[2])
 #
 #         return jnp.array(x_filtered)
+# ####triangle
+#     def sample_interior_detriangle(all_params, key, sampler, batch_shape):
+#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+#         return RectangularDomainND._rectangle_interior_detriangle(key, sampler, xmin, xmax, batch_shape)
+#
+#     @staticmethod
+#     def sample_start_detriangle(all_params, key, sampler, batch_shape):
+#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+#         return RectangularDomainND._rectangle_start_detriangle(key, sampler, xmin, xmax, batch_shape)
+#
+#     @staticmethod
+#     def sample_boundary_triangle(all_params, key, sampler, batch_shape):
+#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+#         return RectangularDomainND._rectangle_boundary_triangle(key, sampler, xmin, xmax, batch_shape)
+#
+#     @staticmethod
+#     def _rectangle_interior_detriangle(key, sampler, xmin, xmax, batch_shape):
+#         "Get flattened samples of x in a rectangle, either on mesh or random"
+#
+#         assert xmin.shape == xmax.shape
+#         assert xmin.ndim == 1
+#         xd = len(xmin)
+#         assert len(batch_shape) == xd
+#
+#         if not sampler in ["grid", "uniform", "sobol", "halton"]:
+#             raise ValueError("ERROR: unexpected sampler")
+#
+#         if sampler == "grid":
+#             xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
+#             xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+#             x_batch = xx.reshape((-1, xd))
+#         else:
+#             if sampler == "halton":
+#                 # use scipy as not implemented in jax (!)
+#                 r = scipy.stats.qmc.Halton(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "sobol":
+#                 r = scipy.stats.qmc.Sobol(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "uniform":
+#                 s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+#
+#             xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+#             x_batch = xmin + (xmax - xmin) * s
+#
+#         def point_in_triangle(pt, v1, v2, v3):
+#             d1 = sign(pt, v1, v2)
+#             d2 = sign(pt, v2, v3)
+#             d3 = sign(pt, v3, v1)
+#             has_neg = (d1 < 0) | (d2 < 0) | (d3 < 0)
+#             has_pos = (d1 > 0) | (d2 > 0) | (d3 > 0)
+#             return ~(has_neg & has_pos)
+#         def sign(p1, p2, p3):
+#             return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+#
+#         xmin_xy = xmin[:2]
+#         xmax_xy = xmax[:2]
+#         x_batch_xy = x_batch[:, :2]
+#         v1 = xmin_xy
+#         v2 = [xmax_xy[0], xmin_xy[1]]
+#         v3 = [xmin_xy[0] + (xmax_xy[0] - xmin_xy[0]) / 2, xmax_xy[1]]
+#
+#         mask = jnp.array([point_in_triangle(pt, v1, v2, v3) for pt in x_batch_xy])
+#         x_filtered = x_batch[mask]
+#
+#         return jnp.array(x_filtered)
+#
+#     @staticmethod
+#     def _rectangle_start_detriangle(key, sampler, xmin, xmax, batch_shape):
+#         "Get flattened samples of x in a rectangle, either on mesh or random"
+#
+#         assert xmin.shape == xmax.shape
+#         assert xmin.ndim == 1
+#         xd = len(xmin)
+#         assert len(batch_shape) == xd
+#
+#         if not sampler in ["grid", "uniform", "sobol", "halton"]:
+#             raise ValueError("ERROR: unexpected sampler")
+#
+#         if sampler == "grid":
+#             xs = [jnp.linspace(xmin[i], xmax[i], b) if i != 2 else jnp.array([xmin[i]]) for i, b in
+#                   enumerate(batch_shape)]
+#             xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+#             x_batch = xx.reshape((-1, xd))
+#         else:
+#             if sampler == "halton":
+#                 # use scipy as not implemented in jax (!)
+#                 r = scipy.stats.qmc.Halton(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "sobol":
+#                 r = scipy.stats.qmc.Sobol(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "uniform":
+#                 s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+#
+#             xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+#             x_batch = xmin + (xmax - xmin) * s
+#
+#         def point_in_triangle(pt, v1, v2, v3):
+#             d1 = sign(pt, v1, v2)
+#             d2 = sign(pt, v2, v3)
+#             d3 = sign(pt, v3, v1)
+#             has_neg = (d1 < 0) | (d2 < 0) | (d3 < 0)
+#             has_pos = (d1 > 0) | (d2 > 0) | (d3 > 0)
+#             return ~(has_neg & has_pos)
+#
+#         def sign(p1, p2, p3):
+#             return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+#
+#         xmin_xy = xmin[:2]
+#         xmax_xy = xmax[:2]
+#         x_batch_xy = x_batch[:, :2]
+#         v1 = xmin_xy
+#         v2 = [xmax_xy[0], xmin_xy[1]]
+#         v3 = [xmin_xy[0] + (xmax_xy[0] - xmin_xy[0]) / 2, xmax_xy[1]]
+#
+#         mask = jnp.array([point_in_triangle(pt, v1, v2, v3) for pt in x_batch_xy])
+#         x_filtered = x_batch[mask]
+#
+#         return jnp.array(x_filtered)
+#
+#     def _rectangle_boundary_triangle(key, sampler, xmin, xmax, batch_shape):
+#         xmin_xy = xmin[:2]
+#         xmax_xy = xmax[:2]
+#         v1 = xmin_xy
+#         v2 = [xmax_xy[0], xmin_xy[1]]
+#         v3 = [xmin_xy[0] + (xmax_xy[0] - xmin_xy[0]) / 2, xmax_xy[1]]
+#         num_points_per_side = batch_shape[0] * batch_shape[1] // 3
+#
+#         def generate_triangle_boundary_points(v1, v2, v3, num_points_per_side):
+#             side1 = np.linspace(v1, v2, num_points_per_side + 1)[:-1]
+#             side2 = np.linspace(v2, v3, num_points_per_side + 1)[:-1]
+#             side3 = np.linspace(v3, v1, num_points_per_side + 1)[:-1]
+#             return np.concatenate([side1, side2, side3])
+#
+#         pboundary = generate_triangle_boundary_points(v1, v2, v3, num_points_per_side)
+#
+#         def foo(input_list, time_start, time_end, num_time_samples):
+#             expanded_list = []
+#             hw = np.linspace(time_start, time_end, num_time_samples)
+#             for sublist in input_list:
+#                 for i in hw:
+#                     expanded_list.append(sublist + [i])
+#             return expanded_list
+#
+#         x_filtered = foo(pboundary, xmin[2], xmax[2], batch_shape[2])
+#
+#         return jnp.array(x_filtered)
 # ###############combined PEC2
 #     def sample_interior_depec(all_params, key, sampler, batch_shape):
 #         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
@@ -747,7 +896,7 @@ class RectangularDomainND(Domain):
 
             return boundary_points
         # 根据批次形状生成边界点
-        pboundary = generate_triangle_boundary_points([0, -0.5], 0.3,
+        pboundary = generate_triangle_boundary_points([0, -0.5], 0.5,
                                                       batch_shape[0] * batch_shape[1])
 
         x_filtered = RectangularDomainND.foo(pboundary, xmin[2], xmax[2], batch_shape[2])

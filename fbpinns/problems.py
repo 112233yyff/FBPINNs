@@ -607,7 +607,7 @@ class FDTD3D(Problem):
         DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
         NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
 
-        Ez = FDTDs2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd)
+        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd)
         Ez = Ez[::dx, ::dy, ::dt]
         Ez = jnp.ravel(Ez)
         Ez = jnp.reshape(Ez, (-1, 1))

@@ -1006,7 +1006,7 @@ class PINNTrainer(_Trainer):
 ############## 三角形 PEC
         x_center = 0
         y_center = -0.5
-        side_length = 0.3
+        side_length = 0.5
         half_side_length = side_length / 2
         height = np.sqrt(side_length ** 2 - half_side_length ** 2)
         # 定义三角形的顶点
