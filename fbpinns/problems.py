@@ -525,7 +525,7 @@ class FDTD3D(Problem):
     def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
         sd = all_params["static"]["problem"]["sd"]
         # physics loss
-        x_batch_phys = (domain.sample_interior_depec(all_params, key, sampler, batch_shapes[0]))
+        x_batch_phys = domain.sample_interior_depec(all_params, key, sampler, batch_shapes[0])
         required_ujs_phys = (
             (0, (1,)),  # dHx / dy
             (0, (2,)),  # dHx / dt
@@ -607,7 +607,7 @@ class FDTD3D(Problem):
         DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
         NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
 
-        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd)
+        Ez = FDTDs2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd)
         Ez = Ez[::dx, ::dy, ::dt]
         Ez = jnp.ravel(Ez)
         Ez = jnp.reshape(Ez, (-1, 1))

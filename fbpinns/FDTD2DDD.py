@@ -19,10 +19,10 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     # Courant stability factor
     S = 1 / (2 ** 0.5)
 
-#####方形PEC
+    #rectangle
     # Perfect Electric Conductor (PEC) setup
-    x_center, y_center = xmin + (1 / 2) * (xmax - xmin), ymin + (1 / 4) * (ymax - ymin)
-    rect_width, rect_height = 1, 1
+    x_center, y_center = -0.5, -0.5
+    rect_width, rect_height = 0.4, 0.4
     rect_xmin = x_center - rect_width / 2
     rect_xmax = x_center + rect_width / 2
     rect_ymin = y_center - rect_height / 2
@@ -39,7 +39,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
             if ~((x_values[i] < rect_xmin) | (x_values[i] > rect_xmax) | (y_values[j] < rect_ymin) | (
                 y_values[j] > rect_ymax)):
                 pec_pt.append((i, j))
-        # Perfect Electric Conductor (PEC) setup
+
+    # circle
     pec_cx, pec_cy = xmin + (1 / 4) * (xmax - xmin), ymax - (1 / 4) * (ymax - ymin)
     pec_rad = (xmax - xmin) / 4.0
 
@@ -49,6 +50,24 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
             distance = np.sqrt((x_values[i] - pec_cx) ** 2 + (y_values[j] - pec_cy) ** 2)
             # 判断该点是否在圆内
             if distance < pec_rad:
+                pec_pt.append((i, j))
+    # triangle
+    x_center = 0
+    y_center = -0.5
+    side_length = 0.3
+    half_side_length = side_length / 2
+    height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+    # 定义三角形的顶点
+    tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
+    tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
+    for i in range(0, NX):
+        for j in range(0, NY):
+            # 使用重心坐标法判断点是否在三角形内
+            denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
+            a = ((tri_y[1] - tri_y[2]) * (x_values[i] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (y_values[j] - tri_y[2])) / denominator
+            b = ((tri_y[2] - tri_y[0]) * (x_values[i] - tri_x[2]) + (tri_x[0] - tri_x[2]) * (y_values[j] - tri_y[2])) / denominator
+            c = 1 - a - b
+            if (a >= 0) & (b >= 0) & (c >= 0):
                 pec_pt.append((i, j))
     # pec_pt 现在包含了所有符合条件的点
 

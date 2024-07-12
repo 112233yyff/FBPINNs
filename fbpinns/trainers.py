@@ -21,6 +21,7 @@ from fbpinns.trainers_base import _Trainer
 from fbpinns import networks, plot_trainer
 from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
+from domains import RectangularDomainND
 from scipy.spatial.distance import cdist
 
 # LABELLING CONVENTIONS
@@ -972,38 +973,60 @@ class PINNTrainer(_Trainer):
         # get PINN solution using test data
         u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
  #       pdb.set_trace()
-# ##############圆形PEC
-#         xmin = [-1.0, -1.0]
-#         xmax = [1.0, 1.0]
-#
-#         x_batch_xy = x_batch_test[:, :2]
-#         x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-#         y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-#         xy_center = np.array([[x_center, y_center]])
-#         # Compute the center of the rectangle
-#         side_lengths = xmax[0] - xmin[0]
-#         radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
-#         distances = cdist(x_batch_xy, xy_center, metric='euclidean')
-#         mask = distances <= radius  # Points inside the circle
-# #        pdb.set_trace()
-#         u_test = u_test.at[np.squeeze(mask)].set(0.0)
-##############方形PEC
+##############圆形PEC
         xmin = [-1.0, -1.0]
         xmax = [1.0, 1.0]
+
         x_batch_xy = x_batch_test[:, :2]
-        x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-        y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
-        rect_width, rect_height = 1, 1
+        x_center = -0.5
+        y_center = 0.5
+        xy_center = np.array([[x_center, y_center]])
+
+        radius = 0.25  # Use the shorter side's fifth as radius
+        distances = cdist(x_batch_xy, xy_center, metric='euclidean')
+        mask1 = distances <= radius  # Points inside the circle
+#        pdb.set_trace()
+        u_test = u_test.at[np.squeeze(mask1)].set(0.0)
+##############方形PEC
+
+        x_batch_xy = x_batch_test[:, :2]
+        x_center = -0.5
+        y_center = -0.5
+        rect_width, rect_height = 0.4, 0.4
         rect_xmin = x_center - rect_width / 2
         rect_xmax = x_center + rect_width / 2
         rect_ymin = y_center - rect_height / 2
         rect_ymax = y_center + rect_height / 2
 
         # Filter out points that fall within the rectangle
-        mask = ~((x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
+        mask2 = ~((x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
                 x_batch_xy[:, 1] > rect_ymax))
-        #        pdb.set_trace()
-        u_test = u_test.at[np.squeeze(mask)].set(0.0)
+        u_test = u_test.at[np.squeeze(mask2)].set(0.0)
+
+############## 三角形 PEC
+        x_center = 0
+        y_center = -0.5
+        side_length = 0.3
+        half_side_length = side_length / 2
+        height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+        # 定义三角形的顶点
+        tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
+        tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
+
+# 定义一个点是否在三角形内的函数
+        def is_point_in_triangle(px, py, tri_x, tri_y):
+            # 使用重心坐标法判断点是否在三角形内
+            denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
+            a = ((tri_y[1] - tri_y[2]) * (px - tri_x[2]) + (tri_x[2] - tri_x[1]) * (py - tri_y[2])) / denominator
+            b = ((tri_y[2] - tri_y[0]) * (px - tri_x[2]) + (tri_x[0] - tri_x[2]) * (py - tri_y[2])) / denominator
+            c = 1 - a - b
+            return (a >= 0) & (b >= 0) & (c >= 0)
+
+        # 检查每个点是否在三角形内
+        mask3 = np.array([is_point_in_triangle(px, py, tri_x, tri_y) for px, py in x_batch_xy])
+
+        # 将 u_test 中这些点的值设置为 0
+        u_test = u_test.at[np.squeeze(mask3)].set(0.0)
 
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
