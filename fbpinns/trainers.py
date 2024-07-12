@@ -759,7 +759,8 @@ class FBPINNTrainer(_Trainer):
                 # take test step
                 if test_:
                     u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, u_test_lossess, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition)
+                        x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active,
+                        all_params, model_fns, problem, decomposition)
 
                 # save model
                 if model_save_:
@@ -769,7 +770,7 @@ class FBPINNTrainer(_Trainer):
 
         return u_test_losses, start1, report_time
 
-    def _test(self, x_batch_test, u_exact, u_test_losses, u_test_lossess, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition):
+    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition):
         "Test step"
         c, writer = self.c, self.writer
         n_test = c.n_test
@@ -802,19 +803,73 @@ class FBPINNTrainer(_Trainer):
 
         else:
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
+        ##############圆形PEC
+        xmin = [-1.0, -1.0]
+        xmax = [1.0, 1.0]
 
+        x_batch_xy = x_batch_test[:, :2]
+        x_center = -0.5
+        y_center = 0.5
+        xy_center = np.array([[x_center, y_center]])
+
+        radius = 0.25  # Use the shorter side's fifth as radius
+        distances = cdist(x_batch_xy, xy_center, metric='euclidean')
+        mask1 = distances <= radius  # Points inside the circle
+        #        pdb.set_trace()
+        u_test = u_test.at[np.squeeze(mask1)].set(0.0)
+        ##############方形PEC
+
+        x_batch_xy = x_batch_test[:, :2]
+        x_center = -0.5
+        y_center = -0.5
+        rect_width, rect_height = 0.4, 0.4
+        rect_xmin = x_center - rect_width / 2
+        rect_xmax = x_center + rect_width / 2
+        rect_ymin = y_center - rect_height / 2
+        rect_ymax = y_center + rect_height / 2
+
+        # Filter out points that fall within the rectangle
+        mask2 = ~((x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (
+                    x_batch_xy[:, 1] < rect_ymin) | (
+                          x_batch_xy[:, 1] > rect_ymax))
+        u_test = u_test.at[np.squeeze(mask2)].set(0.0)
+
+        ############## 三角形 PEC
+        x_center = 0
+        y_center = -0.5
+        side_length = 0.5
+        half_side_length = side_length / 2
+        height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+        # 定义三角形的顶点
+        tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
+        tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
+
+        # 定义一个点是否在三角形内的函数
+        def is_point_in_triangle(px, py, tri_x, tri_y):
+            # 使用重心坐标法判断点是否在三角形内
+            denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (
+                        tri_y[0] - tri_y[2])
+            a = ((tri_y[1] - tri_y[2]) * (px - tri_x[2]) + (tri_x[2] - tri_x[1]) * (py - tri_y[2])) / denominator
+            b = ((tri_y[2] - tri_y[0]) * (px - tri_x[2]) + (tri_x[0] - tri_x[2]) * (py - tri_y[2])) / denominator
+            c = 1 - a - b
+            return (a >= 0) & (b >= 0) & (c >= 0)
+
+        # 检查每个点是否在三角形内
+        mask3 = np.array([is_point_in_triangle(px, py, tri_x, tri_y) for px, py in x_batch_xy])
+
+        # 将 u_test 中这些点的值设置为 0
+        u_test = u_test.at[np.squeeze(mask3)].set(0.0)
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
-        u_test_lossess.append([l1])
         writer.add_scalar("loss/test/l1_istep", l1, i)
 
         # create figures
         if i % (c.test_freq * 5) == 0:
-        # if i % (c.test_freq * 5) == 0 and i != 0:
             fs = plot_trainer.plot("FBPINN", all_params["static"]["problem"]["dims"],
-                x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test, u_test_lossess, num)
+                                   x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i,
+                                   active, decomposition, n_test)
             if fs is not None:
                 self._save_figs(i, fs)
 
@@ -1095,7 +1150,7 @@ if __name__ == "__main__":
     # run.train()
 
     # fdtd2d
-    subdomain_xs = [np.linspace(-1, 1, 5), np.linspace(-1, 1, 5), np.linspace(0, 1, 3)]
+    subdomain_xs = [np.linspace(-1, 1, 2), np.linspace(-1, 1, 3), np.linspace(0, 2, 2)]
     subdomain_ws = get_subdomain_ws(subdomain_xs, 1.9)
 
     c = Constants(
@@ -1131,5 +1186,6 @@ if __name__ == "__main__":
         clear_output=True,
     )
     c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 64, 3])
-    run = PINNTrainer(c)
+    # run = PINNTrainer(c)
+    run = FBPINNTrainer(c)
     run.train()
