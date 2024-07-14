@@ -21,7 +21,7 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
 
     #rectangle
     # Perfect Electric Conductor (PEC) setup
-    x_center, y_center = -0.5, -0.5
+    x_center, y_center = -0.7, -0.5
     rect_width, rect_height = 0.4, 0.4
     rect_xmin = x_center - rect_width / 2
     rect_xmax = x_center + rect_width / 2
@@ -41,8 +41,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
                 pec_pt.append((i, j))
 
     # circle
-    pec_cx, pec_cy = xmin + (1 / 4) * (xmax - xmin), ymax - (1 / 4) * (ymax - ymin)
-    pec_rad = (xmax - xmin) / 4.0
+    pec_cx, pec_cy = -0.7, 0.5
+    pec_rad = 0.25
 
     for i in range(0, NX):
         for j in range(0, NY):

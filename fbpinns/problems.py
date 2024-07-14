@@ -582,7 +582,7 @@ class FDTD3D(Problem):
             boundary = jnp.mean((EE - Eb) ** 2)
         else:
             boundary = 0
-        return 1e2 * phys + 1e4 * start + 1e3 * boundary
+        return 1e2 * phys + 1e4 * start + 1e5 * boundary
     # @staticmethod
     # def exact_solution(all_params, x_batch, batch_shape):
     #     key = jax.random.PRNGKey(0)

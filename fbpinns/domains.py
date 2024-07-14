@@ -201,15 +201,12 @@ class Domain:
 #             x_batch = xmin + (xmax - xmin) * s
 #
 #         # After generating x_batch
-#         xmin = xmin[:2]
-#         xmax = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-#         y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+#         x_center = -0.5
+#         y_center = 0.5
 #         xy_center = np.array([[x_center, y_center]])
-#         # Compute the center of the rectangle
-#         side_lengths = xmax - xmin
-#         radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+#
+#         radius = 0.25  # Use the shorter side's fifth as radius
 #
 #         # Filter out points that fall within the circle
 #         distances = cdist(x_batch_xy, xy_center, metric='euclidean')
@@ -249,30 +246,21 @@ class Domain:
 #             x_batch = xmin + (xmax - xmin) * s
 #
 #         # After generating x_batch
-#         xmin = xmin[:2]
-#         xmax = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         x_center = xmin[0] + (1 / 2) * (xmax[0] - xmin[0])
-#         y_center = xmin[1] + (1 / 4) * (xmax[1] - xmin[1])
+#         x_center = -0.5
+#         y_center = 0.5
 #         xy_center = np.array([[x_center, y_center]])
-#         # Compute the center of the rectangle
-#         side_lengths = xmax - xmin
-#         radius = np.min(side_lengths) / 4.  # Use the shorter side's fifth as radius
+#
+#         radius = 0.25  # Use the shorter side's fifth as radius
 #
 #         # Filter out points that fall within the circle
 #         distances = cdist(x_batch_xy, xy_center, metric='euclidean')
 #         mask = distances > radius  # Points outside the circle
-#
 #         x_filtered = x_batch[mask.all(axis=1)]
+#
 #         return jnp.array(x_filtered)
 #
 #     def _rectangle_boundary_circle(key, sampler, xmin, xmax, batch_shape):
-#         # generating x_batch
-#         xmin_xy = xmin[:2]
-#         xmax_xy = xmax[:2]
-#         x_center = xmin_xy[0] + (1 / 4) * (xmax_xy[0] - xmin_xy[0])
-#         y_center = xmax_xy[1] - (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         radius = np.min(xmax_xy - xmin_xy) / 4.0
 #
 #         def generate_circular_boundary_points(center, r, num_points):
 #             theta = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
@@ -282,7 +270,7 @@ class Domain:
 #
 #         # Generate boundary points on the circle
 #         num_boundary_points = batch_shape[0] * batch_shape[1]
-#         pboundary = generate_circular_boundary_points([x_center, y_center], radius, num_boundary_points)
+#         pboundary = generate_circular_boundary_points([-0.5, 0.5], 0.25, num_boundary_points)
 #
 #         def foo(input_list, time_start, time_end, num_time_samples):
 #             expanded_list = []
@@ -341,12 +329,10 @@ class Domain:
 #             x_batch = xmin + (xmax - xmin) * s
 #
 #         # After generating x_batch
-#         xmin_xy = xmin[:2]
-#         xmax_xy = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         x_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
-#         y_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         rect_width, rect_height = 1, 1
+#         x_center = -0.5
+#         y_center = -0.5
+#         rect_width, rect_height = 0.4, 0.4
 #         rect_xmin = x_center - rect_width / 2
 #         rect_xmax = x_center + rect_width / 2
 #         rect_ymin = y_center - rect_height / 2
@@ -390,31 +376,23 @@ class Domain:
 #             x_batch = xmin + (xmax - xmin) * s
 #
 #         # After generating x_batch
-#         xmin_xy = xmin[:2]
-#         xmax_xy = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         x_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
-#         y_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         rect_width, rect_height = 1, 1
+#         x_center = -0.5
+#         y_center = -0.5
+#         rect_width, rect_height = 0.4, 0.4
 #         rect_xmin = x_center - rect_width / 2
 #         rect_xmax = x_center + rect_width / 2
 #         rect_ymin = y_center - rect_height / 2
 #         rect_ymax = y_center + rect_height / 2
 #
 #         # Filter out points that fall within the rectangle
-#         mask = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
+#         mask1 = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
 #                 x_batch_xy[:, 1] > rect_ymax)
-#         x_filtered = x_batch[mask]
+#         x_filtered = x_batch[mask1]
 #
 #         return jnp.array(x_filtered)
 #
 #     def _rectangle_boundary_rectangle(key, sampler, xmin, xmax, batch_shape):
-#         xmin_xy = xmin[:2]
-#         xmax_xy = xmax[:2]
-#         x_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
-#         y_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         side_length = 1
-#
 #         def generate_square_boundary_points(center, side_length, num_points_per_side=10):
 #             half_side_length = side_length / 2
 #             vertices = [(center[0] - half_side_length * 1, center[1] - half_side_length),  # Bottom left
@@ -432,7 +410,7 @@ class Domain:
 #
 #             return boundary_points
 #
-#         pboundary = generate_square_boundary_points([x_center, y_center], side_length, batch_shape[0] * batch_shape[1])
+#         pboundary = generate_square_boundary_points([-0.5, -0.5], 0.4, batch_shape[0] * batch_shape[1])
 #
 #         def foo(input_list, time_start, time_end, num_time_samples):
 #             expanded_list = []
@@ -500,12 +478,17 @@ class Domain:
 #         def sign(p1, p2, p3):
 #             return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
 #
-#         xmin_xy = xmin[:2]
-#         xmax_xy = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         v1 = xmin_xy
-#         v2 = [xmax_xy[0], xmin_xy[1]]
-#         v3 = [xmin_xy[0] + (xmax_xy[0] - xmin_xy[0]) / 2, xmax_xy[1]]
+#         x_center = 0
+#         y_center = -0.5
+#         side_length = 0.5
+#         half_side_length = side_length / 2
+#         height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+#
+#
+#         v1 = [x_center - half_side_length, y_center - height / 3]
+#         v2 = [x_center + half_side_length, y_center - height / 3]
+#         v3 = [x_center, y_center + 2 * height / 3]
 #
 #         mask = jnp.array([point_in_triangle(pt, v1, v2, v3) for pt in x_batch_xy])
 #         x_filtered = x_batch[mask]
@@ -554,12 +537,16 @@ class Domain:
 #         def sign(p1, p2, p3):
 #             return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
 #
-#         xmin_xy = xmin[:2]
-#         xmax_xy = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         v1 = xmin_xy
-#         v2 = [xmax_xy[0], xmin_xy[1]]
-#         v3 = [xmin_xy[0] + (xmax_xy[0] - xmin_xy[0]) / 2, xmax_xy[1]]
+#         x_center = 0
+#         y_center = -0.5
+#         side_length = 0.5
+#         half_side_length = side_length / 2
+#         height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+#
+#         v1 = [x_center - half_side_length, y_center - height / 3]
+#         v2 = [x_center + half_side_length, y_center - height / 3]
+#         v3 = [x_center, y_center + 2 * height / 3]
 #
 #         mask = jnp.array([point_in_triangle(pt, v1, v2, v3) for pt in x_batch_xy])
 #         x_filtered = x_batch[mask]
@@ -567,11 +554,15 @@ class Domain:
 #         return jnp.array(x_filtered)
 #
 #     def _rectangle_boundary_triangle(key, sampler, xmin, xmax, batch_shape):
-#         xmin_xy = xmin[:2]
-#         xmax_xy = xmax[:2]
-#         v1 = xmin_xy
-#         v2 = [xmax_xy[0], xmin_xy[1]]
-#         v3 = [xmin_xy[0] + (xmax_xy[0] - xmin_xy[0]) / 2, xmax_xy[1]]
+#         x_center = 0
+#         y_center = -0.5
+#         side_length = 0.5
+#         half_side_length = side_length / 2
+#         height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+#
+#         v1 = [x_center - half_side_length, y_center - height / 3]
+#         v2 = [x_center + half_side_length, y_center - height / 3]
+#         v3 = [x_center, y_center + 2 * height / 3]
 #         num_points_per_side = batch_shape[0] * batch_shape[1] // 3
 #
 #         def generate_triangle_boundary_points(v1, v2, v3, num_points_per_side):
@@ -642,13 +633,13 @@ class Domain:
 #         xmin_xy = xmin[:2]
 #         xmax_xy = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         x_rectangle_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
-#         y__rectangle_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         rect_width, rect_height = 1, 1
-#         rect_xmin = x_rectangle_center - rect_width / 2
-#         rect_xmax = x_rectangle_center + rect_width / 2
-#         rect_ymin = y__rectangle_center - rect_height / 2
-#         rect_ymax = y__rectangle_center + rect_height / 2
+#         x_center = -0.5
+#         y_center = -0.5
+#         rect_width, rect_height = 0.4, 0.4
+#         rect_xmin = x_center - rect_width / 2
+#         rect_xmax = x_center + rect_width / 2
+#         rect_ymin = y_center - rect_height / 2
+#         rect_ymax = y_center + rect_height / 2
 #
 #         # Filter out points that fall within the rectangle
 #         mask1 = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
@@ -656,19 +647,43 @@ class Domain:
 #         x_rectangle_filtered = x_batch[mask1]
 #         x_batch_xy_outrect= x_rectangle_filtered[:, :2]
 #
-#         x_circle_center = xmin_xy[0] + (1 / 4) * (xmax_xy[0] - xmin_xy[0])
-#         y_circle_center = xmax_xy[1] - (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         xy_circle_center = np.array([[x_circle_center, y_circle_center]])
-#         # Compute the center of the rectangle
-#         side_lengths = xmax - xmin
-#         radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+#         x_center = -0.5
+#         y_center = 0.5
+#         xy_center = np.array([[x_center, y_center]])
+#         radius = 0.25  # Use the shorter side's fifth as radius
 #
 #         # Filter out points that fall within the circle
-#         distances = cdist(x_batch_xy_outrect, xy_circle_center, metric='euclidean')
+#         distances = cdist(x_batch_xy_outrect, xy_center, metric='euclidean')
 #         mask2 = distances > radius  # Points outside the circle
 #         x_circle_filtered = x_rectangle_filtered[mask2.all(axis=1)]
 #
-#         return jnp.array(x_circle_filtered)
+#         # Filter out points that fall within the traingle
+#         def point_in_triangle(pt, v1, v2, v3):
+#             d1 = sign(pt, v1, v2)
+#             d2 = sign(pt, v2, v3)
+#             d3 = sign(pt, v3, v1)
+#             has_neg = (d1 < 0) | (d2 < 0) | (d3 < 0)
+#             has_pos = (d1 > 0) | (d2 > 0) | (d3 > 0)
+#             return ~(has_neg & has_pos)
+#
+#         def sign(p1, p2, p3):
+#             return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+#
+#         x_batch_xy_outcircle = x_circle_filtered[:, :2]
+#         x_center = 0
+#         y_center = -0.5
+#         side_length = 0.5
+#         half_side_length = side_length / 2
+#         height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+#
+#         v1 = [x_center - half_side_length, y_center - height / 3]
+#         v2 = [x_center + half_side_length, y_center - height / 3]
+#         v3 = [x_center, y_center + 2 * height / 3]
+#
+#         mask3 = jnp.array([point_in_triangle(pt, v1, v2, v3) for pt in  x_batch_xy_outcircle])
+#         x_filtered = x_circle_filtered[mask3]
+#
+#         return jnp.array(x_filtered)
 #     @staticmethod
 #     def _rectangle_start_depec(key, sampler, xmin, xmax, batch_shape):
 #         "Get flattened samples of x in a rectangle, either on mesh or random"
@@ -704,43 +719,63 @@ class Domain:
 #         xmin_xy = xmin[:2]
 #         xmax_xy = xmax[:2]
 #         x_batch_xy = x_batch[:, :2]
-#         x_rectangle_center = xmin_xy[0] + (1 / 2) * (xmax_xy[0] - xmin_xy[0])
-#         y__rectangle_center = xmin_xy[1] + (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         rect_width, rect_height = 1, 1
-#         rect_xmin = x_rectangle_center - rect_width / 2
-#         rect_xmax = x_rectangle_center + rect_width / 2
-#         rect_ymin = y__rectangle_center - rect_height / 2
-#         rect_ymax = y__rectangle_center + rect_height / 2
+#         x_center = -0.5
+#         y_center = -0.5
+#         rect_width, rect_height = 0.4, 0.4
+#         rect_xmin = x_center - rect_width / 2
+#         rect_xmax = x_center + rect_width / 2
+#         rect_ymin = y_center - rect_height / 2
+#         rect_ymax = y_center + rect_height / 2
 #
 #         # Filter out points that fall within the rectangle
 #         mask1 = (x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (x_batch_xy[:, 1] < rect_ymin) | (
 #                 x_batch_xy[:, 1] > rect_ymax)
 #         x_rectangle_filtered = x_batch[mask1]
-#         x_batch_xy_outrect = x_rectangle_filtered[:, :2]
 #
-#         x_circle_center = xmin_xy[0] + (1 / 4) * (xmax_xy[0] - xmin_xy[0])
-#         y_circle_center = xmax_xy[1] - (1 / 4) * (xmax_xy[1] - xmin_xy[1])
-#         xy_circle_center = np.array([[x_circle_center, y_circle_center]])
-#         # Compute the center of the rectangle
-#         side_lengths = xmax - xmin
-#         radius = np.min(side_lengths) / 4.0  # Use the shorter side's fifth as radius
+#         x_batch_xy_outrect = x_rectangle_filtered[:, :2]
+#         x_center = -0.5
+#         y_center = 0.5
+#         xy_center = np.array([[x_center, y_center]])
+#         radius = 0.25  # Use the shorter side's fifth as radius
 #
 #         # Filter out points that fall within the circle
-#         distances = cdist(x_batch_xy_outrect, xy_circle_center, metric='euclidean')
+#         distances = cdist(x_batch_xy_outrect, xy_center, metric='euclidean')
 #         mask2 = distances > radius  # Points outside the circle
 #         x_circle_filtered = x_rectangle_filtered[mask2.all(axis=1)]
 #
-#         return jnp.array(x_circle_filtered)
+#         # Filter out points that fall within the traingle
+#         def point_in_triangle(pt, v1, v2, v3):
+#             d1 = sign(pt, v1, v2)
+#             d2 = sign(pt, v2, v3)
+#             d3 = sign(pt, v3, v1)
+#             has_neg = (d1 < 0) | (d2 < 0) | (d3 < 0)
+#             has_pos = (d1 > 0) | (d2 > 0) | (d3 > 0)
+#             return ~(has_neg & has_pos)
+#
+#         def sign(p1, p2, p3):
+#             return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+#
+#         x_batch_xy_outcircle = x_circle_filtered[:, :2]
+#         x_center = 0
+#         y_center = -0.5
+#         side_length = 0.5
+#         half_side_length = side_length / 2
+#         height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+#
+#         v1 = [x_center - half_side_length, y_center - height / 3]
+#         v2 = [x_center + half_side_length, y_center - height / 3]
+#         v3 = [x_center, y_center + 2 * height / 3]
+#
+#         mask3 = jnp.array([point_in_triangle(pt, v1, v2, v3) for pt in x_batch_xy_outcircle])
+#         x_filtered = x_circle_filtered[mask3]
+#
+#         return jnp.array(x_filtered)
 #
 #     def _rectangle_boundary_pec(key, sampler, xmin, xmax, batch_shape):
-#         # 调用 _rectangle_boundary_circle 函数
 #         result_circle = RectangularDomainND._rectangle_boundary_circle(key, sampler, xmin, xmax, batch_shape)
-#
-#         # 调用 _rectangle_boundary_rectangle 函数
 #         result_rectangle = RectangularDomainND._rectangle_boundary_rectangle(key, sampler, xmin, xmax, batch_shape)
-#
-#         # 将两个结果合并
-#         result_combined = jnp.concatenate([result_circle, result_rectangle], axis=0)
+#         result_triangle = RectangularDomainND._rectangle_boundary_triangle(key, sampler, xmin, xmax, batch_shape)
+#         result_combined = jnp.concatenate([result_circle, result_rectangle, result_triangle], axis=0)
 #
 #         return result_combined
 
@@ -838,7 +873,7 @@ class RectangularDomainND(Domain):
             return np.column_stack((x, y))
         # Generate boundary points on the circle
         num_boundary_points = batch_shape[0] * batch_shape[1]
-        pboundary = generate_circular_boundary_points([-0.5, 0.5], 0.25, num_boundary_points)
+        pboundary = generate_circular_boundary_points([-0.7, 0.5], 0.25, num_boundary_points)
         x_filtered = RectangularDomainND.foo(pboundary.tolist(), xmin[2], xmax[2], batch_shape[2])
 
         return jnp.array(x_filtered)
@@ -869,7 +904,7 @@ class RectangularDomainND(Domain):
 
             return boundary_points
 
-        pboundary = generate_square_boundary_points([-0.5, -0.5], 0.4, batch_shape[0] * batch_shape[1])
+        pboundary = generate_square_boundary_points([-0.7, -0.5], 0.4, batch_shape[0] * batch_shape[1])
         x_filtered = RectangularDomainND.foo(pboundary, xmin[2], xmax[2], batch_shape[2])
 
         return jnp.array(x_filtered)
