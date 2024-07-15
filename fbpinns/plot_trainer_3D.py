@@ -5,7 +5,7 @@ This module is used by plot_trainer.py (and subsequently trainers.py)
 """
 
 import matplotlib.pyplot as plt
-
+import numpy as np
 from fbpinns.plot_trainer_1D import _plot_setup, _to_numpy
 from fbpinns.plot_trainer_2D import _plot_test_im
 
@@ -42,6 +42,8 @@ def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
         plt.subplot2grid(shape,(1+it,2))
         plt.title(f"[{i}] Difference")
         _plot_test_im(u_exact - u_test[:,2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+
+
 
     # plot raw hist
     plt.subplot2grid(shape,(1+nt,0))

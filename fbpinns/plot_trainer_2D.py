@@ -108,10 +108,3 @@ def plot_2D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
 
     plt.tight_layout()
     return (("test",f),)
-
-
-
-
-
-
-
