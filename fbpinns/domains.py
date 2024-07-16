@@ -239,7 +239,8 @@ class RectangularDomainND(Domain):
         triangle_points = RectangularDomainND.boundary_triangle(key, sampler, xmin, xmax, batch_shape)
         heart_points = RectangularDomainND.boundary_heart(key, sampler, xmin, xmax, batch_shape)
         # all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points, heart_points], axis=0)
-        all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points], axis=0)
+        # all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points], axis=0)
+        all_boundary_points = np.concatenate([circle_points, rectangle_points], axis=0)
         # # 绘制边界点
         # plt.figure(figsize=(8, 8))
         # for boundary_type, color in zip(['rectangle', 'circle', 'triangle', 'heart'],
@@ -254,8 +255,8 @@ class RectangularDomainND(Domain):
         # plt.title('Boundary Points')
         # plt.axis('equal')
         # plt.show()
+        # return all_boundary_points
         return all_boundary_points
-
     # @staticmethod
     # def is_inside(point, boundary_polygon):
     #     shapely_point = Point(point)
@@ -334,8 +335,8 @@ class RectangularDomainND(Domain):
         # plt.ylabel('Y Coordinate')
         # plt.grid(True)
         # plt.show()
-        return filtered_triangle_points
-
+        # return filtered_triangle_points
+        return filtered_rectangle_points
     @staticmethod
     def _rectangle_start_depec(key, sampler, xmin, xmax, batch_shape):
         "Get flattened samples of x in a rectangle, either on mesh or random"
@@ -382,8 +383,8 @@ class RectangularDomainND(Domain):
         # plt.ylabel('Y Coordinate')
         # plt.grid(True)
         # plt.show()
-        return filtered_triangle_points
-
+        # return filtered_triangle_points
+        return filtered_rectangle_points
     @staticmethod
     def _rectangle_boundary_pec(key, sampler, xmin, xmax, batch_shape):
         boundary_points = RectangularDomainND.all_boundary(key, sampler, xmin, xmax, batch_shape)
