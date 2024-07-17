@@ -51,26 +51,26 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
             # 判断该点是否在圆内
             if distance < pec_rad:
                 pec_pt.append((i, j))
-    # # triangle
-    # x_center = 0
-    # y_center = -0.5
-    # side_length = 0.5
-    # half_side_length = side_length / 2
-    # height = np.sqrt(side_length ** 2 - half_side_length ** 2)
-    # # 定义三角形的顶点
-    # tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
-    # tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
-    # for i in range(0, NX):
-    #     for j in range(0, NY):
-    #         # 使用重心坐标法判断点是否在三角形内
-    #         denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
-    #         a = ((tri_y[1] - tri_y[2]) * (x_values[i] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (
-    #                     y_values[j] - tri_y[2])) / denominator
-    #         b = ((tri_y[2] - tri_y[0]) * (x_values[i] - tri_x[2]) + (tri_x[0] - tri_x[2]) * (
-    #                     y_values[j] - tri_y[2])) / denominator
-    #         c = 1 - a - b
-    #         if (a >= 0) & (b >= 0) & (c >= 0):
-    #             pec_pt.append((i, j))
+    # triangle
+    x_center = 0
+    y_center = -0.5
+    side_length = 0.5
+    half_side_length = side_length / 2
+    height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+    # 定义三角形的顶点
+    tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
+    tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
+    for i in range(0, NX):
+        for j in range(0, NY):
+            # 使用重心坐标法判断点是否在三角形内
+            denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
+            a = ((tri_y[1] - tri_y[2]) * (x_values[i] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (
+                        y_values[j] - tri_y[2])) / denominator
+            b = ((tri_y[2] - tri_y[0]) * (x_values[i] - tri_x[2]) + (tri_x[0] - tri_x[2]) * (
+                        y_values[j] - tri_y[2])) / denominator
+            c = 1 - a - b
+            if (a >= 0) & (b >= 0) & (c >= 0):
+                pec_pt.append((i, j))
     # pec_pt 现在包含了所有符合条件的点
 
     # Permittivity of vacuum [farad/meter]
