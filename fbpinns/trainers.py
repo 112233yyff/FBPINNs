@@ -729,22 +729,21 @@ class FBPINNTrainer(_Trainer):
 
         return all_params
 
-    def _report(self, i, pstep, fstep, u_test_losses, start0, start1, report_time,
+    def _report(self, i, pstep, fstep, u_test_losses, u_test_lossess, start0, start1, report_time,
                 u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
                 active, merge_active, active_opt_states, active_params, x_batch,
                 lossval):
         "Report results"
 
         c = self.c
-        summary_,test_,model_save_ = [(i % f == 0) for f in
-                                      [c.summary_freq, c.test_freq, c.model_save_freq]]
-        if summary_ or test_ or model_save_:
+        summary_, test_, model_save_ = [(i % f == 0) for f in
+                                        [c.summary_freq, c.test_freq, c.model_save_freq]]
+        if i != 0:
+            rate = c.summary_freq / (time.time() - start1 - report_time)
+            self._print_summary(i, lossval.item(), rate, start0, summary_)
+            start1, report_time = time.time(), 0.
 
-            # print summary
-            if i != 0 and summary_:
-                rate = c.summary_freq / (time.time()-start1-report_time)
-                self._print_summary(i, lossval.item(), rate, start0)
-                start1, report_time = time.time(), 0.
+        if test_ or model_save_:
 
             if test_ or model_save_:
 
@@ -757,7 +756,7 @@ class FBPINNTrainer(_Trainer):
                 # take test step
                 if test_:
                     u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition)
+                        x_batch_test, u_exact, u_test_losses, u_test_lossess, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition)
 
                 # save model
                 if model_save_:
@@ -980,15 +979,14 @@ class PINNTrainer(_Trainer):
         "Report results"
 
         c = self.c
-        summary_,test_,model_save_ = [(i % f == 0) for f in
-                                      [c.summary_freq, c.test_freq, c.model_save_freq]]
-        if summary_ or test_ or model_save_:
+        summary_, test_, model_save_ = [(i % f == 0) for f in
+                                        [c.summary_freq, c.test_freq, c.model_save_freq]]
+        if i != 0:
+            rate = c.summary_freq / (time.time() - start1 - report_time)
+            self._print_summary(i, lossval.item(), rate, start0, summary_)
+            start1, report_time = time.time(), 0.
 
-            # print summary
-            if i != 0 and summary_:
-                rate = c.summary_freq / (time.time()-start1-report_time)
-                self._print_summary(i, lossval.item(), rate, start0)
-                start1, report_time = time.time(), 0.
+        if test_ or model_save_:
 
             if test_ or model_save_:
 
@@ -1001,13 +999,14 @@ class PINNTrainer(_Trainer):
                 # take test step
                 if test_:
                     u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem)
+                        x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns,
+                        problem)
 
                 # save model
                 if model_save_:
                     self._save_model(i, (i, all_params, all_opt_states, jnp.array(u_test_losses)))
 
-                report_time += time.time()-start2
+                report_time += time.time() - start2
 
         return u_test_losses, start1, report_time
 
@@ -1166,7 +1165,7 @@ if __name__ == "__main__":
         ),
         ns=((60, 60, 60),),
         n_start=((60, 60, 1),),
-        n_boundary=((40, 40, 40),),
+        n_boundary=((50, 50, 50),),
         n_test=(100, 100, 20),
         n_steps=100000,
         optimiser_kwargs=dict(learning_rate=1e-3),
@@ -1175,7 +1174,8 @@ if __name__ == "__main__":
         show_figures=False,
         clear_output=True,
     )
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64,3])
-    # run = PINNTrainer(c)
-    run = FBPINNTrainer(c)
+    # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64,3])
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 128, 3])
+    run = PINNTrainer(c)
+    # run = FBPINNTrainer(c)
     run.train()

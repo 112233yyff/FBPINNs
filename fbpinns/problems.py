@@ -578,6 +578,7 @@ class FDTD3D(Problem):
         if len(Eb):
             boundary = jnp.mean((EE - Eb) ** 2)
         else:
+
             boundary = 0
         return 1e1 * phys + 1e2 * start + 1e2 * boundary
 
