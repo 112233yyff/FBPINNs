@@ -3,11 +3,10 @@ Defines plotting functions for 2D FBPINN / PINN problems
 
 This module is used by plot_trainer.py (and subsequently trainers.py)
 """
-
-import pdb
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from fbpinns.plot_trainer_1D import _plot_setup, _to_numpy
+import matplotlib.ticker as ticker
 
 # def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
 # #    pdb.set_trace()
@@ -27,18 +26,23 @@ from fbpinns.plot_trainer_1D import _plot_setup, _to_numpy
 def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
     u_test = u_test.reshape(n_test)
     if it is not None:
-        u_test = u_test[:,:,it]  # for 3D
+        u_test = u_test[:, :, it]  # for 3D
 
     ax = plt.gca()
     im = ax.imshow(u_test.T,  # transpose as jnp.meshgrid uses indexing="ij"
                    extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
                    origin='lower',
-                   cmap="RdBu",
+                   cmap="bwr",
                    vmin=ulim[0],
-                   vmax=ulim[1])
+                   vmax=(ulim[1] / 3))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
-    plt.colorbar(im, cax=cax)
+    cbar = plt.colorbar(im, cax=cax)
+
+    # Set the colorbar ticks to have a consistent number of ticks
+    cbar.locator = ticker.MaxNLocator(nbins=5)  # Change nbins to the desired number of ticks
+    cbar.update_ticks()
+
     ax.set_xlim(xlim[0][0], xlim[1][0])
     ax.set_ylim(xlim[0][1], xlim[1][1])
     ax.set_aspect("equal")

@@ -1,16 +1,16 @@
 import numpy as np
 
-def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd):
+def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, c):
     f0 = 10
     Lf = 1
     xdim, ydim, time_tot = NX, NY, NSTEPS
     deltax, deltay, deltat = DELTAX, DELTAY, DELTAT
 
     # Define new domain boundaries
-    new_xmin, new_xmax = -2, 2
-    new_ymin, new_ymax = -2, 2
-    new_xdim = int((new_xmax - new_xmin) / deltax) + 1
-    new_ydim = int((new_ymax - new_ymin) / deltay) + 1
+    new_xmin, new_xmax = 2*xmin, 2*xmax
+    new_ymin, new_ymax = 2*ymin, 2*ymax
+    new_xdim = 2 * NX
+    new_ydim = 2 * NY
 
     Ez_out = np.zeros((xdim, ydim, time_tot))
     Hx_out = np.zeros((xdim, ydim, time_tot))
@@ -24,51 +24,51 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     # Courant stability factor
     S = 1 / (2 ** 0.5)
 
-    ########## PEC
-    pec_pt = []
-    x_values = np.arange(new_xmin, new_xmax + deltax, deltax)
-    y_values = np.arange(new_ymin, new_ymax + deltay, deltay)
-
-    ### Rectangle PEC
-    x_center, y_center = -0.7, -0.5
-    rect_width, rect_height = 0.4, 0.4
-    rect_xmin = x_center - rect_width / 2
-    rect_xmax = x_center + rect_width / 2
-    rect_ymin = y_center - rect_height / 2
-    rect_ymax = y_center + rect_height / 2
-
-    for i in range(new_xdim):
-        for j in range(new_ydim):
-            if not ((x_values[i] < rect_xmin) or (x_values[i] > rect_xmax) or (y_values[j] < rect_ymin) or (y_values[j] > rect_ymax)):
-                pec_pt.append((i, j))
-
-    ### Circle PEC
-    pec_cx, pec_cy = -0.7, 0.5
-    pec_rad = 0.25
-
-    for i in range(new_xdim):
-        for j in range(new_ydim):
-            distance = np.sqrt((x_values[i] - pec_cx) ** 2 + (y_values[j] - pec_cy) ** 2)
-            if distance < pec_rad:
-                pec_pt.append((i, j))
-
-    ### Triangle PEC
-    x_center = 0
-    y_center = -0.5
-    side_length = 0.5
-    half_side_length = side_length / 2
-    height = np.sqrt(side_length ** 2 - half_side_length ** 2)
-    tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
-    tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
-
-    for i in range(new_xdim):
-        for j in range(new_ydim):
-            denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
-            a = ((tri_y[1] - tri_y[2]) * (x_values[i] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (y_values[j] - tri_y[2])) / denominator
-            b = ((tri_y[2] - tri_y[0]) * (x_values[i] - tri_x[2]) + (tri_x[0] - tri_x[2]) * (y_values[j] - tri_y[2])) / denominator
-            c = 1 - a - b
-            if (a >= 0) and (b >= 0) and (c >= 0):
-                pec_pt.append((i, j))
+    # ########## PEC
+    # pec_pt = []
+    # x_values = np.arange(new_xmin, new_xmax + deltax, deltax)
+    # y_values = np.arange(new_ymin, new_ymax + deltay, deltay)
+    #
+    # ### Rectangle PEC
+    # x_center, y_center = -0.7, -0.5
+    # rect_width, rect_height = 0.4, 0.4
+    # rect_xmin = x_center - rect_width / 2
+    # rect_xmax = x_center + rect_width / 2
+    # rect_ymin = y_center - rect_height / 2
+    # rect_ymax = y_center + rect_height / 2
+    #
+    # for i in range(new_xdim):
+    #     for j in range(new_ydim):
+    #         if not ((x_values[i] < rect_xmin) or (x_values[i] > rect_xmax) or (y_values[j] < rect_ymin) or (y_values[j] > rect_ymax)):
+    #             pec_pt.append((i, j))
+    #
+    # ### Circle PEC
+    # pec_cx, pec_cy = -0.7, 0.5
+    # pec_rad = 0.25
+    #
+    # for i in range(new_xdim):
+    #     for j in range(new_ydim):
+    #         distance = np.sqrt((x_values[i] - pec_cx) ** 2 + (y_values[j] - pec_cy) ** 2)
+    #         if distance < pec_rad:
+    #             pec_pt.append((i, j))
+    #
+    # ### Triangle PEC
+    # x_center = 0
+    # y_center = -0.5
+    # side_length = 0.5
+    # half_side_length = side_length / 2
+    # height = np.sqrt(side_length ** 2 - half_side_length ** 2)
+    # tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
+    # tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
+    #
+    # for i in range(new_xdim):
+    #     for j in range(new_ydim):
+    #         denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
+    #         a = ((tri_y[1] - tri_y[2]) * (x_values[i] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (y_values[j] - tri_y[2])) / denominator
+    #         b = ((tri_y[2] - tri_y[0]) * (x_values[i] - tri_x[2]) + (tri_x[0] - tri_x[2]) * (y_values[j] - tri_y[2])) / denominator
+    #         c = 1 - a - b
+    #         if (a >= 0) and (b >= 0) and (c >= 0):
+    #             pec_pt.append((i, j))
 
     # Permittivity of vacuum [farad/meter]
     e0 = 1
@@ -78,7 +78,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     c0 = 1
     L0 = c0 / f0
     t0 = 1 / f0
-    epsilon = e0 * np.ones((new_xdim, new_ydim))
+    # epsilon = e0 * np.ones((new_xdim, new_ydim))
+    epsilon = c
     mu = u0 * np.ones((new_xdim, new_ydim))
 
     # PML setup
@@ -139,9 +140,9 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
         # Electric field update
         Ez[1:new_xdim - 1, 1:new_ydim - 1] = Cx[1:new_xdim - 1, 1:new_ydim - 1] * Ez[1:new_xdim - 1, 1:new_ydim - 1] + edx[1:new_xdim - 1, 1:new_ydim - 1] * np.diff(Hy[:new_xdim - 1, 1:new_ydim - 1], axis=0) - edy[1:new_xdim - 1, 1:new_ydim - 1] * np.diff(Hx[1:new_xdim - 1, :new_ydim - 1], axis=1)
 
-        # Enforce PEC condition
-        for (px, py) in pec_pt:
-            Ez[px, py] = 0
+        # # Enforce PEC condition
+        # for (px, py) in pec_pt:
+        #     Ez[px, py] = 0
 
         # Extract the results for the original domain [-1, 1]
         ix_min, ix_max = int((xmin - new_xmin) / deltax), int((xmax - new_xmin) / deltax)
