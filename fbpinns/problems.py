@@ -11,6 +11,8 @@ import jax.nn
 import jax.numpy as jnp
 import numpy as np
 import pdb
+
+from matplotlib import pyplot as plt
 from opt_einsum.backends import torch
 
 from fbpinns.util.logger import logger
@@ -744,27 +746,73 @@ class FDTD3D(Problem):
         x = x_batch[:, 0]  # x 坐标
         y = x_batch[:, 1]  # y 坐标
 
-        # 计算点到中心 (0, -0.5) 的距离
-        distance = jnp.sqrt((x - 0) ** 2 + (y + 0.5) ** 2)
-
         # 初始化 c，默认值为 1
         c = jnp.ones_like(x)
 
-        # 设置半径和过渡宽度
-        radius = 0.5
-        transition_width = 0.01  # 调整此值以改变过渡宽度
+        # 圆形区域
+        def circle_transition(x, y, center, radius, transition_width):
+            distance = jnp.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
+            sigmoid_transition = 1 / (1 + jnp.exp(-(distance - radius) / transition_width))
+            return sigmoid_transition
 
-        # 计算圆边界附近的 sigmoid 过渡
-        sigmoid_transition = 1 / (1 + jnp.exp(-(distance - radius) / transition_width))
+        # 矩形区域
+        def rectangle_transition(x, y, center, half_width, half_height, transition_width):
+            left = center[0] - half_width
+            right = center[0] + half_width
+            bottom = center[1] - half_height
+            top = center[1] + half_height
+
+            dx = jnp.maximum(jnp.maximum(left - x, x - right), 0)
+            dy = jnp.maximum(jnp.maximum(bottom - y, y - top), 0)
+            distance = jnp.sqrt(dx ** 2 + dy ** 2)
+
+            sigmoid_transition = 1 / (1 + jnp.exp(-(transition_width - distance) / transition_width))
+            return sigmoid_transition
+
+        # 三角形区域
+        def triangle_transition(x, y, vertices, transition_width):
+            def sign(p1, p2, p3):
+                return (p1[:, 0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[:, 1] - p3[1])
+
+            b1 = sign(jnp.column_stack((x, y)), vertices[0], vertices[1]) < 0.0
+            b2 = sign(jnp.column_stack((x, y)), vertices[1], vertices[2]) < 0.0
+            b3 = sign(jnp.column_stack((x, y)), vertices[2], vertices[0]) < 0.0
+
+            inside = b1 == b2
+            inside = inside & (b2 == b3)
+
+            distance = jnp.where(inside, 0.0, 1.0)  # inside: distance is 0, outside: distance is 1
+            sigmoid_transition = 1 / (1 + jnp.exp((transition_width - distance) / transition_width))
+            return sigmoid_transition
+
+        # 圆形参数
+        circle_center = (-0.5, 0.5)
+        circle_radius = 0.5
+        circle_transition_width = 0.01
+
+        # 矩形参数
+        rectangle_center = (0, -0.5)
+        rectangle_half_width = 0.2
+        rectangle_half_height = 0.2
+        rectangle_transition_width = 0.01
+
+        # # 三角形参数
+        # triangle_vertices = [(-0.7, -0.5), (-0.2, -0.5), (-0.45, 0.1)]
+        # triangle_transition_width = 0.01
+
+        # 应用转换
+        circle_c = circle_transition(x, y, circle_center, circle_radius, circle_transition_width)
+        rectangle_c = rectangle_transition(x, y, rectangle_center, rectangle_half_width, rectangle_half_height,
+                                           rectangle_transition_width)
+        # triangle_c = triangle_transition(x, y, triangle_vertices, triangle_transition_width)
 
         # 使用 sigmoid 过渡将基础值（1）和平滑过渡后的值（1 到 2 之间）结合起来
-        c = 1 + sigmoid_transition
-
+        # c = 1 + circle_c + rectangle_c + triangle_c
+        c = 1 + circle_c + rectangle_c
         # 将 c 重新调整为预期的输出形状 (n, 1)
         c = jnp.expand_dims(c, axis=1)
 
         return c
-
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
         d^2 u     1  d^2 u

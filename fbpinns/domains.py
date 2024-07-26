@@ -192,6 +192,19 @@ class RectangularDomainND(Domain):
         return expanded_list
 
     @staticmethod
+    def sample_near_boundary(boundary_points, distance, num_samples, xmin, xmax):
+        sampled_points = []
+        for point in boundary_points:
+            for _ in range(num_samples):
+                angle = np.random.uniform(0, 2 * np.pi)
+                d = np.random.uniform(-distance, distance)
+                x = point[0] + d * np.cos(angle)
+                y = point[1] + d * np.sin(angle)
+                if xmin[0] <= x <= xmax[0] and xmin[1] <= y <= xmax[1]:  # Ensure points are within the problem domain
+                    sampled_points.append([x, y])
+        return np.array(sampled_points)
+
+    @staticmethod
     def boundary_circle(key, sampler, xmin, xmax, batch_shape):
         def generate_circular_boundary_points(center, r, num_points):
             theta = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
@@ -199,27 +212,15 @@ class RectangularDomainND(Domain):
             y = center[1] + r * np.sin(theta)
             return np.column_stack((x, y))
 
-        def sample_near_boundary(boundary_points, distance, num_samples):
-            sampled_points = []
-            for point in boundary_points:
-                for _ in range(num_samples):
-                    angle = np.random.uniform(0, 2 * np.pi)
-                    d = np.random.uniform(-distance, distance)
-                    x = point[0] + d * np.cos(angle)
-                    y = point[1] + d * np.sin(angle)
-                    if xmin[0] <= x <= xmax[0] and xmin[1] <= y <= xmax[
-                        1]:  # Ensure points are within the problem domain
-                        sampled_points.append([x, y])
-            return np.array(sampled_points)
-
         # Generate boundary points on the circle
         num_boundary_points = batch_shape[0]
         boundary_radius = 0.5
         sampling_distance = 0.07
         num_samples_per_point = batch_shape[1] // num_boundary_points
 
-        pboundary = generate_circular_boundary_points([0, -0.5], boundary_radius, num_boundary_points)
-        sampled_points = sample_near_boundary(pboundary, sampling_distance, num_samples_per_point)
+        pboundary = generate_circular_boundary_points([-0.5, 0.5], boundary_radius, num_boundary_points)
+        sampled_points = RectangularDomainND.sample_near_boundary(pboundary, sampling_distance, num_samples_per_point,
+                                                                  xmin, xmax)
 
         x_filtered = RectangularDomainND.foo(sampled_points.tolist(), xmin[2], xmax[2], batch_shape[2])
 
@@ -246,13 +247,19 @@ class RectangularDomainND(Domain):
                     side_points = side_points[1:]
                 boundary_points.extend(side_points[:-1].tolist())  # Exclude the last point to avoid duplicates
 
-            # Add the first vertex again to close the polygon
-            boundary_points.append(vertices[0])
-
             return boundary_points
 
-        pboundary = generate_square_boundary_points([-0.7, -0.5], 0.4, batch_shape[0] * batch_shape[1])
-        x_filtered = RectangularDomainND.foo(pboundary, xmin[2], xmax[2], batch_shape[2])
+        # Generate boundary points on the rectangle
+        num_boundary_points = batch_shape[0]
+        boundary_side_length = 0.4
+        sampling_distance = 0.07
+        num_samples_per_point = batch_shape[1] // num_boundary_points
+
+        pboundary = generate_square_boundary_points([0, -0.5], boundary_side_length, num_boundary_points)
+        sampled_points = RectangularDomainND.sample_near_boundary(pboundary, sampling_distance, num_samples_per_point,
+                                                                  xmin, xmax)
+
+        x_filtered = RectangularDomainND.foo(sampled_points.tolist(), xmin[2], xmax[2], batch_shape[2])
 
         return jnp.array(x_filtered)
 
@@ -262,87 +269,46 @@ class RectangularDomainND(Domain):
             half_side_length = side_length / 2
             height = np.sqrt(side_length ** 2 - half_side_length ** 2)
 
-            # 定义三角形的三个顶点
+            # Define the vertices of the triangle
             vertices = [
-                (center[0] - half_side_length, center[1] - height / 3),  # 左下
-                (center[0] + half_side_length, center[1] - height / 3),  # 右下
-                (center[0], center[1] + 2 * height / 3)  # 顶部
+                (center[0] - half_side_length, center[1] - height / 3),  # Bottom left
+                (center[0] + half_side_length, center[1] - height / 3),  # Bottom right
+                (center[0], center[1] + 2 * height / 3)  # Top
             ]
-            # 生成三角形每条边的点
+
+            # Generate points along each side of the triangle
             boundary_points = []
             for i in range(3):
                 start_point = vertices[i]
                 end_point = vertices[(i + 1) % 3]
                 side_points = np.linspace(start_point, end_point, num_points_per_side + 1)
-                boundary_points.extend(side_points[:-1].tolist())  # 排除最后一个点以避免重复
+                boundary_points.extend(side_points[:-1].tolist())  # Exclude the last point to avoid duplicates
 
             return boundary_points
-        # 根据批次形状生成边界点
-        pboundary = generate_triangle_boundary_points([0, -0.5], 0.5,
-                                                      batch_shape[0] * batch_shape[1])
 
-        x_filtered = RectangularDomainND.foo(pboundary, xmin[2], xmax[2], batch_shape[2])
+        # Generate boundary points on the triangle
+        num_boundary_points = batch_shape[0]
+        boundary_side_length = 0.5
+        sampling_distance = 0.07
+        num_samples_per_point = batch_shape[1] // num_boundary_points
 
-        return jnp.array(x_filtered)
+        pboundary = generate_triangle_boundary_points([0, -0.5], boundary_side_length, num_boundary_points)
+        sampled_points = RectangularDomainND.sample_near_boundary(pboundary, sampling_distance, num_samples_per_point,
+                                                                  xmin, xmax)
 
-    @staticmethod
-    def boundary_heart(key, sampler, xmin, xmax, batch_shape):
-        scale = 0.1  # 缩放比例
-        def generate_heart_boundary_points(center, scale, num_points):
-            t = np.linspace(0, 2 * np.pi, num_points)
-            x = scale * 16 * np.sin(t) ** 3
-            y = scale * (13 * np.cos(t) - 5 * np.cos(2 * t) - 2 * np.cos(3 * t) - np.cos(4 * t))
-            x += center[0]
-            y += center[1]
-            return np.column_stack((x, y))
-
-        # 根据批次形状生成边界点
-        num_boundary_points = batch_shape[0] * batch_shape[1]
-        pboundary = generate_heart_boundary_points([0.5, -0.5], scale, num_boundary_points)
-        x_filtered = RectangularDomainND.foo(pboundary.tolist(), xmin[2], xmax[2], batch_shape[2])
+        x_filtered = RectangularDomainND.foo(sampled_points.tolist(), xmin[2], xmax[2], batch_shape[2])
 
         return jnp.array(x_filtered)
+
     @staticmethod
     def all_boundary(key, sampler, xmin, xmax, batch_shape):
         circle_points = RectangularDomainND.boundary_circle(key, sampler, xmin, xmax, batch_shape)
         rectangle_points = RectangularDomainND.boundary_rectangle(key, sampler, xmin, xmax, batch_shape)
         triangle_points = RectangularDomainND.boundary_triangle(key, sampler, xmin, xmax, batch_shape)
-        heart_points = RectangularDomainND.boundary_heart(key, sampler, xmin, xmax, batch_shape)
-        # all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points, heart_points], axis=0)
-        all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points], axis=0)
-        # all_boundary_points = np.concatenate([circle_points, rectangle_points], axis=0)
-        # # 绘制边界点
-        # plt.figure(figsize=(8, 8))
-        # for boundary_type, color in zip(['rectangle', 'circle', 'triangle', 'heart'],
-        #                                 ['red', 'blue', 'green', 'purple']):
-        #     boundary_func = getattr(RectangularDomainND, f'boundary_{boundary_type}')
-        #     points = boundary_func(None, None, xmin, xmax, batch_shape)
-        #     plt.scatter(points[:, 0], points[:, 1], color=color, label=boundary_type)
-        #
-        # plt.legend()
-        # plt.xlabel('X')
-        # plt.ylabel('Y')
-        # plt.title('Boundary Points')
-        # plt.axis('equal')
-        # plt.show()
-        # return all_boundary_points
-        return circle_points
-    # @staticmethod
-    # def is_inside(point, boundary_polygon):
-    #     shapely_point = Point(point)
-    #     return shapely_point.within(boundary_polygon) or shapely_point.touches(boundary_polygon)
-    #
-    # @staticmethod
-    # def filter_points(points, boundary_points):
-    #     boundary_polygon = Polygon(boundary_points)
-    #
-    #     def filter_point(point):
-    #         return not RectangularDomainND.is_inside(point[:2], boundary_polygon)
-    #
-    #     results = [filter_point(point) for point in points]
-    #     filtered_points = [point for point, keep in zip(points, results) if keep]
-    #
-    #     return np.array(filtered_points)
+        # all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points], axis=0)
+        all_boundary_points = np.concatenate([circle_points, rectangle_points], axis=0)
+        return all_boundary_points
+        # return circle_points
     @staticmethod
     def is_inside(point, boundary_polygon):
         shapely_point = Point(point)
