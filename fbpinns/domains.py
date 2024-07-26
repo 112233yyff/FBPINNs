@@ -167,6 +167,19 @@ class RectangularDomainND(Domain):
     def sample_boundary_pec(all_params, key, sampler, batch_shape):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_boundary_pec(key, sampler, xmin, xmax, batch_shape)
+    # @staticmethod
+    # def boundary_circle(key, sampler, xmin, xmax, batch_shape):
+    #     def generate_circular_boundary_points(center, r, num_points):
+    #         theta = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
+    #         x = center[0] + r * np.cos(theta)
+    #         y = center[1] + r * np.sin(theta)
+    #         return np.column_stack((x, y))
+    #     # Generate boundary points on the circle
+    #     num_boundary_points = batch_shape[0] * batch_shape[1]
+    #     pboundary = generate_circular_boundary_points([-0.7, 0.5], 0.25, num_boundary_points)
+    #     x_filtered = RectangularDomainND.foo(pboundary.tolist(), xmin[2], xmax[2], batch_shape[2])
+    #
+    #     return jnp.array(x_filtered)
 
     @staticmethod
     def foo(input_list, time_start, time_end, num_time_samples):
@@ -177,6 +190,7 @@ class RectangularDomainND(Domain):
             for i in hw:
                 expanded_list.append(sublist + (i,))
         return expanded_list
+
     @staticmethod
     def boundary_circle(key, sampler, xmin, xmax, batch_shape):
         def generate_circular_boundary_points(center, r, num_points):
@@ -184,10 +198,30 @@ class RectangularDomainND(Domain):
             x = center[0] + r * np.cos(theta)
             y = center[1] + r * np.sin(theta)
             return np.column_stack((x, y))
+
+        def sample_near_boundary(boundary_points, distance, num_samples):
+            sampled_points = []
+            for point in boundary_points:
+                for _ in range(num_samples):
+                    angle = np.random.uniform(0, 2 * np.pi)
+                    d = np.random.uniform(-distance, distance)
+                    x = point[0] + d * np.cos(angle)
+                    y = point[1] + d * np.sin(angle)
+                    if xmin[0] <= x <= xmax[0] and xmin[1] <= y <= xmax[
+                        1]:  # Ensure points are within the problem domain
+                        sampled_points.append([x, y])
+            return np.array(sampled_points)
+
         # Generate boundary points on the circle
-        num_boundary_points = batch_shape[0] * batch_shape[1]
-        pboundary = generate_circular_boundary_points([-0.7, 0.5], 0.25, num_boundary_points)
-        x_filtered = RectangularDomainND.foo(pboundary.tolist(), xmin[2], xmax[2], batch_shape[2])
+        num_boundary_points = batch_shape[0]
+        boundary_radius = 0.25
+        sampling_distance = 0.07
+        num_samples_per_point = batch_shape[1] // num_boundary_points
+
+        pboundary = generate_circular_boundary_points([-0.7, 0.5], boundary_radius, num_boundary_points)
+        sampled_points = sample_near_boundary(pboundary, sampling_distance, num_samples_per_point)
+
+        x_filtered = RectangularDomainND.foo(sampled_points.tolist(), xmin[2], xmax[2], batch_shape[2])
 
         return jnp.array(x_filtered)
 
