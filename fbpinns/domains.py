@@ -214,7 +214,7 @@ class RectangularDomainND(Domain):
 
         # Generate boundary points on the circle
         num_boundary_points = batch_shape[0]
-        boundary_radius = 0.25
+        boundary_radius = 0.5
         sampling_distance = 0.07
         num_samples_per_point = batch_shape[1] // num_boundary_points
 
