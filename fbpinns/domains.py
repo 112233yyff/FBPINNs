@@ -218,7 +218,7 @@ class RectangularDomainND(Domain):
         sampling_distance = 0.07
         num_samples_per_point = batch_shape[1] // num_boundary_points
 
-        pboundary = generate_circular_boundary_points([-0.7, 0.5], boundary_radius, num_boundary_points)
+        pboundary = generate_circular_boundary_points([0, -0.5], boundary_radius, num_boundary_points)
         sampled_points = sample_near_boundary(pboundary, sampling_distance, num_samples_per_point)
 
         x_filtered = RectangularDomainND.foo(sampled_points.tolist(), xmin[2], xmax[2], batch_shape[2])
