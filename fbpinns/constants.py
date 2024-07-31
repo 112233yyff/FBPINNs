@@ -66,12 +66,12 @@ class Constants(ConstantsBase):
         # )
         # Define scheduler
         self.n_steps = 15000
-        # self.scheduler = schedulers.AllActiveSchedulerND
-        # self.scheduler_kwargs = dict()
-        self.scheduler = schedulers.PointSchedulerRectangularND
-        self.scheduler_kwargs = dict(
-           point=np.array([0.5, 0.5, 0]),
-           )
+        self.scheduler = schedulers.AllActiveSchedulerND
+        self.scheduler_kwargs = dict()
+        # self.scheduler = schedulers.PointSchedulerRectangularND
+        # self.scheduler_kwargs = dict(
+        #    point=np.array([0.5, 0.5, 0]),
+        #    )
         # self.scheduler = schedulers.LineSchedulerRectangularND
         # self.scheduler_kwargs = dict(
         #     point=np.array([0.5, 0.5]),

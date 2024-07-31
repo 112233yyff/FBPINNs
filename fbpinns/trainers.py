@@ -627,7 +627,7 @@ class FBPINNTrainer(_Trainer):
         np.random.seed(c.seed)
 
         # define all_params
-        all_params = {"static":{},"trainable":{}}
+        all_params = {"static": {}, "trainable": {}}
 
         # initialise domain, problem and decomposition params
         domain, problem, decomposition = c.domain, c.problem, c.decomposition
@@ -636,33 +636,34 @@ class FBPINNTrainer(_Trainer):
             ps_ = cl.init_params(**kwargs)
             if ps_[0]: all_params["static"][tag] = ps_[0]
             if ps_[1]: all_params["trainable"][tag] = ps_[1]
-        assert (all_params["static"]["domain"]["xd"] ==\
-                all_params["static"]["problem"]["dims"][1] ==\
+        assert (all_params["static"]["domain"]["xd"] == \
+                all_params["static"]["problem"]["dims"][1] == \
                 all_params["static"]["decomposition"]["xd"])
         logger.info(f'Total number of subdomains: {all_params["static"]["decomposition"]["m"]}')
 
         # initialise subdomain network params
         network = c.network
-        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
+        key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"] + 1)
         ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
-        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0],0)# grab first set of static params only
-        if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
+        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0], 0)  # grab first set of static params only
+        if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}  # add subdomain key
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
-        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn, problem.constraining_fn)
+        model_fns = (decomposition.norm_fn, network.network_fn, decomposition.unnorm_fn, decomposition.window_fn,
+                     problem.constraining_fn)
 
         # initialise scheduler
         scheduler = c.scheduler(all_params=all_params, n_steps=c.n_steps, **c.scheduler_kwargs)
 
         # common initialisation
         (optimiser, all_opt_states, optimiser_fn, loss_fn, key,
-        constraints_global, x_batch_global, constraint_offsets_global, constraint_fs_global, jmapss,
-        x_batch_test, u_exact) = _common_train_initialisation(c, key, all_params, problem, domain)
+         constraints_global, x_batch_global, constraint_offsets_global, constraint_fs_global, jmapss,
+         x_batch_test, u_exact) = _common_train_initialisation(c, key, all_params, problem, domain)
 
         # fix test data inputs
         logger.info("Getting test data inputs..")
         active_test_ = jnp.ones(all_params["static"]["decomposition"]["m"], dtype=int)
-        takes_, all_ims_, (_, _, _, cut_all_, _)  = get_inputs(x_batch_test, active_test_, all_params, decomposition)
+        takes_, all_ims_, (_, _, _, cut_all_, _) = get_inputs(x_batch_test, active_test_, all_params, decomposition)
         test_inputs = (takes_, all_ims_, cut_all_)
 
         # train loop
@@ -670,7 +671,7 @@ class FBPINNTrainer(_Trainer):
         start0, start1, report_time = time.time(), time.time(), 0.
         merge_active, active_params, active_opt_states, fixed_params = None, None, None, None
         lossval = None
-        for i,active_ in enumerate(scheduler):
+        for i, active_ in enumerate(scheduler):
 
             # update active
             if active_ is not None:
@@ -683,7 +684,8 @@ class FBPINNTrainer(_Trainer):
 
                 # then get new inputs to update step
                 active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch = \
-                     self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global, constraint_fs_global, constraint_offsets_global, decomposition, problem)
+                    self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global,
+                                            constraint_fs_global, constraint_offsets_global, decomposition, problem)
 
                 # AOT compile update function
                 startc = time.time()
@@ -692,36 +694,39 @@ class FBPINNTrainer(_Trainer):
                 update = FBPINN_update.lower(optimiser_fn, active_opt_states,
                                              active_params, fixed_params, static_params_dynamic, static_params_static,
                                              takess, constraints, model_fns, jmapss, loss_fn).compile()
-                logger.info(f"[i: {i}/{self.c.n_steps}] Compiling done ({time.time()-startc:.2f} s)")
+                logger.info(f"[i: {i}/{self.c.n_steps}] Compiling done ({time.time() - startc:.2f} s)")
                 cost_ = update.cost_analysis()
-                p,f = total_size(active_params["network"]), cost_[0]["flops"] if (cost_ and "flops" in cost_[0]) else 0
+                p, f = total_size(active_params["network"]), cost_[0]["flops"] if (cost_ and "flops" in cost_[0]) else 0
                 logger.debug("p, f")
-                logger.debug((p,f))
+                logger.debug((p, f))
 
             # report initial model
             if i == 0:
                 u_test_losses, start1, report_time = \
-                self._report(i, pstep, fstep, u_test_losses, start0, start1, report_time,
-                            u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
-                            active, merge_active, active_opt_states, active_params, x_batch,
-                            lossval)
+                    self._report(i, pstep, fstep, u_test_losses, start0, start1, report_time,
+                                 u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem,
+                                 decomposition,
+                                 active, merge_active, active_opt_states, active_params, x_batch,
+                                 lossval)
 
             # take a training step
             lossval, active_opt_states, active_params = update(active_opt_states,
-                                         active_params, fixed_params, static_params_dynamic,
-                                         takess, constraints)# note compiled function only accepts dynamic arguments
-            pstep, fstep = pstep+p, fstep+f
+                                                               active_params, fixed_params, static_params_dynamic,
+                                                               takess,
+                                                               constraints)  # note compiled function only accepts dynamic arguments
+            pstep, fstep = pstep + p, fstep + f
 
             # report
             u_test_losses, start1, report_time = \
-            self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
-                        u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
-                        active, merge_active, active_opt_states, active_params, x_batch,
-                        lossval)
+                self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
+                             u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem,
+                             decomposition,
+                             active, merge_active, active_opt_states, active_params, x_batch,
+                             lossval)
 
         # cleanup
         writer.close()
-        logger.info(f"[i: {i+1}/{self.c.n_steps}] Training complete")
+        logger.info(f"[i: {i + 1}/{self.c.n_steps}] Training complete")
 
         # return trained parameters
         all_params["trainable"] = merge_active(active_params, all_params["trainable"])
@@ -729,12 +734,11 @@ class FBPINNTrainer(_Trainer):
 
         return all_params
 
-    def _report(self, i, pstep, fstep, u_test_losses, u_test_lossess, start0, start1, report_time,
+    def _report(self, i, pstep, fstep, u_test_losses, start0, start1, report_time,
                 u_exact, x_batch_test, test_inputs, all_params, all_opt_states, model_fns, problem, decomposition,
                 active, merge_active, active_opt_states, active_params, x_batch,
                 lossval):
         "Report results"
-
         c = self.c
         summary_, test_, model_save_ = [(i % f == 0) for f in
                                         [c.summary_freq, c.test_freq, c.model_save_freq]]
@@ -746,7 +750,6 @@ class FBPINNTrainer(_Trainer):
         if test_ or model_save_:
 
             if test_ or model_save_:
-
                 start2 = time.time()
 
                 # merge latest all_params / all_opt_states
@@ -756,29 +759,33 @@ class FBPINNTrainer(_Trainer):
                 # take test step
                 if test_:
                     u_test_losses = self._test(
-                        x_batch_test, u_exact, u_test_losses, u_test_lossess, x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition)
+                        x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active,
+                        all_params, model_fns, problem, decomposition)
 
                 # save model
                 if model_save_:
                     self._save_model(i, (i, all_params, all_opt_states, active, jnp.array(u_test_losses)))
 
-                report_time += time.time()-start2
+                report_time += time.time() - start2
 
         return u_test_losses, start1, report_time
 
-    def _test(self, x_batch_test, u_exact, u_test_losses,  x_batch, test_inputs, i, pstep, fstep, start0, active, all_params, model_fns, problem, decomposition):
+    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, test_inputs, i, pstep, fstep, start0, active,
+              all_params, model_fns, problem, decomposition):
         "Test step"
         c, writer = self.c, self.writer
         n_test = c.n_test
 
         # get FBPINN solution using test data
         takes, all_ims, cut_all = test_inputs
-        all_params_cut = {"static":cut_all(all_params["static"]),
-                          "trainable":cut_all(all_params["trainable"])}
-        u_test, wp_test_, us_test_, ws_test_, us_raw_test_ = FBPINN_model_jit(all_params_cut, x_batch_test, takes, model_fns, verbose=False)
-        if all_params["static"]["problem"]["dims"][1] == 1:# 1D plots require full lines, not just hist stats
+        all_params_cut = {"static": cut_all(all_params["static"]),
+                          "trainable": cut_all(all_params["trainable"])}
+        u_test, wp_test_, us_test_, ws_test_, us_raw_test_ = FBPINN_model_jit(all_params_cut, x_batch_test, takes,
+                                                                              model_fns, verbose=False)
+        if all_params["static"]["problem"]["dims"][1] == 1:  # 1D plots require full lines, not just hist stats
 
-            m, ud, n = all_params["static"]["decomposition"]["m"], all_params["static"]["problem"]["dims"][0], x_batch_test.shape[0]
+            m, ud, n = all_params["static"]["decomposition"]["m"], all_params["static"]["problem"]["dims"][0], \
+            x_batch_test.shape[0]
 
             us_test = jnp.full((m, n, ud), jnp.nan)
             us_test = us_test.at[all_ims[takes[0]], takes[1], :].set(us_test_)
@@ -790,77 +797,78 @@ class FBPINNTrainer(_Trainer):
             us_raw_test = us_raw_test.at[all_ims[takes[0]], takes[1], :].set(us_raw_test_)
 
             # apply POU
-            us_test = us_test.at[all_ims[takes[0]], takes[1], :].divide(wp_test_[takes[2]])/takes[4]
-            ws_test = ws_test.at[all_ims[takes[0]], takes[1], :].divide(wp_test_[takes[2]])/takes[4]
+            us_test = us_test.at[all_ims[takes[0]], takes[1], :].divide(wp_test_[takes[2]]) / takes[4]
+            ws_test = ws_test.at[all_ims[takes[0]], takes[1], :].divide(wp_test_[takes[2]]) / takes[4]
 
             # apply constraining operator
-            us_test = vmap(model_fns[-1], in_axes=(None,None,0))(all_params, x_batch_test, us_test)
+            us_test = vmap(model_fns[-1], in_axes=(None, None, 0))(all_params, x_batch_test, us_test)
 
         else:
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
-        ##############圆形PEC
-        x_batch_xy = x_batch_test[:, :2]
-        x_center = -0.7
-        y_center = 0.5
-        xy_center = np.array([[x_center, y_center]])
-
-        radius = 0.25  # Use the shorter side's fifth as radius
-        distances = cdist(x_batch_xy, xy_center, metric='euclidean')
-        mask1 = distances <= radius  # Points inside the circle
-        #        pdb.set_trace()
-        u_test = u_test.at[np.squeeze(mask1)].set(0.0)
-        ##############方形PEC
-
-        x_batch_xy = x_batch_test[:, :2]
-        x_center = -0.7
-        y_center = -0.5
-        rect_width, rect_height = 0.4, 0.4
-        rect_xmin = x_center - rect_width / 2
-        rect_xmax = x_center + rect_width / 2
-        rect_ymin = y_center - rect_height / 2
-        rect_ymax = y_center + rect_height / 2
-
-        # Filter out points that fall within the rectangle
-        mask2 = ~((x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (
-                x_batch_xy[:, 1] < rect_ymin) | (
-                          x_batch_xy[:, 1] > rect_ymax))
-        u_test = u_test.at[np.squeeze(mask2)].set(0.0)
-
-        ############## 三角形 PEC
-        x_center = 0
-        y_center = -0.5
-        side_length = 0.5
-        half_side_length = side_length / 2
-        height = np.sqrt(side_length ** 2 - half_side_length ** 2)  # 修正后的高度计算
-        # 定义三角形的顶点
-        tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
-        tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
-
-        # 定义一个点是否在三角形内的函数
-        def is_point_in_triangle(px, py, tri_x, tri_y):
-            # 使用重心坐标法判断点是否在三角形内
-            denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
-            a = ((tri_y[1] - tri_y[2]) * (px - tri_x[2]) + (tri_x[2] - tri_x[1]) * (py - tri_y[2])) / denominator
-            b = ((tri_y[2] - tri_y[0]) * (px - tri_x[2]) + (tri_x[0] - tri_x[2]) * (py - tri_y[2])) / denominator
-            c = 1 - a - b
-            return (a >= 0) & (b >= 0) & (c >= 0)
-
-        # 检查每个点是否在三角形内
-        mask3 = np.array([is_point_in_triangle(px, py, tri_x, tri_y) for px, py in x_batch_xy])
-
-        # 将 u_test 中这些点的值设置为 0
-        u_test = u_test.at[np.squeeze(mask3)].set(0.0)
+        # ##############圆形PEC
+        # x_batch_xy = x_batch_test[:, :2]
+        # x_center = -0.7
+        # y_center = 0.5
+        # xy_center = np.array([[x_center, y_center]])
+        #
+        # radius = 0.25  # Use the shorter side's fifth as radius
+        # distances = cdist(x_batch_xy, xy_center, metric='euclidean')
+        # mask1 = distances <= radius  # Points inside the circle
+        # #        pdb.set_trace()
+        # u_test = u_test.at[np.squeeze(mask1)].set(0.0)
+        # ##############方形PEC
+        #
+        # x_batch_xy = x_batch_test[:, :2]
+        # x_center = -0.7
+        # y_center = -0.5
+        # rect_width, rect_height = 0.4, 0.4
+        # rect_xmin = x_center - rect_width / 2
+        # rect_xmax = x_center + rect_width / 2
+        # rect_ymin = y_center - rect_height / 2
+        # rect_ymax = y_center + rect_height / 2
+        #
+        # # Filter out points that fall within the rectangle
+        # mask2 = ~((x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (
+        #         x_batch_xy[:, 1] < rect_ymin) | (
+        #                   x_batch_xy[:, 1] > rect_ymax))
+        # u_test = u_test.at[np.squeeze(mask2)].set(0.0)
+        #
+        # ############## 三角形 PEC
+        # x_center = 0
+        # y_center = -0.5
+        # side_length = 0.5
+        # half_side_length = side_length / 2
+        # height = np.sqrt(side_length ** 2 - half_side_length ** 2)  # 修正后的高度计算
+        # # 定义三角形的顶点
+        # tri_x = np.array([x_center - half_side_length, x_center + half_side_length, x_center])
+        # tri_y = np.array([y_center - height / 3, y_center - height / 3, y_center + 2 * height / 3])
+        #
+        # # 定义一个点是否在三角形内的函数
+        # def is_point_in_triangle(px, py, tri_x, tri_y):
+        #     # 使用重心坐标法判断点是否在三角形内
+        #     denominator = (tri_y[1] - tri_y[2]) * (tri_x[0] - tri_x[2]) + (tri_x[2] - tri_x[1]) * (tri_y[0] - tri_y[2])
+        #     a = ((tri_y[1] - tri_y[2]) * (px - tri_x[2]) + (tri_x[2] - tri_x[1]) * (py - tri_y[2])) / denominator
+        #     b = ((tri_y[2] - tri_y[0]) * (px - tri_x[2]) + (tri_x[0] - tri_x[2]) * (py - tri_y[2])) / denominator
+        #     c = 1 - a - b
+        #     return (a >= 0) & (b >= 0) & (c >= 0)
+        #
+        # # 检查每个点是否在三角形内
+        # mask3 = np.array([is_point_in_triangle(px, py, tri_x, tri_y) for px, py in x_batch_xy])
+        #
+        # # 将 u_test 中这些点的值设置为 0
+        # u_test = u_test.at[np.squeeze(mask3)].set(0.0)
         # get losses over test data
-        l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
+        l1 = jnp.mean(jnp.abs(u_exact - u_test)).item()
         l1n = l1 / u_exact.std().item()
-        u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
+        u_test_losses.append([i, pstep, fstep, time.time() - start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)
 
         # create figures
         if i % (c.test_freq * 5) == 0:
-        # if i % (c.test_freq * 5) == 0 and i != 0:
+            # if i % (c.test_freq * 5) == 0 and i != 0:
             fs = plot_trainer.plot("FBPINN", all_params["static"]["problem"]["dims"],
-                x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test)
+                                   x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i,
+                                   active, decomposition, n_test)
             if fs is not None:
                 self._save_figs(i, fs)
 
@@ -1174,8 +1182,8 @@ if __name__ == "__main__":
         show_figures=False,
         clear_output=True,
     )
-    # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64,3])
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 128, 3])
-    run = PINNTrainer(c)
-    # run = FBPINNTrainer(c)
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64,3])
+    # c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 128, 3])
+    # run = PINNTrainer(c)
+    run = FBPINNTrainer(c)
     run.train()
