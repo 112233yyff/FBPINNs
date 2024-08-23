@@ -1191,6 +1191,6 @@ if __name__ == "__main__":
     # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64,3])
     # c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 64, 3])
     c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 128, 3])
-    run = PINNTrainer(c)
-    # run = FBPINNTrainer(c)
+    # run = PINNTrainer(c)
+    run = FBPINNTrainer(c)
     run.train()
