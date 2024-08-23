@@ -742,14 +742,16 @@ class FBPINNTrainer(_Trainer):
         c = self.c
         summary_, test_, model_save_ = [(i % f == 0) for f in
                                         [c.summary_freq, c.test_freq, c.model_save_freq]]
-        if i != 0:
-            rate = c.summary_freq / (time.time() - start1 - report_time)
-            self._print_summary(i, lossval.item(), rate, start0, summary_)
-            start1, report_time = time.time(), 0.
+        if summary_ or test_ or model_save_:
 
-        if test_ or model_save_:
+            # print summary
+            if i != 0 and summary_:
+                rate = c.summary_freq / (time.time() - start1 - report_time)
+                self._print_summary(i, lossval.item(), rate, start0)
+                start1, report_time = time.time(), 0.
 
             if test_ or model_save_:
+
                 start2 = time.time()
 
                 # merge latest all_params / all_opt_states
@@ -859,9 +861,10 @@ class FBPINNTrainer(_Trainer):
         # u_test = u_test.at[np.squeeze(mask3)].set(0.0)
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact - u_test)).item()
+        self._save_loss(i, l1)
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time() - start0, l1, l1n])
-        writer.add_scalar("loss/test/l1_istep", l1, i)
+        # writer.add_scalar("loss/test/l1_istep", l1, i)
 
         # create figures
         if i % (c.test_freq * 5) == 0:
@@ -989,12 +992,13 @@ class PINNTrainer(_Trainer):
         c = self.c
         summary_, test_, model_save_ = [(i % f == 0) for f in
                                         [c.summary_freq, c.test_freq, c.model_save_freq]]
-        if i != 0:
-            rate = c.summary_freq / (time.time() - start1 - report_time)
-            self._print_summary(i, lossval.item(), rate, start0, summary_)
-            start1, report_time = time.time(), 0.
+        if summary_ or test_ or model_save_:
 
-        if test_ or model_save_:
+            # print summary
+            if i != 0 and summary_:
+                rate = c.summary_freq / (time.time() - start1 - report_time)
+                self._print_summary(i, lossval.item(), rate, start0)
+                start1, report_time = time.time(), 0.
 
             if test_ or model_save_:
 
@@ -1018,7 +1022,8 @@ class PINNTrainer(_Trainer):
 
         return u_test_losses, start1, report_time
 
-    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns, problem):
+    def _test(self, x_batch_test, u_exact, u_test_losses, x_batch, i, pstep, fstep, start0, all_params, model_fns,
+              problem):
         "Test step"
 
         c, writer = self.c, self.writer
@@ -1080,20 +1085,20 @@ class PINNTrainer(_Trainer):
         # # 将 u_test 中这些点的值设置为 0
         # u_test = u_test.at[np.squeeze(mask3)].set(0.0)
         # get losses over test data
-        l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
+        l1 = jnp.mean(jnp.abs(u_exact - u_test)).item()
+        self._save_loss(i, l1)
         l1n = l1 / u_exact.std().item()
-        u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
-        writer.add_scalar("loss/test/l1_istep", l1, i)
+        u_test_losses.append([i, pstep, fstep, time.time() - start0, l1, l1n])
+        # writer.add_scalar("loss/test/l1_istep", l1, i)
 
         # create figures
         if i % (c.test_freq * 5) == 0:
             fs = plot_trainer.plot("PINN", all_params["static"]["problem"]["dims"],
-                x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test)
+                                   x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test)
             if fs is not None:
                 self._save_figs(i, fs)
 
         return u_test_losses
-
 
 
 if __name__ == "__main__":
@@ -1146,6 +1151,7 @@ if __name__ == "__main__":
     # run.train()
 
     # fdtd2d
+    # subdomain_xs = [np.array([-0.65, 0, 0.65]), np.array([-0.45, 0.45]), np.array([0.25, 0.75, 1.25, 1.75])]
     subdomain_xs = [np.array([-0.65, 0, 0.65]), np.array([-0.45, 0.45]), np.array([0.55, 1.45])]
     subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
     # subdomain_ws = [np.array([0.7, 0.7, 0.7]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
@@ -1173,17 +1179,18 @@ if __name__ == "__main__":
         ),
         ns=((60, 60, 60),),
         n_start=((60, 60, 1),),
-        n_boundary=((50, 50, 50),),
+        n_boundary=((40, 40, 40),),
         n_test=(100, 100, 20),
         n_steps=100000,
         optimiser_kwargs=dict(learning_rate=1e-3),
         summary_freq=2000,
-        test_freq=2000,
+        test_freq=200,
         show_figures=False,
         clear_output=True,
     )
-    c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64,3])
-    # c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 128, 3])
-    # run = PINNTrainer(c)
-    run = FBPINNTrainer(c)
+    # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64,3])
+    # c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 64, 3])
+    c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 128, 3])
+    run = PINNTrainer(c)
+    # run = FBPINNTrainer(c)
     run.train()

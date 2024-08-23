@@ -492,7 +492,8 @@ class FDTD1D(Problem):
 
         c0 = all_params["static"]["problem"]["c0"]
         return jnp.array([[c0]], dtype=float)  # (1,1) scalar value
-###########PEC
+
+# ############PEC
 # class FDTD3D(Problem):
 #     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 #
@@ -580,7 +581,6 @@ class FDTD1D(Problem):
 #         if len(Eb):
 #             boundary = jnp.mean((EE - Eb) ** 2)
 #         else:
-#
 #             boundary = 0
 #         return 1e1 * phys + 1e2 * start + 1e2 * boundary
 #
@@ -645,7 +645,7 @@ class FDTD3D(Problem):
     @staticmethod
     def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
         # physics loss
-        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
+        x_batch_phys = domain.sample_interior(all_params, key, 'uniform', batch_shapes[0])
         required_ujs_phys = (
             (0, (1,)),  # dHx / dy
             (0, (2,)),  # dHx / dt
@@ -656,7 +656,7 @@ class FDTD3D(Problem):
             (2, (2,)),  # dE / dt
         )
         # start loss
-        x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
+        x_batch_start = domain.sample_start(all_params, key, 'uniform', start_batch_shapes[0])
         x = x_batch_start[:, 0:1] # 提取 x 坐标
         y = x_batch_start[:, 1:2]
         E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (0.1 ** 2))
@@ -668,7 +668,7 @@ class FDTD3D(Problem):
             (2, ()),
         )
         # boundary loss
-        x_batch_boundary = domain.sample_boundary_pec(all_params, key, sampler, boundary_batch_shapes[0])
+        x_batch_boundary = domain.sample_boundary_pec(all_params, key, 'uniform', boundary_batch_shapes[0])
         required_ujs_boundary = (
             (0, (1,)),  # dHx / dy
             (0, (2,)),  # dHx / dt
@@ -769,22 +769,6 @@ class FDTD3D(Problem):
             sigmoid_transition = 1 / (1 + jnp.exp(-(transition_width - distance) / transition_width))
             return sigmoid_transition
 
-        # 三角形区域
-        def triangle_transition(x, y, vertices, transition_width):
-            def sign(p1, p2, p3):
-                return (p1[:, 0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[:, 1] - p3[1])
-
-            b1 = sign(jnp.column_stack((x, y)), vertices[0], vertices[1]) < 0.0
-            b2 = sign(jnp.column_stack((x, y)), vertices[1], vertices[2]) < 0.0
-            b3 = sign(jnp.column_stack((x, y)), vertices[2], vertices[0]) < 0.0
-
-            inside = b1 == b2
-            inside = inside & (b2 == b3)
-
-            distance = jnp.where(inside, 0.0, 1.0)  # inside: distance is 0, outside: distance is 1
-            sigmoid_transition = 1 / (1 + jnp.exp((transition_width - distance) / transition_width))
-            return sigmoid_transition
-
         # 圆形参数
         circle_center = (-0.5, 0.5)
         circle_radius = 0.5
@@ -796,23 +780,17 @@ class FDTD3D(Problem):
         rectangle_half_height = 0.2
         rectangle_transition_width = 0.01
 
-        # # 三角形参数
-        # triangle_vertices = [(-0.7, -0.5), (-0.2, -0.5), (-0.45, 0.1)]
-        # triangle_transition_width = 0.01
-
         # 应用转换
         circle_c = circle_transition(x, y, circle_center, circle_radius, circle_transition_width)
         rectangle_c = rectangle_transition(x, y, rectangle_center, rectangle_half_width, rectangle_half_height,
                                            rectangle_transition_width)
-        # triangle_c = triangle_transition(x, y, triangle_vertices, triangle_transition_width)
 
-        # 使用 sigmoid 过渡将基础值（1）和平滑过渡后的值（1 到 2 之间）结合起来
-        # c = 1 + circle_c + rectangle_c + triangle_c
         c = 1 + circle_c + rectangle_c
         # 将 c 重新调整为预期的输出形状 (n, 1)
         c = jnp.expand_dims(c, axis=1)
 
         return c
+
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
         d^2 u     1  d^2 u
