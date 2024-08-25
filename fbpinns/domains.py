@@ -503,11 +503,11 @@ class RectangularDomainND(Domain):
 
         # Generate boundary points on the circle
         num_boundary_points = batch_shape[0]
-        boundary_radius = 0.2
+        boundary_radius = 0.5
         sampling_distance = 0.07
         num_samples_per_point = batch_shape[1] // num_boundary_points
 
-        pboundary = generate_circular_boundary_points([0, 0.5], boundary_radius, num_boundary_points)
+        pboundary = generate_circular_boundary_points([-0.5, 0.5], boundary_radius, num_boundary_points)
         sampled_points = RectangularDomainND.sample_near_boundary(pboundary, sampling_distance, num_samples_per_point,
                                                                   xmin, xmax)
 
@@ -540,7 +540,7 @@ class RectangularDomainND(Domain):
 
         # Generate boundary points on the rectangle
         num_boundary_points = batch_shape[0]
-        boundary_side_length = 0.2
+        boundary_side_length = 0.4
         sampling_distance = 0.07
         num_samples_per_point = batch_shape[1] // num_boundary_points
 
