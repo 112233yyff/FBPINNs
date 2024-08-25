@@ -503,11 +503,11 @@ class RectangularDomainND(Domain):
 
         # Generate boundary points on the circle
         num_boundary_points = batch_shape[0]
-        boundary_radius = 0.5
+        boundary_radius = 0.25
         sampling_distance = 0.07
         num_samples_per_point = batch_shape[1] // num_boundary_points
 
-        pboundary = generate_circular_boundary_points([-0.5, 0.5], boundary_radius, num_boundary_points)
+        pboundary = generate_circular_boundary_points([0, 0.5], boundary_radius, num_boundary_points)
         sampled_points = RectangularDomainND.sample_near_boundary(pboundary, sampling_distance, num_samples_per_point,
                                                                   xmin, xmax)
 
@@ -557,8 +557,8 @@ class RectangularDomainND(Domain):
         circle_points = RectangularDomainND.boundary_circle(key, sampler, xmin, xmax, batch_shape)
         rectangle_points = RectangularDomainND.boundary_rectangle(key, sampler, xmin, xmax, batch_shape)
         all_boundary_points = np.concatenate([circle_points, rectangle_points], axis=0)
-        return all_boundary_points
-        # return circle_points
+        # return all_boundary_points
+        return circle_points
     @staticmethod
     def is_inside(point, boundary_polygon):
         shapely_point = Point(point)

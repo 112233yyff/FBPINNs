@@ -770,8 +770,8 @@ class FDTD3D(Problem):
             return sigmoid_transition
 
         # 圆形参数
-        circle_center = (-0.5, 0.5)
-        circle_radius = 0.5
+        circle_center = (0, 0.5)
+        circle_radius = 0.25
         circle_transition_width = 0.01
 
         # 矩形参数
@@ -785,7 +785,8 @@ class FDTD3D(Problem):
         rectangle_c = rectangle_transition(x, y, rectangle_center, rectangle_half_width, rectangle_half_height,
                                            rectangle_transition_width)
 
-        c = 1 + circle_c + rectangle_c
+        # c = 1 + circle_c + rectangle_c
+        c = 1 + circle_c
         # 将 c 重新调整为预期的输出形状 (n, 1)
         c = jnp.expand_dims(c, axis=1)
 
