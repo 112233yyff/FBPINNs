@@ -611,7 +611,6 @@ class FDTD1D(Problem):
 #         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
 #         return Ez
 
-##########不同材质
 class FDTD3D(Problem):
     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 
@@ -770,8 +769,8 @@ class FDTD3D(Problem):
             return sigmoid_transition
 
         # 圆形参数
-        circle_center = (0, 0.5)
-        circle_radius = 0.25
+        circle_center = (-0.5, 0.5)
+        circle_radius = 0.5
         circle_transition_width = 0.01
 
         # 矩形参数
@@ -785,12 +784,12 @@ class FDTD3D(Problem):
         rectangle_c = rectangle_transition(x, y, rectangle_center, rectangle_half_width, rectangle_half_height,
                                            rectangle_transition_width)
 
-        # c = 1 + circle_c + rectangle_c
-        c = 1 + circle_c
+        c = 1 + circle_c + rectangle_c
         # 将 c 重新调整为预期的输出形状 (n, 1)
         c = jnp.expand_dims(c, axis=1)
 
         return c
+
 
 class WaveEquation1D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity

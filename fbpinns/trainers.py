@@ -809,11 +809,11 @@ class FBPINNTrainer(_Trainer):
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
         # ##############圆形PEC
         # x_batch_xy = x_batch_test[:, :2]
-        # x_center = -0.7
+        # x_center = -0.5
         # y_center = 0.5
         # xy_center = np.array([[x_center, y_center]])
         #
-        # radius = 0.25  # Use the shorter side's fifth as radius
+        # radius = 0.3  # Use the shorter side's fifth as radius
         # distances = cdist(x_batch_xy, xy_center, metric='euclidean')
         # mask1 = distances <= radius  # Points inside the circle
         # #        pdb.set_trace()
@@ -821,9 +821,9 @@ class FBPINNTrainer(_Trainer):
         # ##############方形PEC
         #
         # x_batch_xy = x_batch_test[:, :2]
-        # x_center = -0.7
+        # x_center = 0.5
         # y_center = -0.5
-        # rect_width, rect_height = 0.4, 0.4
+        # rect_width, rect_height = 0.6, 0.6
         # rect_xmin = x_center - rect_width / 2
         # rect_xmax = x_center + rect_width / 2
         # rect_ymin = y_center - rect_height / 2
@@ -834,9 +834,9 @@ class FBPINNTrainer(_Trainer):
         #         x_batch_xy[:, 1] < rect_ymin) | (
         #                   x_batch_xy[:, 1] > rect_ymax))
         # u_test = u_test.at[np.squeeze(mask2)].set(0.0)
-        #
+
         # ############## 三角形 PEC
-        # x_center = 0
+        # x_center = 0.5
         # y_center = -0.5
         # side_length = 0.5
         # half_side_length = side_length / 2
@@ -859,6 +859,7 @@ class FBPINNTrainer(_Trainer):
         #
         # # 将 u_test 中这些点的值设置为 0
         # u_test = u_test.at[np.squeeze(mask3)].set(0.0)
+
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact - u_test)).item()
         self._save_loss(i, l1)
@@ -1034,11 +1035,11 @@ class PINNTrainer(_Trainer):
 
         # ##############圆形PEC
         # x_batch_xy = x_batch_test[:, :2]
-        # x_center = -0.7
+        # x_center = -0.5
         # y_center = 0.5
         # xy_center = np.array([[x_center, y_center]])
         #
-        # radius = 0.25  # Use the shorter side's fifth as radius
+        # radius = 0.3  # Use the shorter side's fifth as radius
         # distances = cdist(x_batch_xy, xy_center, metric='euclidean')
         # mask1 = distances <= radius  # Points inside the circle
         # #        pdb.set_trace()
@@ -1046,9 +1047,9 @@ class PINNTrainer(_Trainer):
         # ##############方形PEC
         #
         # x_batch_xy = x_batch_test[:, :2]
-        # x_center = -0.7
+        # x_center = 0.5
         # y_center = -0.5
-        # rect_width, rect_height = 0.4, 0.4
+        # rect_width, rect_height = 0.6, 0.6
         # rect_xmin = x_center - rect_width / 2
         # rect_xmax = x_center + rect_width / 2
         # rect_ymin = y_center - rect_height / 2
@@ -1152,9 +1153,8 @@ if __name__ == "__main__":
 
     # fdtd2d
     # subdomain_xs = [np.array([-0.65, 0, 0.65]), np.array([-0.45, 0.45]), np.array([0.25, 0.75, 1.25, 1.75])]
-    subdomain_xs = [np.array([-0.65, 0, 0.65]), np.array([-0.45, 0.45]), np.array([0.55, 1.45])]
-    subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
-    # subdomain_ws = [np.array([0.7, 0.7, 0.7]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
+    subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.55, 1.45])]
+    subdomain_ws = get_subdomain_ws(subdomain_xs, 1.1)
 
     c = Constants(
         run="test",
@@ -1179,7 +1179,7 @@ if __name__ == "__main__":
         ),
         ns=((60, 60, 60),),
         n_start=((60, 60, 1),),
-        n_boundary=((40, 40, 40),),
+        n_boundary=((30, 30, 30),),
         n_test=(100, 100, 20),
         n_steps=100000,
         optimiser_kwargs=dict(learning_rate=1e-3),
@@ -1188,10 +1188,8 @@ if __name__ == "__main__":
         show_figures=False,
         clear_output=True,
     )
-    # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64, 64, 3])
-    # c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 3])
-    # c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 3])
+    # c["network_init_kwargs"] = dict(layer_sizes=[3, 64, 64, 64, 64, 3])
     c["network_init_kwargs"] = dict(layer_sizes=[3, 128, 128, 128, 128, 128, 3])
-    # run = PINNTrainer(c)
-    run = FBPINNTrainer(c)
+    run = PINNTrainer(c)
+    # run = FBPINNTrainer(c)
     run.train()
