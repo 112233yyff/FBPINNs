@@ -1179,7 +1179,7 @@ if __name__ == "__main__":
         ),
         ns=((60, 60, 60),),
         n_start=((60, 60, 1),),
-        n_boundary=((30, 30, 30),),
+        n_boundary=((40, 40, 40),),
         n_test=(100, 100, 20),
         n_steps=100000,
         optimiser_kwargs=dict(learning_rate=1e-3),
