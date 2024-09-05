@@ -11,6 +11,8 @@ import jax.nn
 import jax.numpy as jnp
 import numpy as np
 import pdb
+
+from matplotlib import pyplot as plt
 from opt_einsum.backends import torch
 
 from fbpinns.util.logger import logger
@@ -490,7 +492,8 @@ class FDTD1D(Problem):
 
         c0 = all_params["static"]["problem"]["c0"]
         return jnp.array([[c0]], dtype=float)  # (1,1) scalar value
-###########PEC
+
+# ############PEC
 # class FDTD3D(Problem):
 #     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 #
@@ -578,7 +581,6 @@ class FDTD1D(Problem):
 #         if len(Eb):
 #             boundary = jnp.mean((EE - Eb) ** 2)
 #         else:
-#
 #             boundary = 0
 #         return 1e1 * phys + 1e2 * start + 1e2 * boundary
 #
@@ -609,7 +611,7 @@ class FDTD1D(Problem):
 #         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
 #         return Ez
 
-##########不同材质
+############材质
 class FDTD3D(Problem):
     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 
@@ -622,9 +624,9 @@ class FDTD3D(Problem):
         ---- - -----  =  0
         dt      dx
 
-        dEz    1     dHy    dHx
-        ---- - -  ( ---- - ----)   =  0
-        dt     c     dx     dy
+        dEz     dHy    dHx
+        ---- - ---- - ----   =  0
+        dt      dx     dy
 
         Boundary conditions:
 
@@ -635,13 +637,14 @@ class FDTD3D(Problem):
         static_params = {
             "dims": (3, 3),
             "c": c,
-            "c_fn": FDTD3D.c_fn,  # velocity function
             "sd": sd,
+            "c_fn": FDTD3D.c_fn,  # velocity function
         }
         return static_params, {}
 
     @staticmethod
     def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
+        sd = all_params["static"]["problem"]["sd"]
         # physics loss
         x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
         required_ujs_phys = (
@@ -657,7 +660,7 @@ class FDTD3D(Problem):
         x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
         x = x_batch_start[:, 0:1] # 提取 x 坐标
         y = x_batch_start[:, 1:2]
-        E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (0.1 ** 2))
+        E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (sd ** 2))
         Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
         Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
         required_ujs_start = (
@@ -676,28 +679,35 @@ class FDTD3D(Problem):
             (2, (1,)),  # dE / dy
             (2, (2,)),  # dE / dt
         )
-        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start],[x_batch_boundary, required_ujs_boundary]]
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start], [x_batch_boundary,  required_ujs_boundary]]
+
     @staticmethod
     def loss_fn(all_params, constraints):
+
         c_fn = all_params["static"]["problem"]["c_fn"]
         # physics loss
-        x_batch_phys, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
+        x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
+
         phys1 = jnp.mean((dHxdt + dEdy) ** 2)
         phys2 = jnp.mean((dHydt - dEdx) ** 2)
-        phys3 = jnp.mean((dEdt - (1/c_fn(all_params, x_batch_phys)) * (dHydx - dHxdy)) ** 2)
+        phys3 = jnp.mean((dEdt - (1/c_fn(all_params, x_batch))*(dHydx - dHxdy)) ** 2)
         phys = phys1 + phys2 + phys3
+
         # start loss
         x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[1]
         if len(Ec):
             start = jnp.mean((E - Ec) ** 2) + jnp.mean((Hx - Hxc) ** 2) + jnp.mean((Hy - Hyc) ** 2)
         else:
             start = 0
+
         # boundary loss
-        x_batch_boundary, dHxdy_bou, dHxdt_bou, dHydx_bou, dHydt_bou, dEdx_bou, dEdy_bou, dEdt_bou = constraints[2]
-        boundary1 = jnp.mean((dHxdt_bou + dEdy_bou) ** 2)
-        boundary2 = jnp.mean((dHydt_bou - dEdx_bou) ** 2)
-        boundary3 = jnp.mean((dEdt_bou - (1 / c_fn(all_params, x_batch_boundary)) * (dHydx_bou - dHxdy_bou)) ** 2)
+        x_batch_boundary, dHxdy_boundary, dHxdt_boundary, dHydx_boundary, dHydt_boundary, dEdx_boundary, dEdy_boundary, dEdt_boundary = constraints[0]
+
+        boundary1 = jnp.mean((dHxdt_boundary + dEdy_boundary) ** 2)
+        boundary2 = jnp.mean((dHydt_boundary - dEdx_boundary) ** 2)
+        boundary3 = jnp.mean((dEdt_boundary - (1 / c_fn(all_params, x_batch_boundary)) * (dHydx_boundary - dHxdy_boundary)) ** 2)
         boundary = boundary1 + boundary2 + boundary3
+
         return 1e1 * phys + 1e2 * start + 1e2 * boundary
 
     @staticmethod
@@ -720,23 +730,23 @@ class FDTD3D(Problem):
         DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
         NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
 
-        xx, yy = np.meshgrid(np.linspace(2 * xmin, 2 * xmax, 2 * NX), np.linspace(2 * ymin, 2 * ymax, 2 * NY), indexing="ij")
+        xx, yy = np.meshgrid(np.linspace(2 * xmin, 2 * xmax, 2 * NX), np.linspace(2 * ymin, 2 * ymax, 2 * NY),
+                             indexing="ij")
 
         # get velocity model
         x = np.stack([xx.ravel(), yy.ravel()], axis=1)  # (n, 2)
-        velocity = np.array(c_fn(all_params,x))
+        velocity = np.array(c_fn(all_params, x))
         if velocity.shape[0] > 1:
             velocity = velocity.reshape((2 * NX, 2 * NY))
         else:
             velocity = velocity * np.ones_like(xx)
-        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, velocity,)
+        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, velocity, )
         Ez = Ez[::dx, ::dy, ::dt]
         Ez = jnp.ravel(Ez)
         Ez = jnp.reshape(Ez, (-1, 1))
 
         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
         return Ez
-
     @staticmethod
     def c_fn(all_params, x_batch):
         "Computes the velocity model"
@@ -744,22 +754,77 @@ class FDTD3D(Problem):
         x = x_batch[:, 0]  # x 坐标
         y = x_batch[:, 1]  # y 坐标
 
-        # 计算点到中心 (0, -0.5) 的距离
-        distance = jnp.sqrt((x) ** 2 + (y) ** 2)
-
         # 初始化 c，默认值为 1
         c = jnp.ones_like(x)
 
-        # 设置半径和过渡宽度
-        radius = 0.5
-        transition_width = 0.01  # 调整此值以改变过渡宽度
+        # 圆形区域
+        def circle_transition(x, y, center, radius, transition_width):
+            distance = jnp.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
+            sigmoid_transition = 1 / (1 + jnp.exp(-(distance - radius) / transition_width))
+            return sigmoid_transition
 
-        # 计算圆边界附近的 sigmoid 过渡
-        sigmoid_transition = 1 / (1 + jnp.exp(-(distance - radius) / transition_width))
+        # 矩形区域
+        def rectangle_transition(x, y, center, half_width, half_height, transition_width):
+            left = center[0] - half_width
+            right = center[0] + half_width
+            bottom = center[1] - half_height
+            top = center[1] + half_height
 
-        # 使用 sigmoid 过渡将基础值（1）和平滑过渡后的值（1 到 2 之间）结合起来
-        c = 1 + sigmoid_transition
+            dx = jnp.maximum(jnp.maximum(left - x, x - right), 0)
+            dy = jnp.maximum(jnp.maximum(bottom - y, y - top), 0)
+            distance = jnp.sqrt(dx ** 2 + dy ** 2)
 
+            sigmoid_transition = 1 / (1 + jnp.exp(-(transition_width - distance) / transition_width))
+            return sigmoid_transition
+
+        # 三角形区域
+        def triangle_transition(x, y, center, side_length, transition_width):
+            # 计算等边三角形的三个顶点
+            height = (jnp.sqrt(3) / 2) * side_length
+            vertices = jnp.array([
+                [center[0], center[1] + 2 * height / 3],
+                [center[0] - side_length / 2, center[1] - height / 3],
+                [center[0] + side_length / 2, center[1] - height / 3]
+            ])
+
+            # 使用叉积法计算点是否在三角形内
+            def sign(p1, p2, p3):
+                return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+
+            b1 = sign([x, y], vertices[0], vertices[1]) < 0.0
+            b2 = sign([x, y], vertices[1], vertices[2]) < 0.0
+            b3 = sign([x, y], vertices[2], vertices[0]) < 0.0
+
+            inside_triangle = (b1 == b2) & (b2 == b3)
+
+            # 使用sigmoid过渡以获得平滑效果
+            sigmoid_transition = jnp.where(inside_triangle, 1 / (1 + jnp.exp(-transition_width)), 0)
+            return sigmoid_transition
+
+        # 圆形参数
+        circle_center = (-0.5, 0.5)
+        circle_radius = 0.5
+        circle_transition_width = 0.001
+
+        # 矩形参数
+        rectangle_center = (0, -0.5)
+        rectangle_half_width = 0.2
+        rectangle_half_height = 0.2
+        rectangle_transition_width = 0.001
+
+        # 三角形参数
+        triangle_center = (0, -0.5)
+        triangle_side_length = 0.5
+        triangle_transition_width = 0.001
+
+        # 应用转换
+        circle_c = circle_transition(x, y, circle_center, circle_radius, circle_transition_width)
+        rectangle_c = rectangle_transition(x, y, rectangle_center, rectangle_half_width, rectangle_half_height,
+                                           rectangle_transition_width)
+        # triangle_c = triangle_transition(x, y, triangle_center, triangle_side_length, triangle_transition_width)
+        #
+        # c = 1 + circle_c + rectangle_c + triangle_c
+        c = 1 + circle_c + rectangle_c
         # 将 c 重新调整为预期的输出形状 (n, 1)
         c = jnp.expand_dims(c, axis=1)
 

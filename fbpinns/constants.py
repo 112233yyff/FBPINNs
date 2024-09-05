@@ -66,8 +66,8 @@ class Constants(ConstantsBase):
         # )
         # Define scheduler
         self.n_steps = 15000
-        self.scheduler = schedulers.AllActiveSchedulerND
-        self.scheduler_kwargs = dict()
+        # self.scheduler = schedulers.AllActiveSchedulerND
+        # self.scheduler_kwargs = dict()
         # self.scheduler = schedulers.PointSchedulerRectangularND
         # self.scheduler_kwargs = dict(
         #    point=np.array([0.5, 0.5, 0]),
@@ -77,11 +77,11 @@ class Constants(ConstantsBase):
         #     point=np.array([0.5, 0.5]),
         #     iaxis=2,
         # )
-        # self.scheduler = schedulers.PlaneSchedulerRectangularND
-        # self.scheduler_kwargs = dict(
-        #     point=np.array([0]),
-        #     iaxes=[0, 1],
-        # )
+        self.scheduler = schedulers.PlaneSchedulerRectangularND
+        self.scheduler_kwargs = dict(
+            point=np.array([0]),
+            iaxes=[0, 1],
+        )
 
         # Define optimisation parameters
         self.ns = ((60,),)# batch_shape for each training constraint
