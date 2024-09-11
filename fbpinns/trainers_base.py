@@ -56,6 +56,7 @@ class _Trainer:
                 ))
         self.writer.add_scalar("loss/train", loss, i)
         self.writer.add_scalar("stats/rate", rate, i)
+
     def _save_figs(self, i, fs):
         "Saves figures"
 
@@ -97,4 +98,8 @@ def train_models_multiprocess(ip, devices, c, Trainer, wait=0):
     c.device = devices[ip]# set device to run on, based on process id
     c.show_figures = c.clear_output = False# make sure plots are not shown
     run = Trainer(c)
-    run.train
+    run.train()
+
+
+
+

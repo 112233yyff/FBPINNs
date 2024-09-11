@@ -10,17 +10,11 @@ This module is used by constants.py (and subsequently trainers.py)
 import jax.nn
 import jax.numpy as jnp
 import numpy as np
-import pdb
-
-from matplotlib import pyplot as plt
-from opt_einsum.backends import torch
 
 from fbpinns.util.logger import logger
 from fbpinns.traditional_solutions.analytical.burgers_solution import burgers_viscous_time_exact1
 from fbpinns.traditional_solutions.seismic_cpml.seismic_CPML_2D_pressure_second_order import seismicCPML2D
-from FDTD1DDD import FDTD1DD
 from FDTD2DDD import FDTD2D
-
 
 class Problem:
     """Base problem class to be inherited by different problem classes.
@@ -116,6 +110,7 @@ class HarmonicOscillator1D(Problem):
             (0,()),
             (0,(0,)),
         )
+
         return [[x_batch_phys, required_ujs_phys], [x_batch_boundary, u_boundary, ut_boundary, required_ujs_boundary]]
 
     @staticmethod
@@ -192,6 +187,7 @@ class HarmonicOscillator1DHardBC(HarmonicOscillator1D):
 
     @staticmethod
     def constraining_fn(all_params, x_batch, u):
+
         sd = all_params["static"]["problem"]["sd"]
         x, tanh = x_batch[:,0:1], jnp.tanh
 
@@ -312,7 +308,6 @@ class BurgersEquation2D(Problem):
             (0,(1,)),
             (0,(0,0)),
         )
-
         return [[x_batch_phys, required_ujs_phys],]
 
 
@@ -344,272 +339,6 @@ class BurgersEquation2D(Problem):
         vu = burgers_viscous_time_exact1(nu, len(vx), vx, len(vt), vt)
         u = jnp.array(vu.flatten()).reshape((-1,1))
         return u
-
-class FDTD1D(Problem):
-    """Solves the FDTD 1D equation
-        u = [Hy, Ez]
-        dHy    dEz
-        ---- - ----  =  0
-        dt       dx
-        dEz    dHy
-        ---- - ----  =  s(x,t)
-        dt       dx
-
-        Start conditions:
-        Ez(x,0) = exp( -(1/2)((x/sd)^2) )
-
-        Boundary conditions:
-        Ez(-1,t) = 0
-       
-    """
-    @staticmethod
-    def init_params(c=1, sd = 0.08):
-        static_params = {
-            "dims": (2, 2),
-            "c": c,
-            "sd": sd,
-        }
-        return static_params, {}
-
-    @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
-        params = all_params["static"]["problem"]
-        sd = params["sd"]
-        # physics loss
-        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
-        required_ujs_phys = (
-            (0, (0,)),  # dH / dx
-            (1, (0,)),  # dE / dx
-            (0, (1,)),  # dH / dt
-            (1, (1,)),  # dE /dt
-        )
-
-        # start loss
-        x_batch_start = domain.sample_start1d(all_params, key, sampler, start_batch_shapes[0])
-        x = x_batch_start[:, 0]  # 提取 x 坐标
-        E_start = jnp.exp(-0.5 * (x ** 2) / (sd ** 2))
-        H_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-        # x_batch_start = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
-        # y_start = FDTD1D.exact_solution(all_params, x_batch_start, batch_shapes[0])
-        # H_start = y_start[:, 0].reshape(-1, 1)
-        # E_start = y_start[:, 1].reshape(-1, 1)
-        required_ujs_start = (
-            (0, ()),
-            (1, ()),
-        )
-
-        #boundary loss
-        loc = 0.5
-        x_batch_boundary = domain.sample_boundary1d(all_params, key, sampler, boundary_batch_shapes[0], loc)
-        t = x_batch_boundary[:, 1]
-        E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
-        required_ujs_boundary = (
-            (1, ()),
-        )
-        return [[x_batch_phys, required_ujs_phys], [x_batch_start, H_start, E_start, required_ujs_start], [x_batch_boundary, E_boundary, required_ujs_boundary]]
-        # return [[x_batch_start, H_start, E_start, required_ujs_start]]
-    # @staticmethod
-    # def constraining_fn(all_params, x_batch, u):
-    #     c = all_params["static"]["problem"]["c"]
-    #     sd = all_params["static"]["problem"]["sd"]
-    #     t = x_batch[:, 1:2]
-    #
-    #     u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u
-    #     return u
-
-    @staticmethod
-    def loss_fn(all_params, constraints):
-        # physics loss
-        # c = all_params["static"]["problem"]["c"]
-        # sd = all_params["static"]["problem"]["sd"]
-        x_batch, dHdx, dEdx, dHdt, dEdt = constraints[0]
-        # x, t = x_batch[:, 0:1], x_batch[:, 1:2]
-        # e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        # s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
-        # s = e
-        phys1 = jnp.mean((dEdt - dHdx ) ** 2)
-        phys2 = jnp.mean((dHdt - dEdx ) ** 2)
-        phys = phys1 + phys2
-
-        # start loss
-        x_batch_start, Hc, Ec, H, E = constraints[1]
-        if len(Ec):
-            start = jnp.mean((jnp.squeeze(E) - Ec) **2 )+ jnp.mean((jnp.squeeze(H)-Hc)**2)
-        else:
-            start = 0
-        # jax.debug.print("ret{}", phys)
-        # jax.debug.print("ret{}---", start)
-
-        # boundary loss
-        x_batch_boundary, Eb, EE = constraints[2]
-        if len(Eb):
-            boundary = jnp.mean((jnp.squeeze(EE) - Eb) ** 2)
-        else:
-            boundary = 0
-        return 1e2 * phys + 1e4 * start + 1e2 * boundary
-        # return start
-    @staticmethod
-    def exact_solution(all_params, x_batch, batch_shape):
-        params = all_params["static"]["problem"]
-        c, sd= params["c"], params["sd"]
-
-        (xmin, tmin), (xmax,  tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
-
-        # get grid spacing
-        deltax,  deltat = (xmax - xmin) / (batch_shape[0] - 1),  (tmax - tmin) / (batch_shape[1] - 1)
-
-        # get f0, target deltas of FD simulation
-        f0 = c / sd  # approximate frequency of wave
-        DELTAX = 1 / (f0 * 10)  # target fine sampled deltas
-        DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
-        dx, dt = int(np.ceil(deltax / DELTAX)),  int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
-        DELTAX,  DELTAT = deltax / dx, deltat / dt
-        NX, NSTEPS = batch_shape[0] * dx - (dx - 1),  batch_shape[1] * dt - (dt - 1)
-        Hy, Ex = FDTD1DD(
-            xmin,
-            xmax,
-            tmin,
-            tmax,
-            sd,
-            NX,
-            NSTEPS,
-            DELTAX,
-            DELTAT,
-        )
-        Hy = Hy[::dx, ::dt]
-        Hy = jnp.ravel(Hy)
-        Hy = jnp.reshape(Hy, (-1, 1))
-        Ex = Ex[::dx, ::dt]
-        Ex = jnp.ravel(Ex)
-        Ex = jnp.reshape(Ex, (-1, 1))
-
-        # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
-        y = jnp.concatenate((Hy, Ex), axis=1)
-        return y
-    @staticmethod
-    def c_fn(all_params, x_batch):
-        "Computes the velocity model"
-
-        c0 = all_params["static"]["problem"]["c0"]
-        return jnp.array([[c0]], dtype=float)  # (1,1) scalar value
-
-# ############PEC
-# class FDTD3D(Problem):
-#     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
-#
-#         u = [Hx, Hy, Ez]
-#         dHx     dEz
-#         ---- + -----  =  0
-#         dt      dy
-#
-#         dHy     dEz
-#         ---- - -----  =  0
-#         dt      dx
-#
-#         dEz     dHy    dHx
-#         ---- - ---- - ----   =  0
-#         dt      dx     dy
-#
-#         Boundary conditions:
-#
-#     """
-#
-#     @staticmethod
-#     def init_params(c=1, sd=0.1):
-#         static_params = {
-#             "dims": (3, 3),
-#             "c": c,
-#             "sd": sd,
-#         }
-#         return static_params, {}
-#
-#     @staticmethod
-#     def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
-#         sd = all_params["static"]["problem"]["sd"]
-#         # physics loss
-#         x_batch_phys = domain.sample_interior_depec(all_params, key, sampler, batch_shapes[0])
-#         required_ujs_phys = (
-#             (0, (1,)),  # dHx / dy
-#             (0, (2,)),  # dHx / dt
-#             (1, (0,)),  # dHy / dx
-#             (1, (2,)),  # dHy / dt
-#             (2, (0,)),  # dE / dx
-#             (2, (1,)),  # dE / dy
-#             (2, (2,)),  # dE / dt
-#         )
-#         # start loss
-#         x_batch_start = domain.sample_start_depec(all_params, key, sampler, start_batch_shapes[0])
-#         x = x_batch_start[:, 0:1] # 提取 x 坐标
-#         y = x_batch_start[:, 1:2]
-#         E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (sd ** 2))
-#         Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-#         Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-#         required_ujs_start = (
-#             (0, ()),
-#             (1, ()),
-#             (2, ()),
-#         )
-#         # boundary loss
-#         x_batch_boundary = domain.sample_boundary_pec(all_params, key, sampler, boundary_batch_shapes[0])
-#         t = x_batch_boundary[:, 2:3]
-# #        pdb.set_trace()
-#         E_boundary = jnp.zeros_like(t, dtype=jnp.float32).reshape(t.shape)
-#         required_ujs_boundary = (
-#             (2, ()),
-#         )
-#         return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start], [x_batch_boundary, E_boundary, required_ujs_boundary]]
-#
-#     @staticmethod
-#     def loss_fn(all_params, constraints):
-#         # physics loss
-#         x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
-#
-#         phys1 = jnp.mean((dHxdt + dEdy) ** 2)
-#         phys2 = jnp.mean((dHydt - dEdx) ** 2)
-#         phys3 = jnp.mean((dEdt - dHydx + dHxdy) ** 2)
-#         phys = phys1 + phys2 + phys3
-#
-#         # start loss
-#         x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[1]
-#         if len(Ec):
-#             start = jnp.mean((E - Ec) ** 2) + jnp.mean((Hx - Hxc) ** 2) + jnp.mean((Hy - Hyc) ** 2)
-#         else:
-#             start = 0
-#
-#         # boundary loss
-#         x_batch_boundary, Eb, EE = constraints[2]
-#         if len(Eb):
-#             boundary = jnp.mean((EE - Eb) ** 2)
-#         else:
-#             boundary = 0
-#         return 1e1 * phys + 1e2 * start + 1e2 * boundary
-#
-#     @staticmethod
-#     def exact_solution(all_params, x_batch, batch_shape):
-#         params = all_params["static"]["problem"]
-#         c, sd= params["c"], params["sd"]
-#
-#         (xmin, ymin, tmin),(xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
-#
-#         # get grid spacing
-#         deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (tmax - tmin) / (batch_shape[2] - 1)
-#
-#         # get f0, target deltas of FD simulation
-#         f0 = c / sd  # approximate frequency of wave
-#         DELTAX = 1 / (f0 * 10)
-#         DELTAY = 1 / (f0 * 10)# target fine sampled deltas
-#         DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
-#         dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
-#         DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
-#         NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
-#
-#         Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd)
-#         Ez = Ez[::dx, ::dy, ::dt]
-#         Ez = jnp.ravel(Ez)
-#         Ez = jnp.reshape(Ez, (-1, 1))
-#
-#         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
-#         return Ez
 
 ############材质
 class FDTD3D(Problem):
@@ -830,63 +559,7 @@ class FDTD3D(Problem):
 
         return c
 
-class WaveEquation1D(Problem):
-    """Solves the time-dependent (2+1)D wave equation with constant velocity
-        d^2 u     1  d^2 u
-        -----  - --- ----- = s(x,t)
-        dx^2     c^2 dt^2
 
-        Boundary conditions:
-        u(x,0) = 0
-        du
-        --(x,0) = 0
-        dt
-    """
-
-    @staticmethod
-    def init_params(c=1, sd=1):
-        static_params = {
-            "dims": (1, 2),
-            "c": c,
-            "sd": sd,
-        }
-        return static_params, {}
-
-    @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes):
-        # physics loss
-        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
-        required_ujs_phys = (
-            (0, (0, 0)),
-            (0, (1, 1)),
-        )
-        return [[x_batch_phys, required_ujs_phys], ]
-
-    @staticmethod
-    def constraining_fn(all_params, x_batch, u):
-        c = all_params["static"]["problem"]["c"]
-        sd = all_params["static"]["problem"]["sd"]
-        t = x_batch[:, 1:2]
-
-        u = (jax.nn.tanh(c * t / (2 * sd)) ** 2) * u  # constrains u(x,y,0) = u_t(x,y,0) = 0
-        return u
-
-    @staticmethod
-    def loss_fn(all_params, constraints):
-        c = all_params["static"]["problem"]["c"]
-        sd = all_params["static"]["problem"]["sd"]
-        x_batch, uxx, utt = constraints[0]
-        x,  t = x_batch[:, 0:1], x_batch[:, 1:2]
-
-        e = -0.5 * (x ** 2 + t ** 2) / (sd ** 2)
-        s = 2e3 * (1 + e) * jnp.exp(e)  # ricker source term
-        phys = uxx - (1 / c ** 2) * utt - s
-        return jnp.mean(phys ** 2)
-
-    @staticmethod
-    def exact_solution(all_params, x_batch, batch_shape):
-        key = jax.random.PRNGKey(0)
-        return jax.random.normal(key, (x_batch.shape[0], 1))
 class WaveEquationConstantVelocity3D(Problem):
     """Solves the time-dependent (2+1)D wave equation with constant velocity
         d^2 u   d^2 u    1  d^2 u
@@ -945,9 +618,6 @@ class WaveEquationConstantVelocity3D(Problem):
     def loss_fn(all_params, constraints):
         c_fn = all_params["static"]["problem"]["c_fn"]
         x_batch, uxx, uyy, utt = constraints[0]
-
-        jax.debug.print("uxx_: {}", uxx)
-
         phys = (uxx + uyy) - (1/c_fn(all_params, x_batch)**2)*utt
         return jnp.mean(phys**2)
 
@@ -991,7 +661,7 @@ class WaveEquationConstantVelocity3D(Problem):
         # add padded CPML boundary
         NPOINTS_PML = 10
         p0 = np.pad(p0, [(NPOINTS_PML,NPOINTS_PML),(NPOINTS_PML,NPOINTS_PML)], mode="edge")
-        c =  np.pad(c, [(NPOINTS_PML,NPOINTS_PML),(NPOINTS_PML,NPOINTS_PML)], mode="edge")
+        c =   np.pad(c, [(NPOINTS_PML,NPOINTS_PML),(NPOINTS_PML,NPOINTS_PML)], mode="edge")
 
         # run simulation
         logger.info(f'Running seismicCPML2D {(NX, NY, NSTEPS)}..')

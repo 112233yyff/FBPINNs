@@ -22,6 +22,7 @@ def get_subdomain_ws(subdomain_xs, width):
     return [width*np.min(np.diff(x))*np.ones_like(x) for x in subdomain_xs]
 
 
+# main constants class
 
 class Constants(ConstantsBase):
 
@@ -34,21 +35,24 @@ class Constants(ConstantsBase):
         # Define domain
         self.domain = domains.RectangularDomainND
         self.domain_init_kwargs = dict(
-            xmin=np.array([0.]),
-            xmax=np.array([1.])
+            xmin=np.array([-1, -1, 0]),
+            xmax=np.array([1, 1, 2]),
             )
 
         # Define problem
-        self.problem = problems.HarmonicOscillator1D
+        self.problem = problems.FDTD3D
         #self.problem = problems.HarmonicOscillator1DInverse
         self.problem_init_kwargs = dict(
-            d=2,
-            w0=20,
+            c=1, sd=0.1,
             )
 
         # Define domain decomposition
-        subdomain_xs = [np.linspace(0,1,5)]
-        subdomain_ws = get_subdomain_ws(subdomain_xs, 2.99)
+        # subdomain_xs = [np.linspace(0,1,5)]
+        # subdomain_ws = get_subdomain_ws(subdomain_xs, 2.99)
+        # subdomain_xs = [np.array([0]), np.array([0]), np.array([1])]
+        # subdomain_ws = [np.array([2]), np.array([2]), np.array([2])]
+        subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.5, 1.5])]
+        subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
         self.decomposition = decompositions.RectangularDecompositionND
         self.decomposition_init_kwargs = dict(
             subdomain_xs=subdomain_xs,
@@ -59,35 +63,28 @@ class Constants(ConstantsBase):
         # Define neural network
         self.network = networks.FCN
         self.network_init_kwargs = dict(
-            layer_sizes=[1,32,32,32,1],
+            layer_sizes=[3, 128, 128, 128, 128, 128, 3],
             )
-        # self.network_init_kwargs1 = dict(
-        #     layer_sizes=[2, 32, 32, 32, 2],
-        # )
+
         # Define scheduler
-        self.n_steps = 15000
-        # self.scheduler = schedulers.AllActiveSchedulerND
-        # self.scheduler_kwargs = dict()
-        # self.scheduler = schedulers.PointSchedulerRectangularND
-        # self.scheduler_kwargs = dict(
-        #    point=np.array([0.5, 0.5, 0]),
+        self.n_steps = 150000
+        self.scheduler = schedulers.AllActiveSchedulerND
+        self.scheduler_kwargs = dict()
+        #self.scheduler = schedulers.PointSchedulerRectangularND
+        #self.scheduler_kwargs = dict(
+        #    point=np.array([0.]),
         #    )
-        # self.scheduler = schedulers.LineSchedulerRectangularND
+        # self.scheduler = schedulers.PlaneSchedulerRectangularND
         # self.scheduler_kwargs = dict(
-        #     point=np.array([0.5, 0.5]),
-        #     iaxis=2,
+        #     point=np.array([0]),
+        #     iaxes=[0, 1],
         # )
-        self.scheduler = schedulers.PlaneSchedulerRectangularND
-        self.scheduler_kwargs = dict(
-            point=np.array([0]),
-            iaxes=[0, 1],
-        )
 
         # Define optimisation parameters
-        self.ns = ((60,),)# batch_shape for each training constraint
-        self.n_start = ((60,),)
-        self.n_boundary = ((60,),)
-        self.n_test = (200,)# batch_shape for test data
+        self.ns = ((60, 60, 60),)# batch_shape for each training constraint
+        self.n_start = ((60, 60, 1),)
+        self.n_boundary = ((40, 40, 40),)
+        self.n_test=(100, 100, 20)# batch_shape for test data
         self.sampler = "grid"# one of ["grid", "uniform", "sobol", "halton"]
         self.optimiser = optax.adam
         self.optimiser_kwargs = dict(
@@ -97,11 +94,11 @@ class Constants(ConstantsBase):
 
         # Define summary output parameters
         self.summary_freq    = 1000# outputs train stats to command line
-        self.test_freq       = 1000# outputs test stats to plot / file / command line
-        self.model_save_freq = 15000
+        self.test_freq       = 200# outputs test stats to plot / file / command line
+        self.model_save_freq = 10000
         self.show_figures = False# whether to show figures
         self.save_figures = True# whether to save figures
-        self.clear_output = False# whether to clear ipython output periodically
+        self.clear_output = True# whether to clear ipython output periodically
 
         # other constants
         self.hostname = socket.gethostname().lower()
