@@ -535,6 +535,7 @@ class FDTD3D(Problem):
         circle_radius = 0.5
         circle_transition_width = 0.001
 
+
         # 矩形参数
         rectangle_center = (0, -0.5)
         rectangle_half_width = 0.2
