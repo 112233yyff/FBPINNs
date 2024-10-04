@@ -479,9 +479,9 @@ class RectangularDomainND(Domain):
         return jnp.array(x_filtered)
     @staticmethod
     def all_boundary(key, sampler, xmin, xmax, batch_shape):
-        circle_points = RectangularDomainND.boundary_circle(key, sampler, xmin, xmax, batch_shape)
-        rectangle_points = RectangularDomainND.boundary_rectangle(key, sampler, xmin, xmax, batch_shape)
-        triangle_points = RectangularDomainND.boundary_triangle(key, sampler, xmin, xmax, batch_shape)
+        circle_points = RectangularDomainND.boundary_near_circle(key, sampler, xmin, xmax, batch_shape)
+        rectangle_points = RectangularDomainND.boundary_near_rectangle(key, sampler, xmin, xmax, batch_shape)
+        triangle_points = RectangularDomainND.boundary_near_triangle(key, sampler, xmin, xmax, batch_shape)
         all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points], axis=0)
         # all_boundary_points = np.concatenate([circle_points, rectangle_points], axis=0)
         return all_boundary_points

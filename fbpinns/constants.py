@@ -51,8 +51,8 @@ class Constants(ConstantsBase):
         # subdomain_ws = get_subdomain_ws(subdomain_xs, 2.99)
         # subdomain_xs = [np.array([0]), np.array([0]), np.array([1])]
         # subdomain_ws = [np.array([2]), np.array([2]), np.array([2])]
-        subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.5, 1.5])]
-        subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
+        subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([1])]
+        subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([2.1])]
         self.decomposition = decompositions.RectangularDecompositionND
         self.decomposition_init_kwargs = dict(
             subdomain_xs=subdomain_xs,
@@ -63,12 +63,12 @@ class Constants(ConstantsBase):
         # Define neural network
         self.network = networks.FCN
         self.network_init_kwargs = dict(
-            layer_sizes=[3, 128, 128, 128, 128, 128, 3],
+            layer_sizes=[3, 64, 64, 64, 64, 64, 3],
             )
 
         # Define scheduler
-        self.n_steps = 150000
-        # self.scheduler = schedulers.AllActiveSchedulerND
+        self.n_steps = 120000
+        # self.scheduler = schedulers.AllActiveSchedulerND``````````````````
         # self.scheduler_kwargs = dict()
         #self.scheduler = schedulers.PointSchedulerRectangularND
         #self.scheduler_kwargs = dict(
