@@ -6,14 +6,11 @@ Each domain class must define the NotImplemented methods.
 
 This module is used by constants.py (and subsequently trainers.py)
 """
-from concurrent.futures import ThreadPoolExecutor
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import scipy.stats
-from shapely import Polygon, Point
-from shapely.prepared import prep
 
 from fbpinns import networks
 
@@ -56,6 +53,10 @@ class Domain:
     def norm_fn(all_params, x):
         """"Applies norm function, for a SINGLE point with shape (xd,)"""# note only used for PINNs, FBPINN norm function defined in Decomposition
         raise NotImplementedError
+
+
+
+
 # class RectangularDomainND(Domain):
 #
 #     @staticmethod
@@ -78,10 +79,6 @@ class Domain:
 #         return RectangularDomainND._rectangle_samplerND(key, sampler, xmin, xmax, batch_shape)
 #
 #     @staticmethod
-#     def sample_start(all_params, key, sampler, batch_shape):
-#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-#         return RectangularDomainND._rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape)
-#     @staticmethod
 #     def sample_boundaries(all_params, key, sampler, batch_shapes):
 #         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
 #         xd = all_params["static"]["domain"]["xd"]
@@ -103,8 +100,7 @@ class Domain:
 #                     assert len(batch_shape) == 1
 #                     x_batch = v*jnp.ones(batch_shape+(1,), dtype=float)
 #                 x_batches.append(x_batch)
-#                 all_boundary_points = np.concatenate(x_batches, axis=0)
-#         return all_boundary_points
+#         return x_batches
 #
 #     @staticmethod
 #     def norm_fn(all_params, x):
@@ -144,44 +140,6 @@ class Domain:
 #             x_batch = xmin + (xmax - xmin)*s
 #
 #         return jnp.array(x_batch)
-#
-#     @staticmethod
-#     def _rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape):
-#         "Get flattened samples of x in a rectangle, either on mesh or random"
-#
-#         assert xmin.shape == xmax.shape
-#         assert xmin.ndim == 1
-#         xd = len(xmin)
-#         assert len(batch_shape) == xd
-#
-#         if not sampler in ["grid", "uniform", "sobol", "halton"]:
-#             raise ValueError("ERROR: unexpected sampler")
-#
-#         if sampler == "grid":
-#             xs = [jnp.linspace(xmin[i], xmax[i], b) if i != 2 else jnp.array([xmin[i]]) for i, b in
-#                   enumerate(batch_shape)]
-#             xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
-#             x_batch = xx.reshape((-1, xd))
-#         else:
-#             if sampler == "halton":
-#                 # use scipy as not implemented in jax (!)
-#                 r = scipy.stats.qmc.Halton(xd)
-#                 s = r.random(np.prod(batch_shape))
-#             elif sampler == "sobol":
-#
-#                 r = scipy.stats.qmc.Sobol(xd)
-#                 s = r.random(np.prod(batch_shape))
-#             elif sampler == "uniform":
-#                 # Generate uniform samples for the first two dimensions
-#                 s = jax.random.uniform(key, (np.prod(batch_shape), 2))
-#                 # Append the minimum value for the third dimension
-#                 s = jnp.hstack((s, jnp.full((np.prod(batch_shape), 1), xmin[2])))
-#
-#             xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-#             x_batch = xmin + (xmax - xmin) * s
-#
-#         return jnp.array(x_batch)
-#################材质
 class RectangularDomainND(Domain):
 
     @staticmethod

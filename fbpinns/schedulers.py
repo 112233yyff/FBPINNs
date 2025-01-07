@@ -160,7 +160,6 @@ class PlaneSchedulerRectangularND(_SubspacePointSchedulerRectangularND):
         if len(point) != xd-2: raise Exception(f"ERROR: point incorrect shape {point.shape}")
         super().__init__(all_params, n_steps, point, iaxes=iaxes)
 
-
 class PlanePointScheduler(ActiveScheduler):
     """
     沿 z 轴的不同 xy 平面逐步激活，并在每个激活的 xy 平面内从指定点逐步扩展激活区域。
@@ -282,11 +281,6 @@ class PlanePointScheduler(ActiveScheduler):
 
                     if step == steps_per_plane - 1:  # 第一个平面激活完成后，将其状态固定
                         active[c_plane] = 2
-
-
-
-
-
 
 if __name__ == "__main__":
 

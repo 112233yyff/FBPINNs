@@ -6,22 +6,23 @@ This is the main entry point for training FBPINNs and PINNs.
 To train a FBPINN / PINN, use a Constants object to set up the problem and define its hyperparameters, and pass it
 to one of the trainer classes defined here
 """
-import os
+
 import time
 from functools import partial
 
 import jax
 import jax.numpy as jnp
-import psutil
 from jax import jit, vmap, value_and_grad, jvp
 from jax import random
 import optax
 import numpy as np
-import jax.profiler
+
 from fbpinns.trainers_base import _Trainer
 from fbpinns import networks, plot_trainer
 from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
+
+
 from jax.sharding import PositionalSharding
 from jax.experimental import mesh_utils
 
@@ -125,8 +126,9 @@ def PINN_model_inner(all_params, x, norm_fn, network_fn, unnorm_fn):
     u = unnorm_fn(u_raw)# unnormalise
     return u, u_raw
 
-def FBPINN_model( all_params, x_batch, takes, model_fns, verbose=True):
+def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     "Defines FBPINN model"
+
     norm_fn, network_fn, unnorm_fn, window_fn, constraining_fn = model_fns
     m_take, n_take, p_take, np_take, npou = takes
 
@@ -155,20 +157,8 @@ def FBPINN_model( all_params, x_batch, takes, model_fns, verbose=True):
     logger.debug("vmap f")
     logger.debug(f)
 
-
-    # memory_usage_path44 = c.summary_out_dir + "memory_usage44-modeinner.txt"  # Default path if none is provided
-    # memory_usage_before44 = get_memory_usage()
-
-
-    # Batch over parameters and points
-    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f, 0, None, None, None, None))(all_params_take, x_take, norm_fn,
-                                                                                      network_fn, unnorm_fn,
-                                                                                      window_fn)  # (s, ud)
-
-    # # # Record memory usage after vmap call
-    # memory_usage_after44 = get_memory_usage()
-    # save_memory_usage(memory_usage_after44 - memory_usage_before44, memory_usage_path44)
-    # logger.debug(str_tensor(memory_usage_after - memory_usage_before))
+    # batch over parameters and points
+    us, ws, us_raw = vmap(FBPINN_model_inner, in_axes=(f,0,None,None,None,None))(all_params_take, x_take, norm_fn, network_fn, unnorm_fn, window_fn)# (s, ud)
     logger.debug("u")
     logger.debug(str_tensor(us))
 
@@ -186,11 +176,6 @@ def FBPINN_model( all_params, x_batch, takes, model_fns, verbose=True):
     # then apply constraining operator
     u = constraining_fn(all_params, x_batch, u)# (n, ud)
     logger.debug(str_tensor(u))
-    # # 假设 us_raw 是一个 Tracer 对象
-    # us_raw_concrete = jax.device_get(us_raw)  # 获取具体值
-    # # 获取内存占用大小
-    # memory_size = us_raw_concrete.nbytes / (1024 ** 2)  # 转换为 MB
-    # print(f"us_raw memory usage: {memory_size:.2f} MB")
 
     return u, wp, us, ws, us_raw
 
@@ -213,12 +198,12 @@ def PINN_model(all_params, x_batch, model_fns, verbose=True):
     return u, u_raw
 
 def FBPINN_forward(all_params, x_batch, takes, model_fns, jmaps):
+    "Computes gradients of FBPINN model"
+
     # isolate model function
     def u(x_batch):
         return FBPINN_model(all_params, x_batch, takes, model_fns)[0], ()
     return _get_ujs(x_batch, jmaps, u)
-
-
 
 def PINN_forward(all_params, x_batch, model_fns, jmaps):
     "Computes gradients of PINN model"
@@ -265,18 +250,15 @@ def jacfwd(f, v):
     return jacfun
 
 def FBPINN_loss(active_params, fixed_params, static_params, takess, constraints, model_fns, jmapss, loss_fn):
-    "Computes gradients of FBPINN model"
-    # memory_usage_path22 = c.summary_out_dir + "memory_usage22-forward.txt"  # Default path if none is provided
-    # memory_usage_before22 = get_memory_usage()
 
     # add fixed params to active, recombine all_params
     d, da = active_params, fixed_params
-    trainable_params = {cl_k: {
-        k: jax.tree_map(lambda p1, p2: jnp.concatenate([p1, p2], 0), d[cl_k][k], da[cl_k][k]) if k == "subdomain" else
-        d[cl_k][k]
+    trainable_params = {cl_k: {k: jax.tree_map(lambda p1, p2:jnp.concatenate([p1,p2],0), d[cl_k][k], da[cl_k][k]) if k=="subdomain" else d[cl_k][k]
         for k in d[cl_k]}
-                        for cl_k in d}
-    all_params = {"static": static_params, "trainable": trainable_params}
+        for cl_k in d}
+    all_params = {"static":static_params, "trainable":trainable_params}
+
+    # run FBPINN for each constraint, with shared params
     constraints_ = []
     for takes, jmaps, constraint in zip(takess, jmapss, constraints):
         logger.debug("constraint")
@@ -284,11 +266,7 @@ def FBPINN_loss(active_params, fixed_params, static_params, takess, constraints,
             logger.debug(str_tensor(c_))
         x_batch = constraint[0]
         ujs = FBPINN_forward(all_params, x_batch, takes, model_fns, jmaps)
-        constraints_.append(constraint + ujs)
-    # # # Record memory usage after vmap call
-    # memory_usage_after22 = get_memory_usage()
-    # save_memory_usage(memory_usage_after22 - memory_usage_before22, memory_usage_path22)
-
+        constraints_.append(constraint+ujs)
     return loss_fn(all_params, constraints_)
 
 def PINN_loss(active_params, static_params, constraints, model_fns, jmapss, loss_fn):
@@ -311,10 +289,6 @@ def PINN_loss(active_params, static_params, constraints, model_fns, jmapss, loss
 def FBPINN_update(optimiser_fn, active_opt_states,
                   active_params, fixed_params, static_params_dynamic, static_params_static,
                   takess, constraints, model_fns, jmapss, loss_fn):
-    # "Computes gradients of FBPINN model"
-    # memory_usage_path11 = c.summary_out_dir + "memory_usage11-loss.txt"  # Default path if none is provided
-    # memory_usage_before11 = get_memory_usage()
-
     # recombine static params
     static_params = combine(static_params_dynamic, static_params_static)
     # update step
@@ -322,11 +296,6 @@ def FBPINN_update(optimiser_fn, active_opt_states,
         active_params, fixed_params, static_params, takess, constraints, model_fns, jmapss, loss_fn)
     updates, active_opt_states = optimiser_fn(grads, active_opt_states, active_params)
     active_params = optax.apply_updates(active_params, updates)
-
-    # # # Record memory usage after vmap call
-    # memory_usage_after11 = get_memory_usage()
-    # save_memory_usage(memory_usage_after11 - memory_usage_before11, memory_usage_path11)
-
     return lossval, active_opt_states, active_params
 
 @partial(jit, static_argnums=(0, 4, 6, 7, 8))
@@ -415,6 +384,7 @@ def get_inputs(x_batch, active, all_params, decomposition):
     np = jnp.stack([n_take, pous[m_take,0]], axis=-1).astype(int)# points and pous
     logger.debug(str_tensor(np))
     npu,p_take = jnp.unique(np, axis=0, return_inverse=True)# unique points and pous (sorted), point-pou takes
+    p_take = p_take.reshape(-1)# (!) fixes output shape inconsistency after jax 0.4.24
     np_take = npu[:,0]
     logger.debug(str_tensor(p_take))
     logger.debug(str_tensor(np_take))
@@ -606,6 +576,7 @@ class FBPINNTrainer(_Trainer):
         logger.info(f"[i: {i}/{self.c.n_steps}] Updating active inputs done ({time.time()-start0:.2f} s)")
 
         return active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch
+
     def train(self):
         "Train model"
 
@@ -633,8 +604,9 @@ class FBPINNTrainer(_Trainer):
         # initialise subdomain network params
         network = c.network
         key, *subkeys = random.split(key, all_params["static"]["decomposition"]["m"]+1)
-        ps_ = vmap(network.init_params, in_axes=(0, None))(jnp.array(subkeys), *c.network_init_kwargs.values())
-        if ps_[0]: all_params["static"]["network"] = tree_index(ps_[0],0)# grab first set of static params only
+        args_ = c.network_init_kwargs.values()
+        ps_ = vmap(network.init_params, in_axes=(0,)+(None,)*len(args_))(jnp.array(subkeys), *args_)
+        if ps_[0]: all_params["static"]["network"] = {"subdomain": ps_[0]}# add subdomain key
         if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
@@ -673,9 +645,12 @@ class FBPINNTrainer(_Trainer):
                 # then get new inputs to update step
                 active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch = \
                      self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global, constraint_fs_global, constraint_offsets_global, decomposition, problem)
+                
+                
+                
                 ###*******SHARDING START*********###
                 nDevices = jax.local_device_count()
-                sharding = PositionalSharding(mesh_utils.create_device_mesh((nDevices,)))
+                sharding = PositionalSharding(mesh_utils.create_device_mesh((nDevices, )))
                 logger.debug("111111111111111111111111111111111111111111111111111111111")
                 logger.debug((nDevices))
 
@@ -683,35 +658,39 @@ class FBPINNTrainer(_Trainer):
                     pad_width = nDevices - (arr.shape[0] % nDevices)
                     if pad_width == nDevices:
                         pad_width = 0
-                    return jnp.pad(arr, (0, pad_width), mode='constant')
-
+                    return jnp.pad(arr, (0, pad_width), mode='constant') 
+                
                 def shard_layer_params(layer, sharding):
                     weights, biases = layer
                     # pad_width = nDevices - (weights.shape[0] % nDevices)
                     # if pad_width != nDevices:
                     #     weights = jnp.pad(weights, ((0,pad_width),(0,0),(0,0)), mode='constant')
                     #     biases = jnp.pad(biases, ((0,pad_width),(0,0)), mode='constant')
-                    sharded_weights = jax.device_put(weights, sharding.reshape((nDevices, 1, 1)))
-                    sharded_biases = jax.device_put(biases, sharding.reshape((nDevices, 1)))
+                    sharded_weights = jax.device_put(weights, sharding.reshape((nDevices,1,1 )))
+                    sharded_biases  = jax.device_put(biases, sharding.reshape((nDevices, 1)))
                     return (sharded_weights, sharded_biases)
 
+                
+
                 for i, takes in enumerate(takess):
-                    m_take, n_take, p_take, np_take, npou = takes
-
-                    n_take = jax.device_put(pad_array(n_take), sharding.reshape((nDevices,)))
-                    m_take = jax.device_put(pad_array(m_take), sharding.reshape((nDevices,)))
-                    p_take = jax.device_put(pad_array(p_take), sharding.reshape((nDevices,)))
-                    np_take = jax.device_put(np_take, sharding.replicate())
-                    npou = jax.device_put(npou, sharding.replicate())
-
+                    m_take, n_take, p_take, np_take, npou   = takes 
+                    
+                    n_take         = jax.device_put(pad_array(n_take), sharding.reshape((nDevices,)))
+                    m_take         = jax.device_put(pad_array(m_take), sharding.reshape((nDevices,)))
+                    p_take         = jax.device_put(pad_array(p_take), sharding.reshape((nDevices,)))
+                    np_take        = jax.device_put(np_take, sharding.replicate())
+                    npou           = jax.device_put(npou, sharding.replicate())
+                    
                     takess[i] = (m_take, n_take, p_take, np_take, npou)
 
-                static_params["decomposition"]["subdomain"]["params"] = jax.device_put(
-                    static_params["decomposition"]["subdomain"]["params"], sharding.replicate())
-
+                
+                static_params["decomposition"]["subdomain"]["params"] = jax.device_put(static_params["decomposition"]["subdomain"]["params"], sharding.replicate())
+                
+                
                 active_layers = active_params["network"]["subdomain"]["layers"]
                 sharded_layers = [shard_layer_params(layer, sharding) for layer in active_layers]
                 active_params["network"]["subdomain"]["layers"] = sharded_layers
+                
 
                 opt_layers = active_opt_states[0][1]["network"]["subdomain"]["layers"]
                 sharded_opt = [shard_layer_params(layer, sharding) for layer in opt_layers]
@@ -721,24 +700,27 @@ class FBPINNTrainer(_Trainer):
                 sharded_opt = [shard_layer_params(layer, sharding) for layer in opt_layers]
                 active_opt_states[0][2]["network"]["subdomain"]["layers"] = sharded_opt
                 ###*******SHARDING END*********###
+                
+                
+                
+                
+                
+                
+                
+                
                 # AOT compile update function
                 startc = time.time()
                 logger.info(f"[i: {i}/{self.c.n_steps}] Compiling update step..")
                 static_params_dynamic, static_params_static = partition(static_params)
-                memory1 = self._get_memory_usage()
                 update = FBPINN_update.lower(optimiser_fn, active_opt_states,
                                              active_params, fixed_params, static_params_dynamic, static_params_static,
                                              takess, constraints, model_fns, jmapss, loss_fn).compile()
-
-
                 logger.info(f"[i: {i}/{self.c.n_steps}] Compiling done ({time.time()-startc:.2f} s)")
                 cost_ = update.cost_analysis()
                 p,f = total_size(active_params["network"]), cost_[0]["flops"] if (cost_ and "flops" in cost_[0]) else 0
                 logger.debug("p, f")
                 logger.debug((p,f))
-            memory2 = self._get_memory_usage()
-            self._save_memory(i, memory2 - memory1)
-            # logger.debug(str_tensor(x_batch))
+
             # report initial model
             if i == 0:
                 u_test_losses, start1, report_time = \
@@ -751,7 +733,6 @@ class FBPINNTrainer(_Trainer):
             lossval, active_opt_states, active_params = update(active_opt_states,
                                          active_params, fixed_params, static_params_dynamic,
                                          takess, constraints)# note compiled function only accepts dynamic arguments
-
             pstep, fstep = pstep+p, fstep+f
             # Check and save memory usage of x_batch
             if isinstance(x_batch, (jnp.ndarray, np.ndarray)):
@@ -786,8 +767,6 @@ class FBPINNTrainer(_Trainer):
         c = self.c
         summary_,test_,model_save_ = [(i % f == 0) for f in
                                       [c.summary_freq, c.test_freq, c.model_save_freq]]
-        # if (i > 0):
-        #     self._save_lossval(i, lossval.item())
         if summary_ or test_ or model_save_:
 
             # print summary
@@ -822,13 +801,13 @@ class FBPINNTrainer(_Trainer):
 
         c, writer = self.c, self.writer
         n_test = c.n_test
+
         # get FBPINN solution using test data
         takes, all_ims, cut_all = test_inputs
         all_params_cut = {"static":cut_all(all_params["static"]),
                           "trainable":cut_all(all_params["trainable"])}
         start_time_solution = time.time()
-        u_test, wp_test_, us_test_, ws_test_, us_raw_test_ = FBPINN_model_jit(all_params_cut, x_batch_test, takes,
-                                                                              model_fns, verbose=False)
+        u_test, wp_test_, us_test_, ws_test_, us_raw_test_ = FBPINN_model_jit(all_params_cut, x_batch_test, takes, model_fns, verbose=False)
         elapsed_time_solution = time.time() - start_time_solution
         if all_params["static"]["problem"]["dims"][1] == 1:# 1D plots require full lines, not just hist stats
 
@@ -852,33 +831,6 @@ class FBPINNTrainer(_Trainer):
 
         else:
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
-        # ##############圆形PEC
-        # x_batch_xy = x_batch_test[:, :2]
-        # x_center = -0.7
-        # y_center = 0.5
-        # xy_center = np.array([[x_center, y_center]])
-        #
-        # radius = 0.25  # Use the shorter side's fifth as radius
-        # distances = cdist(x_batch_xy, xy_center, metric='euclidean')
-        # mask1 = distances <= radius  # Points inside the circle
-        # #        pdb.set_trace()
-        # u_test = u_test.at[np.squeeze(mask1), 2].set(0.0)
-        #
-        # ##############方形PEC
-        # x_batch_xy = x_batch_test[:, :2]
-        # x_center = 0.7
-        # y_center = -0.5
-        # rect_width, rect_height = 0.4, 0.4
-        # rect_xmin = x_center - rect_width / 2
-        # rect_xmax = x_center + rect_width / 2
-        # rect_ymin = y_center - rect_height / 2
-        # rect_ymax = y_center + rect_height / 2
-        #
-        # # Filter out points that fall within the rectangle
-        # mask2 = ~((x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (
-        #         x_batch_xy[:, 1] < rect_ymin) | (
-        #                   x_batch_xy[:, 1] > rect_ymax))
-        # u_test = u_test.at[np.squeeze(mask2), 2].set(0.0)
 
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact - u_test[:, 2].reshape(-1, 1))).item()
@@ -930,7 +882,7 @@ class PINNTrainer(_Trainer):
         network = c.network
         key, subkey = random.split(key)
         ps_ = network.init_params(key=subkey, **c.network_init_kwargs)
-        if ps_[0]: all_params["static"]["network"] = ps_[0]
+        if ps_[0]: all_params["static"]["network"] = {"subdomain": ps_[0]}# add subdomain key
         if ps_[1]: all_params["trainable"]["network"] = {"subdomain": ps_[1]}# add subdomain key
         logger.debug("all_params")
         logger.debug(jax.tree_map(lambda x: str_tensor(x), all_params))
@@ -970,6 +922,7 @@ class PINNTrainer(_Trainer):
         start0, start1, report_time = time.time(), time.time(), 0.
         lossval = None
         for i in range(c.n_steps):
+
             if i == 0:
                 # report initial model
                 u_test_losses, start1, report_time = \
@@ -1011,11 +964,10 @@ class PINNTrainer(_Trainer):
         "Report results"
 
         c = self.c
-        if(i > 0):
-            self._save_lossval(i, lossval.item())
         summary_,test_,model_save_ = [(i % f == 0) for f in
                                       [c.summary_freq, c.test_freq, c.model_save_freq]]
         if summary_ or test_ or model_save_:
+
             # print summary
             if i != 0 and summary_:
                 rate = c.summary_freq / (time.time()-start1-report_time)
@@ -1048,53 +1000,18 @@ class PINNTrainer(_Trainer):
 
         c, writer = self.c, self.writer
         n_test = c.n_test
-        if i == 120000:
-            start_time_solution = time.time()
+
         # get PINN solution using test data
         u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
-        if i == 120000:
-            elapsed_time_solution = time.time() - start_time_solution
-            print(f"Time taken for get FBPINN solution using test data at i = {i}: {elapsed_time_solution:.4f} seconds")
-
-
-        # ##############圆形PEC
-        # x_batch_xy = x_batch_test[:, :2]
-        # x_center = -0.7
-        # y_center = 0.5
-        # xy_center = np.array([[x_center, y_center]])
-        #
-        # radius = 0.25  # Use the shorter side's fifth as radius
-        # distances = cdist(x_batch_xy, xy_center, metric='euclidean')
-        # mask1 = distances <= radius  # Points inside the circle
-        # #        pdb.set_trace()
-        # u_test = u_test.at[np.squeeze(mask1), 2].set(0.0)
-        #
-        # ##############方形PEC
-        # x_batch_xy = x_batch_test[:, :2]
-        # x_center = 0.7
-        # y_center = -0.5
-        # rect_width, rect_height = 0.4, 0.4
-        # rect_xmin = x_center - rect_width / 2
-        # rect_xmax = x_center + rect_width / 2
-        # rect_ymin = y_center - rect_height / 2
-        # rect_ymax = y_center + rect_height / 2
-        #
-        # # Filter out points that fall within the rectangle
-        # mask2 = ~((x_batch_xy[:, 0] < rect_xmin) | (x_batch_xy[:, 0] > rect_xmax) | (
-        #         x_batch_xy[:, 1] < rect_ymin) | (
-        #                   x_batch_xy[:, 1] > rect_ymax))
-        # u_test = u_test.at[np.squeeze(mask2), 2].set(0.0)
-
 
         # get losses over test data
-        l1 = jnp.mean(jnp.abs(u_exact - u_test[:, 2].reshape(-1, 1))).item()
-        self._save_loss(i, l1)
+        l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)
 
         # create figures
-        if i % (c.test_freq * 10) == 0:
+        if i % (c.test_freq * 5) == 0:
             fs = plot_trainer.plot("PINN", all_params["static"]["problem"]["dims"],
                 x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test)
             if fs is not None:
@@ -1115,11 +1032,13 @@ if __name__ == "__main__":
         run="test",
         #problem=HarmonicOscillator1D,
         #problem=HarmonicOscillator1DHardBC,
+        # problem=HarmonicOscillator1DInverse,
+        # network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
         problem=FDTD3D,
-    )
+        )
 
     run = FBPINNTrainer(c)
-    # run = PINNTrainer(c)
+    #run = PINNTrainer(c)
 
     all_params = run.train()
     print(all_params["static"]["problem"])

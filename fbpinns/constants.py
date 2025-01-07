@@ -33,6 +33,11 @@ class Constants(ConstantsBase):
         self.run = "test"
 
         # Define domain
+        # self.domain = domains.RectangularDomainND
+        # self.domain_init_kwargs = dict(
+        #     xmin=np.array([0.]),
+        #     xmax=np.array([1.])
+        #     )
         self.domain = domains.RectangularDomainND
         self.domain_init_kwargs = dict(
             xmin=np.array([-1, -1, 0]),
@@ -40,23 +45,22 @@ class Constants(ConstantsBase):
         )
 
         # Define problem
+        # self.problem = problems.HarmonicOscillator1D
+        # #self.problem = problems.HarmonicOscillator1DInverse
+        # self.problem_init_kwargs = dict(
+        #     d=2,
+        #     w0=20,
+        #     )
         self.problem = problems.FDTD3D
         # self.problem = problems.HarmonicOscillator1DInverse
         self.problem_init_kwargs = dict(
             c=1, sd=0.1,
         )
 
-        # Define domain decomposition
-        # subdomain_xs = [np.linspace(0,1,5)]
-        # subdomain_ws = get_subdomain_ws(subdomain_xs, 2.99)
-        # subdomain_xs = [np.array([0]), np.array([0]), np.array([1])]
-        # subdomain_ws = [np.array([2]), np.array([2]), np.array([2])]
         # subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.5, 1.5])]
         # subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
         subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
         subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
-        # subdomain_xs = [np.array([-0.65, 0, 0.65]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
-        # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
         self.decomposition = decompositions.RectangularDecompositionND
         self.decomposition_init_kwargs = dict(
             subdomain_xs=subdomain_xs,
@@ -65,11 +69,14 @@ class Constants(ConstantsBase):
         )
 
         # Define neural network
+        # self.network = networks.FCN
+        # self.network_init_kwargs = dict(
+        #     layer_sizes=[1, 32, 1],
+        #     )
         self.network = networks.FCN
         self.network_init_kwargs = dict(
             layer_sizes=[3, 64, 64, 64, 64, 64, 3],
         )
-
         # Define scheduler
         self.n_steps = 120000
         # self.scheduler = schedulers.AllActiveSchedulerND
@@ -113,6 +120,7 @@ class Constants(ConstantsBase):
 
         # overwrite with input arguments
         for key in kwargs.keys(): self[key] = kwargs[key]  # invokes __setitem__ in ConstantsBase
+
 
 
 if __name__ == "__main__":

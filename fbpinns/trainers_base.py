@@ -13,7 +13,6 @@ import jax.numpy as jnp
 import numpy as np
 import matplotlib.pyplot as plt
 import IPython.display
-import psutil
 from tensorboardX import SummaryWriter
 
 from fbpinns.util.logger import logger, switch_to_file_logger
@@ -35,7 +34,6 @@ class _Trainer:
         writer.add_text("constants", str(c).replace("\n","  \n"))# uses markdown
 
         self.c, self.writer = c, writer
-
         # Initialize the file for saving i and loss
         self.training_log_path = self.c.summary_out_dir + "training_log.txt"
         with open(self.training_log_path, "w") as file:
@@ -46,17 +44,13 @@ class _Trainer:
         with open(self.test_time_path, "w") as file:
             file.write("i,time\n")  # Write the header
 
-        # Initialize the file for saving i and time
+        # Initialize the file for saving i and lossval
         self.save_lossval_path = self.c.summary_out_dir + "save_lossval.txt"
         with open(self.save_lossval_path, "w") as file:
             file.write("i,lossval\n")  # Write the header
 
-        # Initialize the file for saving i and memory usage
-        self.memory_usage_path = self.c.summary_out_dir + "memory_usage.txt"
-        with open(self.memory_usage_path, "w") as file:
-            file.write("i,memory_usage_MB\n")  # Write the header
 
-        # Initialize the file for saving i and memory usage
+        # Initialize the file for saving i and array memory usage
         self.array_memory_usage_path = self.c.summary_out_dir + "array_memory_usage.txt"
         with open(self.array_memory_usage_path, "w") as file:
             file.write("i,array_memory_usage_KB\n")  # Write the header
@@ -69,6 +63,7 @@ class _Trainer:
         """
         with open(self.array_memory_usage_path, "a") as file:
             file.write(f"{i},{array_memory_usage}\n")
+
     def _save_loss(self, i, l1):
         # Append i and loss to the file
         with open(self.training_log_path, "a") as file:
@@ -84,23 +79,6 @@ class _Trainer:
         with open(self.test_time_path, "a") as file:
             file.write(f"{i},{time}\n")
 
-    def _get_memory_usage(self):
-        """
-        获取当前进程的内存使用情况
-        :return: 当前内存使用量（单位：MB）
-        """
-        process = psutil.Process(os.getpid())
-        memory_info = process.memory_info()
-        return memory_info.rss / 1024  # 返回内存使用量（单位：KB）
-
-    def _save_memory(self, i, memory_usage):
-        """
-        保存内存使用情况到文件
-        :param i: 当前训练步骤
-        :param memory_usage: 当前内存使用量（单位：MB）
-        """
-        with open(self.memory_usage_path, "a") as file:
-            file.write(f"{i},{memory_usage}\n")
     def _print_summary(self, i, loss, rate, start):
         "Prints training summary"
 
