@@ -9,17 +9,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from fbpinns.plot_trainer_1D import _plot_setup, _to_numpy
 import matplotlib.ticker as ticker
 
-# def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
-#     u_test = u_test.reshape(n_test)
-#     if it is not None:
-#         u_test = u_test[:,:,it]# for 3D
-#     plt.imshow(u_test.T,# transpose as jnp.meshgrid uses indexing="ij"
-#                origin="lower", extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
-#                cmap="viridis", vmin=ulim[0], vmax=ulim[1])
-#     plt.colorbar()
-#     plt.xlim(xlim[0][0], xlim[1][0])
-#     plt.ylim(xlim[0][1], xlim[1][1])
-#     plt.gca().set_aspect("equal")
 def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
     u_test = u_test.reshape(n_test)
     if it is not None:
@@ -30,8 +19,8 @@ def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
                    extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
                    origin='lower',
                    cmap="bwr",
-                   vmin=ulim[0],
-                   vmax=(ulim[1] / 3))
+                   vmin=(ulim[0] + 0.1),
+                   vmax=((ulim[1] / 3) - 0.1))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cbar = plt.colorbar(im, cax=cax)
@@ -43,6 +32,7 @@ def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
     ax.set_xlim(xlim[0][0], xlim[1][0])
     ax.set_ylim(xlim[0][1], xlim[1][1])
     ax.set_aspect("equal")
+
 @_to_numpy
 def plot_2D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test):
 

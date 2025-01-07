@@ -161,6 +161,132 @@ class PlaneSchedulerRectangularND(_SubspacePointSchedulerRectangularND):
         super().__init__(all_params, n_steps, point, iaxes=iaxes)
 
 
+class PlanePointScheduler(ActiveScheduler):
+    """
+    沿 z 轴的不同 xy 平面逐步激活，并在每个激活的 xy 平面内从指定点逐步扩展激活区域。
+    子域的状态包括：
+    - 0：未激活状态；
+    - 1：激活状态（正在训练）；
+    - 2：固定状态（已完成训练）。
+    """
+
+    def __init__(self, all_params, n_steps, start_point):
+        """
+        :param all_params: 包含边界信息的字典，用于初始化 xmins 和 xmaxs
+        :param n_steps: 总的训练次数
+        :param start_point: xy 平面内的二维点，定义在每个激活平面中扩展的起始位置
+        """
+        super().__init__(all_params, n_steps)
+
+        # 检查空间维度和起始点维度
+        self.xd = all_params["static"]["decomposition"]["xd"]
+        if self.xd != 3:
+            raise Exception("ERROR: 该调度器仅支持三维空间")
+        if len(start_point) != 2:
+            raise Exception("ERROR: start_point 必须是二维点 (x, y)")
+
+        self.start_point = np.array(start_point)  # 在 xy 平面内的起始点
+
+        # 获取子域的边界
+        self.xmins0 = all_params["static"]["decomposition"]["xmins0"].copy()  # (m, xd)
+        self.xmaxs0 = all_params["static"]["decomposition"]["xmaxs0"].copy()  # (m, xd)
+
+    def _get_radii(self, point, xmins, xmaxs):
+        """
+        计算点到 xy 平面内子域的最短和最长距离。
+
+        :param point: 指定的二维起始点
+        :param xmins: 子域的最小边界
+        :param xmaxs: 子域的最大边界
+        :return: 到子域的最小和最大距离
+        """
+        point = np.expand_dims(point, axis=0)  # (1, cd)
+
+        # 判断点是否在子域内
+        c_inside = (point >= xmins) & (point <= xmaxs)  # (m, cd)
+        c_inside = np.product(c_inside, axis=1).astype(bool)  # (m)
+
+        # 获取子域内最近和最远的点
+        pmin = np.clip(point, xmins, xmaxs)
+        dmin, dmax = point - xmins, point - xmaxs
+        ds = np.stack([dmin, dmax], axis=0)
+        i = np.argmax(np.abs(ds), axis=0, keepdims=True)
+        pmax = point - np.take_along_axis(ds, i, axis=0)[0]
+
+        # 计算最小和最大半径
+        rmin = np.sqrt(np.sum((pmin - point) ** 2, axis=1))
+        rmax = np.sqrt(np.sum((pmax - point) ** 2, axis=1))
+
+        # 若点在子域内，将最小距离设置为 0
+        rmin[c_inside] = 0.
+        return rmin, rmax
+
+    def __iter__(self):
+        """
+        在每个 z 子域（xy 平面）上逐步激活，并在每个激活的平面内的子域中从一个点开始扩展。
+        每个平面内的子域也有自己的训练次数。
+        """
+        # 获取 z 轴的唯一子域值 (例如 z = 0 和 z = 1)
+        z_values = np.unique(self.xmins0[:, 2])  # [0, 1]，表示两个 z 平面
+
+        # 每个平面的总训练次数
+        steps_per_plane = self.n_steps // len(z_values)
+
+        # 初始化激活状态
+        active = np.zeros(self.m, dtype=int)
+
+        # 定义 xy 平面内的子域的 x 和 y 轴边界
+        ic_xy = [0, 1]
+        xmins_xy, xmaxs_xy = self.xmins0[:, ic_xy], self.xmaxs0[:, ic_xy]
+
+        # 计算 xy 平面内的最小和最大半径
+        rmin_xy, rmax_xy = self._get_radii(self.start_point, xmins_xy, xmaxs_xy)
+        r_min, r_max = rmin_xy.min(), rmax_xy.max()
+
+        # 第一个平面逐步激活
+        for i, z_val in enumerate(z_values):
+            if i == 0:  # 第一个平面
+                c_plane = (self.xmins0[:, 2] == z_val)
+                for step in range(steps_per_plane):  # 激活到一半
+                    rt = r_min + (r_max - r_min) * (step / (steps_per_plane))
+
+                    # 确定在当前半径下被激活的子域
+                    c_radius = (rt >= rmin_xy) & (rt < rmax_xy)
+                    c_to_active = (c_plane) & c_radius & (active == 0)
+
+                    # 设置子域的激活状态
+                    if c_to_active.any():
+                        active[c_to_active] = 1  # 激活新的子域
+                        yield active
+                    else:
+                        yield None
+                    if step == steps_per_plane - 1:  # 第一个平面激活完成后，将其状态固定
+                        active[c_plane] = 2
+
+            else:  # 第二个平面
+                # 激活第二个平面
+                c_plane = (self.xmins0[:, 2] == z_val)
+                for step in range(steps_per_plane):  # 第二个平面继续逐步激活
+                    rt = r_min + (r_max - r_min) * (step / (steps_per_plane))
+
+                    # 确定在当前半径下被激活的子域
+                    c_radius = (rt >= rmin_xy) & (rt < rmax_xy)
+                    c_to_active = c_plane & c_radius & (active == 0)
+
+                    # 设置子域的激活状态
+                    if c_to_active.any():
+                        active[c_to_active] = 1  # 激活新的子域
+                        yield active
+                    else:
+                        yield None
+
+                    if step == steps_per_plane - 1:  # 第一个平面激活完成后，将其状态固定
+                        active[c_plane] = 2
+
+
+
+
+
 
 if __name__ == "__main__":
 

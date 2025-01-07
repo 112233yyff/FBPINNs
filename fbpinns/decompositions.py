@@ -310,24 +310,36 @@ class RectangularDecompositionND(Decomposition):
                 plt.scatter(mus[:,a], mus[:,b], color=cs, alpha=alphas, s=100)
                 plt.scatter(mus[:,a]+sds[:,a], mus[:,b]+sds[:,b], color=cs, alpha=alphas, s=100, edgecolor="k")
 
-            # plot summed windows (expensive!)
-            if show_window:
-                xmin, xmax = xmins.min(0), xmaxs.max(0)
-                x = np.tile(np.expand_dims((xmax+xmin)/2, 0), (150**2, 1))
-                xs = [np.linspace(mi, ma, 150) for mi,ma in zip(xmin[np.array([a,b])],xmax[np.array([a,b])])]
-                xxs = np.stack(np.meshgrid(*xs, indexing="ij"), 0)# (2, nm)
-                x_ = xxs.reshape((2, 150**2)).T
-                x[:,a] = x_[:,0]; x[:,b] = x_[:,1]
-                ws = vmap(vmap(RectangularDecompositionND.window_fn, in_axes=(None,0)), in_axes=(0,None))(params, x)
-                ww = ws.sum(0).reshape((150,150))
-                plt.imshow(ww.T,
-                           origin="lower", extent=(xmin[a], xmax[a], xmin[b], xmax[b]),
-                           cmap="bwr", vmin=0, vmax=2, zorder=-99)
+            # # plot summed windows (expensive!)
+            # if show_window:
+            #     xmin, xmax = xmins.min(0), xmaxs.max(0)
+            #     x = np.tile(np.expand_dims((xmax+xmin)/2, 0), (150**2, 1))
+            #     xs = [np.linspace(mi, ma, 150) for mi,ma in zip(xmin[np.array([a,b])],xmax[np.array([a,b])])]
+            #     xxs = np.stack(np.meshgrid(*xs, indexing="ij"), 0)# (2, nm)
+            #     x_ = xxs.reshape((2, 150**2)).T
+            #     x[:,a] = x_[:,0]; x[:,b] = x_[:,1]
+            #     ws = vmap(vmap(RectangularDecompositionND.window_fn, in_axes=(None,0)), in_axes=(0,None))(params, x)
+            #     ww = ws.sum(0).reshape((150,150))
+            #     plt.imshow(ww.T,
+            #                origin="lower", extent=(xmin[a], xmax[a], xmin[b], xmax[b]),
+            #                cmap="bwr", vmin=0, vmax=2, zorder=-99)
 
             # set axis limits / labels / aspect ratio
             xmin, xmax = xmins.min(0), xmaxs.max(0)
             mi, ma = xmin-0.05*(xmax-xmin), xmax+0.05*(xmax-xmin)
             plt.xlim(mi[a], ma[a]); plt.ylim(mi[b], ma[b])
+            if a==0:
+                a = 'x'
+            elif a==1:
+                a = 'y'
+            elif a==2:
+                a = 't'
+            if b == 0:
+                b = 'x'
+            elif b == 1:
+                b = 'y'
+            elif b == 2:
+                b = 't'
             plt.xlabel(a); plt.ylabel(b)
             plt.gca().set_aspect("equal")
 
@@ -436,38 +448,40 @@ if __name__ == "__main__":
     # plt.show()
     # print(decomposition.inside_models(all_params, x_batch, np.arange(m)))
     # print(decomposition.inside_points(all_params, x_batch))
-
-    # single subdomain test
-    subdomain_xs = [np.array([0]), np.array([0])]
-    subdomain_ws = [np.array([1]), np.array([2])]
-
-    decomposition = RectangularDecompositionND
-    ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
-    all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
-
-    decomposition.plot(all_params)
-    plt.show()
-
-
-
-    # ## 3D test
     #
-    # subdomain_xs = [np.linspace(-3,3,4), np.linspace(-2,2,3), np.linspace(-1,1,2)]
-    # subdomain_ws = [3*np.ones(4), 2.2*np.ones(3), 2.5*np.ones(2)]
+    # # single subdomain test
+    # subdomain_xs = [np.array([0]), np.array([0])]
+    # subdomain_ws = [np.array([1]), np.array([2])]
     #
     # decomposition = RectangularDecompositionND
     # ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
     # all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
-    # m = all_params["static"]["decomposition"]["m"]
-    # active = np.ones(m)
     #
-    # active[1] = 0
-    # active[2] = 2
-    # decomposition.plot(all_params, iaxes=[0,1], active=active, show_norm=True, show_window=True)
+    # decomposition.plot(all_params)
     # plt.show()
-    # decomposition.plot(all_params, iaxes=[1,2], active=active, show_norm=True, show_window=True)
-    # plt.show()
-    #
+
+
+
+    ## 3D test
+
+    subdomain_xs = [np.linspace(-1,1,2), np.linspace(-1,1,1), np.linspace(-1,1,2)]
+    subdomain_ws = [1.1*np.ones(2), 2.2*np.ones(1), 1.1*np.ones(2)]
+
+    decomposition = RectangularDecompositionND
+    ps_ = decomposition.init_params(subdomain_xs, subdomain_ws, (0,1))
+    all_params = {"static":{"decomposition":ps_[0]}, "trainable":{"decomposition":ps_[1]}}
+    m = all_params["static"]["decomposition"]["m"]
+    active = np.ones(m)
+
+    active[1] = 0
+    active[2] = 2
+    decomposition.plot(all_params, iaxes=[0,1], active=active, show_norm=True, show_window=True)
+    plt.show()
+    decomposition.plot(all_params, iaxes=[0, 2], active=active, show_norm=True, show_window=True)
+    plt.show()
+    decomposition.plot(all_params, iaxes=[1,2], active=active, show_norm=True, show_window=True)
+    plt.show()
+
     # # large number of subdomains test
     # subdomain_xs = [np.linspace(-3,3,20), np.linspace(-2,2,20), np.linspace(-1,1,20)]
     # subdomain_ws = [3*np.ones(20), 2.2*np.ones(20), 2.5*np.ones(20)]
@@ -478,7 +492,7 @@ if __name__ == "__main__":
     #
     # decomposition.plot(all_params)
     # plt.show()
-    #
+
     # ## multiscale tests
     #
     # subdomain_xss = [[np.linspace(-3,3,4), np.linspace(-2,2,3)],

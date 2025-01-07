@@ -6,13 +6,14 @@ Each domain class must define the NotImplemented methods.
 
 This module is used by constants.py (and subsequently trainers.py)
 """
+from concurrent.futures import ThreadPoolExecutor
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import scipy.stats
-from shapely.geometry import Point, Polygon
-from concurrent.futures import ThreadPoolExecutor
+from shapely import Polygon, Point
+from shapely.prepared import prep
 
 from fbpinns import networks
 
@@ -55,10 +56,132 @@ class Domain:
     def norm_fn(all_params, x):
         """"Applies norm function, for a SINGLE point with shape (xd,)"""# note only used for PINNs, FBPINN norm function defined in Decomposition
         raise NotImplementedError
-
-
-
-
+# class RectangularDomainND(Domain):
+#
+#     @staticmethod
+#     def init_params(xmin, xmax):
+#
+#         assert xmin.shape == xmax.shape
+#         assert xmin.ndim == 1
+#         xd = len(xmin)
+#
+#         static_params = {
+#             "xd":xd,
+#             "xmin":jnp.array(xmin),
+#             "xmax":jnp.array(xmax),
+#             }
+#         return static_params, {}
+#
+#     @staticmethod
+#     def sample_interior(all_params, key, sampler, batch_shape):
+#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+#         return RectangularDomainND._rectangle_samplerND(key, sampler, xmin, xmax, batch_shape)
+#
+#     @staticmethod
+#     def sample_start(all_params, key, sampler, batch_shape):
+#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+#         return RectangularDomainND._rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape)
+#     @staticmethod
+#     def sample_boundaries(all_params, key, sampler, batch_shapes):
+#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+#         xd = all_params["static"]["domain"]["xd"]
+#
+#         assert len(batch_shapes) == 2*xd# total number of boundaries
+#
+#         x_batches = []
+#         for i in range(xd):
+#             ic = jnp.array(list(range(i))+list(range(i+1,xd)), dtype=int)
+#             for j,v in enumerate([xmin[i], xmax[i]]):
+#                 batch_shape = batch_shapes[2*i+j]
+#                 if len(ic):
+#                     xmin_, xmax_ = xmin[ic], xmax[ic]
+#                     key, subkey = jax.random.split(key)
+#                     x_batch_ = RectangularDomainND._rectangle_samplerND(subkey, sampler, xmin_, xmax_, batch_shape)# (n, xd-1)
+#                     x_batch = v*jnp.ones((jnp.prod(jnp.array(batch_shape)),xd), dtype=float)
+#                     x_batch = x_batch.at[:,ic].set(x_batch_)
+#                 else:
+#                     assert len(batch_shape) == 1
+#                     x_batch = v*jnp.ones(batch_shape+(1,), dtype=float)
+#                 x_batches.append(x_batch)
+#                 all_boundary_points = np.concatenate(x_batches, axis=0)
+#         return all_boundary_points
+#
+#     @staticmethod
+#     def norm_fn(all_params, x):
+#         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+#         mu, sd = (xmax+xmin)/2, (xmax-xmin)/2
+#         x = networks.norm(mu, sd, x)
+#         return x
+#
+#     @staticmethod
+#     def _rectangle_samplerND(key, sampler, xmin, xmax, batch_shape):
+#         "Get flattened samples of x in a rectangle, either on mesh or random"
+#
+#         assert xmin.shape == xmax.shape
+#         assert xmin.ndim == 1
+#         xd = len(xmin)
+#         assert len(batch_shape) == xd
+#
+#         if not sampler in ["grid", "uniform", "sobol", "halton"]:
+#             raise ValueError("ERROR: unexpected sampler")
+#
+#         if sampler == "grid":
+#             xs = [jnp.linspace(xmin, xmax, b) for xmin,xmax,b in zip(xmin, xmax, batch_shape)]
+#             xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)# (batch_shape, xd)
+#             x_batch = xx.reshape((-1, xd))
+#         else:
+#             if sampler == "halton":
+#                 # use scipy as not implemented in jax (!)
+#                 r = scipy.stats.qmc.Halton(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "sobol":
+#                 r = scipy.stats.qmc.Sobol(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "uniform":
+#                 s = jax.random.uniform(key, (np.prod(batch_shape), xd))
+#
+#             xmin, xmax = xmin.reshape((1,-1)), xmax.reshape((1,-1))
+#             x_batch = xmin + (xmax - xmin)*s
+#
+#         return jnp.array(x_batch)
+#
+#     @staticmethod
+#     def _rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape):
+#         "Get flattened samples of x in a rectangle, either on mesh or random"
+#
+#         assert xmin.shape == xmax.shape
+#         assert xmin.ndim == 1
+#         xd = len(xmin)
+#         assert len(batch_shape) == xd
+#
+#         if not sampler in ["grid", "uniform", "sobol", "halton"]:
+#             raise ValueError("ERROR: unexpected sampler")
+#
+#         if sampler == "grid":
+#             xs = [jnp.linspace(xmin[i], xmax[i], b) if i != 2 else jnp.array([xmin[i]]) for i, b in
+#                   enumerate(batch_shape)]
+#             xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+#             x_batch = xx.reshape((-1, xd))
+#         else:
+#             if sampler == "halton":
+#                 # use scipy as not implemented in jax (!)
+#                 r = scipy.stats.qmc.Halton(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "sobol":
+#
+#                 r = scipy.stats.qmc.Sobol(xd)
+#                 s = r.random(np.prod(batch_shape))
+#             elif sampler == "uniform":
+#                 # Generate uniform samples for the first two dimensions
+#                 s = jax.random.uniform(key, (np.prod(batch_shape), 2))
+#                 # Append the minimum value for the third dimension
+#                 s = jnp.hstack((s, jnp.full((np.prod(batch_shape), 1), xmin[2])))
+#
+#             xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
+#             x_batch = xmin + (xmax - xmin) * s
+#
+#         return jnp.array(x_batch)
+#################材质
 class RectangularDomainND(Domain):
 
     @staticmethod
@@ -85,29 +208,6 @@ class RectangularDomainND(Domain):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape)
 
-    @staticmethod
-    def sample_boundaries(all_params, key, sampler, batch_shapes):
-        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-        xd = all_params["static"]["domain"]["xd"]
-
-        assert len(batch_shapes) == 2*xd# total number of boundaries
-
-        x_batches = []
-        for i in range(xd):
-            ic = jnp.array(list(range(i))+list(range(i+1,xd)), dtype=int)
-            for j,v in enumerate([xmin[i], xmax[i]]):
-                batch_shape = batch_shapes[2*i+j]
-                if len(ic):
-                    xmin_, xmax_ = xmin[ic], xmax[ic]
-                    key, subkey = jax.random.split(key)
-                    x_batch_ = RectangularDomainND._rectangle_samplerND(subkey, sampler, xmin_, xmax_, batch_shape)# (n, xd-1)
-                    x_batch = v*jnp.ones((jnp.prod(jnp.array(batch_shape)),xd), dtype=float)
-                    x_batch = x_batch.at[:,ic].set(x_batch_)
-                else:
-                    assert len(batch_shape) == 1
-                    x_batch = v*jnp.ones(batch_shape+(1,), dtype=float)
-                x_batches.append(x_batch)
-        return x_batches
 
     @staticmethod
     def norm_fn(all_params, x):
@@ -170,6 +270,7 @@ class RectangularDomainND(Domain):
                 r = scipy.stats.qmc.Halton(xd)
                 s = r.random(np.prod(batch_shape))
             elif sampler == "sobol":
+
                 r = scipy.stats.qmc.Sobol(xd)
                 s = r.random(np.prod(batch_shape))
             elif sampler == "uniform":
@@ -184,96 +285,6 @@ class RectangularDomainND(Domain):
         return jnp.array(x_batch)
 
     @staticmethod
-    def sample_interior_depec(all_params, key, sampler, batch_shape):
-        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-        return RectangularDomainND._rectangle_interior_depec(key, sampler, xmin, xmax, batch_shape)
-
-    @staticmethod
-    def sample_start_depec(all_params, key, sampler, batch_shape):
-        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-        return RectangularDomainND._rectangle_start_depec(key, sampler, xmin, xmax, batch_shape)
-    @staticmethod
-    def _rectangle_interior_depec(key, sampler, xmin, xmax, batch_shape):
-        "Get flattened samples of x in a rectangle, either on mesh or random"
-
-        assert xmin.shape == xmax.shape
-        assert xmin.ndim == 1
-        xd = len(xmin)
-        assert len(batch_shape) == xd
-
-        if not sampler in ["grid", "uniform", "sobol", "halton"]:
-            raise ValueError("ERROR: unexpected sampler")
-
-        if sampler == "grid":
-            xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
-            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
-            x_batch = xx.reshape((-1, xd))
-        else:
-            if sampler == "halton":
-                # use scipy as not implemented in jax (!)
-                r = scipy.stats.qmc.Halton(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "sobol":
-                r = scipy.stats.qmc.Sobol(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "uniform":
-                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
-
-            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-            x_batch = xmin + (xmax - xmin) * s
-
-        circle_points = RectangularDomainND.boundary_circle(key, sampler, xmin, xmax, batch_shape)
-        rectangle_points = RectangularDomainND.boundary_rectangle(key, sampler, xmin, xmax, batch_shape)
-        triangle_points = RectangularDomainND.boundary_triangle(key, sampler, xmin, xmax, batch_shape)
-
-        filtered_circle_points = RectangularDomainND.filter_points(x_batch, circle_points)
-        filtered_rectangle_points = RectangularDomainND.filter_points(filtered_circle_points, rectangle_points)
-        filtered_triangle_points = RectangularDomainND.filter_points(filtered_rectangle_points, triangle_points)
-
-        return filtered_triangle_points
-        # return filtered_rectangle_points
-    @staticmethod
-    def _rectangle_start_depec(key, sampler, xmin, xmax, batch_shape):
-        "Get flattened samples of x in a rectangle, either on mesh or random"
-
-        assert xmin.shape == xmax.shape
-        assert xmin.ndim == 1
-        xd = len(xmin)
-        assert len(batch_shape) == xd
-
-        if not sampler in ["grid", "uniform", "sobol", "halton"]:
-            raise ValueError("ERROR: unexpected sampler")
-
-        if sampler == "grid":
-            xs = [jnp.linspace(xmin[i], xmax[i], b) if i != 2 else jnp.array([xmin[i]]) for i, b in
-                  enumerate(batch_shape)]
-            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
-            x_batch = xx.reshape((-1, xd))
-        else:
-            if sampler == "halton":
-                # use scipy as not implemented in jax (!)
-                r = scipy.stats.qmc.Halton(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "sobol":
-                r = scipy.stats.qmc.Sobol(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "uniform":
-                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
-
-            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-            x_batch = xmin + (xmax - xmin) * s
-
-        circle_points = RectangularDomainND.boundary_circle(key, sampler, xmin, xmax, batch_shape)
-        rectangle_points = RectangularDomainND.boundary_rectangle(key, sampler, xmin, xmax, batch_shape)
-        triangle_points = RectangularDomainND.boundary_triangle(key, sampler, xmin, xmax, batch_shape)
-
-        filtered_circle_points = RectangularDomainND.filter_points(x_batch, circle_points)
-        filtered_rectangle_points = RectangularDomainND.filter_points(filtered_circle_points, rectangle_points)
-        filtered_triangle_points = RectangularDomainND.filter_points(filtered_rectangle_points, triangle_points)
-
-        return filtered_triangle_points
-        # return filtered_rectangle_points
-    @staticmethod
     def _rectangle_boundary_pec(key, sampler, xmin, xmax, batch_shape):
         boundary_points = RectangularDomainND.all_boundary(key, sampler, xmin, xmax, batch_shape)
         return boundary_points
@@ -281,90 +292,6 @@ class RectangularDomainND(Domain):
     def sample_boundary_pec(all_params, key, sampler, batch_shape):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_boundary_pec(key, sampler, xmin, xmax, batch_shape)
-
-    @staticmethod
-    def foo(input_list, time_start, time_end, num_time_samples):
-        expanded_list = []
-        hw = np.linspace(time_start, time_end, num_time_samples)
-        for sublist in input_list:
-            sublist = tuple(sublist)  # Ensure sublist is a tuple
-            for i in hw:
-                expanded_list.append(sublist + (i,))
-        return expanded_list
-    @staticmethod
-    def boundary_circle(key, sampler, xmin, xmax, batch_shape):
-        def generate_circular_boundary_points(center, r, num_points):
-            theta = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
-            x = center[0] + r * np.cos(theta)
-            y = center[1] + r * np.sin(theta)
-            return np.column_stack((x, y))
-        # Generate boundary points on the circle
-        num_boundary_points = batch_shape[0] * batch_shape[1]
-        pboundary = generate_circular_boundary_points([-0.7, 0.5], 0.25, num_boundary_points)
-        x_filtered = RectangularDomainND.foo(pboundary.tolist(), xmin[2], xmax[2], batch_shape[2])
-
-        return jnp.array(x_filtered)
-
-    @staticmethod
-    def boundary_rectangle(key, sampler, xmin, xmax, batch_shape):
-        def generate_square_boundary_points(center, side_length, num_points_per_side=10):
-            half_side_length = side_length / 2
-            vertices = [
-                (center[0] - half_side_length, center[1] - half_side_length),  # Bottom left
-                (center[0] + half_side_length, center[1] - half_side_length),  # Bottom right
-                (center[0] + half_side_length, center[1] + half_side_length),  # Top right
-                (center[0] - half_side_length, center[1] + half_side_length)  # Top left
-            ]
-
-            # Generate points along each side of the rectangle
-            boundary_points = []
-            for i in range(4):
-                start_point = vertices[i]
-                end_point = vertices[(i + 1) % 4]
-                side_points = np.linspace(start_point, end_point, num_points_per_side + 1)
-                if i != 0:  # Exclude the first point of subsequent sides to avoid duplicates
-                    side_points = side_points[1:]
-                boundary_points.extend(side_points[:-1].tolist())  # Exclude the last point to avoid duplicates
-
-            # Add the first vertex again to close the polygon
-            boundary_points.append(vertices[0])
-
-            return boundary_points
-
-        pboundary = generate_square_boundary_points([-0.7, -0.5], 0.4, batch_shape[0] * batch_shape[1])
-        x_filtered = RectangularDomainND.foo(pboundary, xmin[2], xmax[2], batch_shape[2])
-
-        return jnp.array(x_filtered)
-
-    @staticmethod
-    def boundary_triangle(key, sampler, xmin, xmax, batch_shape):
-        def generate_triangle_boundary_points(center, side_length, num_points_per_side):
-            half_side_length = side_length / 2
-            height = np.sqrt(side_length ** 2 - half_side_length ** 2)
-
-            # 定义三角形的三个顶点
-            vertices = [
-                (center[0] - half_side_length, center[1] - height / 3),  # 左下
-                (center[0] + half_side_length, center[1] - height / 3),  # 右下
-                (center[0], center[1] + 2 * height / 3)  # 顶部
-            ]
-            # 生成三角形每条边的点
-            boundary_points = []
-            for i in range(3):
-                start_point = vertices[i]
-                end_point = vertices[(i + 1) % 3]
-                side_points = np.linspace(start_point, end_point, num_points_per_side + 1)
-                boundary_points.extend(side_points[:-1].tolist())  # 排除最后一个点以避免重复
-
-            return boundary_points
-        # 根据批次形状生成边界点
-        pboundary = generate_triangle_boundary_points([0, -0.5], 0.5,
-                                                      batch_shape[0] * batch_shape[1])
-
-        x_filtered = RectangularDomainND.foo(pboundary, xmin[2], xmax[2], batch_shape[2])
-
-        return jnp.array(x_filtered)
-
     @staticmethod
     def sample_near_boundary(boundary_points, distance, num_samples, xmin, xmax):
         sampled_points = []
@@ -378,6 +305,7 @@ class RectangularDomainND(Domain):
                     sampled_points.append([x, y])
         return np.array(sampled_points)
 
+    @staticmethod
     @staticmethod
     def boundary_near_circle(key, sampler, xmin, xmax, batch_shape):
         def generate_circular_boundary_points(center, r, num_points):
@@ -483,25 +411,17 @@ class RectangularDomainND(Domain):
         rectangle_points = RectangularDomainND.boundary_near_rectangle(key, sampler, xmin, xmax, batch_shape)
         triangle_points = RectangularDomainND.boundary_near_triangle(key, sampler, xmin, xmax, batch_shape)
         all_boundary_points = np.concatenate([circle_points, rectangle_points, triangle_points], axis=0)
-        # all_boundary_points = np.concatenate([circle_points, rectangle_points], axis=0)
-        return all_boundary_points
+        # all_boundary_points = np.concatenate([circle_points], axis=0)
+        return jnp.array(all_boundary_points)
     @staticmethod
-    def is_inside(point, boundary_polygon):
-        shapely_point = Point(point)
-        return shapely_point.within(boundary_polygon) or shapely_point.touches(boundary_polygon)
-
-    @staticmethod
-    def filter_points(points, boundary_points, max_workers=4):
-        boundary_polygon = Polygon(boundary_points)
-
-        def filter_point(point):
-            return not RectangularDomainND.is_inside(point[:2], boundary_polygon)
-
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            results = list(executor.map(filter_point, points))
-
-        filtered_points = [point for point, keep in zip(points, results) if keep]
-        return np.array(filtered_points)
+    def foo(input_list, time_start, time_end, num_time_samples):
+        expanded_list = []
+        hw = np.linspace(time_start, time_end, num_time_samples)
+        for sublist in input_list:
+            sublist = tuple(sublist)  # Ensure sublist is a tuple
+            for i in hw:
+                expanded_list.append(sublist + (i,))
+        return expanded_list
 
 
 if __name__ == "__main__":
