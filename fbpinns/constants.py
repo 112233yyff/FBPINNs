@@ -56,9 +56,15 @@ class Constants(ConstantsBase):
         self.problem_init_kwargs = dict(
             c=1, sd=0.1,
         )
+        ###################################2 * 2 * 1 = 4 subdomains
+        subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([1])]
+        subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([2.1])]
 
-        subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.5, 1.5])]
-        subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
+        ###################################2 * 2 * 2 = 8 subdomains
+        # subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.5, 1.5])]
+        # subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
+
+        ###################################2 * 2 * 3 = 12 subdomains
         # subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
         # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
         self.decomposition = decompositions.RectangularDecompositionND
@@ -79,8 +85,8 @@ class Constants(ConstantsBase):
         )
         # Define scheduler
         self.n_steps = 120000
-        self.scheduler = schedulers.AllActiveSchedulerND
-        self.scheduler_kwargs = dict()
+        # self.scheduler = schedulers.AllActiveSchedulerND
+        # self.scheduler_kwargs = dict()
         # self.scheduler = schedulers.PointSchedulerRectangularND
         # self.scheduler_kwargs = dict(
         #    point=np.array([0.5, 0.5, 0]),
@@ -90,10 +96,10 @@ class Constants(ConstantsBase):
         #     point=np.array([0]),
         #     iaxes=[0, 1],
         # )
-        # self.scheduler = schedulers.PlanePointScheduler
-        # self.scheduler_kwargs = dict(
-        #     start_point=np.array([0.5, 0.5]),
-        # )
+        self.scheduler = schedulers.PlanePointScheduler
+        self.scheduler_kwargs = dict(
+            start_point=np.array([0.5, 0.5]),
+        )
 
         # Define optimisation parameters
         self.n_s = ((60, 60, 60),)  # batch_shape for each training constraint
