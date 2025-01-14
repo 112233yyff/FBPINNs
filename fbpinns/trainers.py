@@ -834,6 +834,8 @@ class FBPINNTrainer(_Trainer):
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
 
         # get losses over test data
+        # a= u_exact
+        # b = u_test[:, 2].reshape(-1, 1)
         l1 = jnp.mean(jnp.abs(u_exact - u_test[:, 2].reshape(-1, 1))).item()
         self._save_loss(i, l1)
         l1n = l1 / u_exact.std().item()

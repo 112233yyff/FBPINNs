@@ -57,16 +57,16 @@ class Constants(ConstantsBase):
             c=1, sd=0.1,
         )
         ###################################2 * 2 * 1 = 4 subdomains
-        subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([1])]
-        subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([2.1])]
+        # subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([1])]
+        # subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([2.1])]
 
         ###################################2 * 2 * 2 = 8 subdomains
         # subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.5, 1.5])]
         # subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
 
-        ###################################2 * 2 * 3 = 12 subdomains
-        # subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
-        # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
+        ##################################2 * 2 * 3 = 12 subdomains
+        subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
+        subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
         self.decomposition = decompositions.RectangularDecompositionND
         self.decomposition_init_kwargs = dict(
             subdomain_xs=subdomain_xs,

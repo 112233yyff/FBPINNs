@@ -183,22 +183,24 @@ class FDTD3D(Problem):
         DELTAY = 1 / (f0 * 10)# target fine sampled deltas
         DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
         dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
-        DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
-        NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
-
-        xx, yy = np.meshgrid(np.linspace(2 * xmin, 2 * xmax, 2 * NX), np.linspace(2 * ymin, 2 * ymax, 2 * NY),
+        # DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
+        # NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
+        # xx, yy = np.meshgrid(np.linspace(2 * xmin, 2 * xmax, 2 * NX), np.linspace(2 * ymin, 2 * ymax, 2 * NY),
+        #                      indexing="ij")
+        DELTAX, DELTAY, DELTAT = deltax, deltay, deltat
+        NX, NY, NSTEPS = batch_shape[0] , batch_shape[1], batch_shape[2]
+        xx, yy = np.meshgrid(np.linspace(xmin, xmax, NX), np.linspace(ymin, ymax, NY),
                              indexing="ij")
 
         # get velocity model
         x = np.stack([xx.ravel(), yy.ravel()], axis=1)  # (n, 2)
         velocity = np.array(c_fn(all_params, x))
         if velocity.shape[0] > 1:
-            velocity = velocity.reshape((2 * NX, 2 * NY))
+            velocity = velocity.reshape((NX, NY))
         else:
             velocity = velocity * np.ones_like(xx)
 
         Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, velocity, )
-        Ez = Ez[::dx, ::dy, ::dt]
         Ez = jnp.ravel(Ez)
         Ez = jnp.reshape(Ez, (-1, 1))
 

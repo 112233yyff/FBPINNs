@@ -8,10 +8,10 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     deltax, deltay, deltat = DELTAX, DELTAY, DELTAT
 
     # Define new domain boundaries
-    new_xmin, new_xmax = 2*xmin, 2*xmax
-    new_ymin, new_ymax = 2*ymin, 2*ymax
-    new_xdim = 2 * NX
-    new_ydim = 2 * NY
+    new_xmin, new_xmax = xmin, xmax
+    new_ymin, new_ymax = ymin, ymax
+    new_xdim = NX
+    new_ydim = NY
 
     Ez_out = np.zeros((xdim, ydim, time_tot))
 
@@ -120,15 +120,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
         # Electric field update
         Ez[1:new_xdim - 1, 1:new_ydim - 1] = Cx[1:new_xdim - 1, 1:new_ydim - 1] * Ez[1:new_xdim - 1, 1:new_ydim - 1] + edx[1:new_xdim - 1, 1:new_ydim - 1] * np.diff(Hy[:new_xdim - 1, 1:new_ydim - 1], axis=0) - edy[1:new_xdim - 1, 1:new_ydim - 1] * np.diff(Hx[1:new_xdim - 1, :new_ydim - 1], axis=1)
 
-        # Extract the results for the original domain [-1, 1]
-        ix_min, ix_max = int((xmin - new_xmin) / deltax), int((xmax - new_xmin) / deltax)
-        iy_min, iy_max = int((ymin - new_ymin) / deltay), int((ymax - new_ymin) / deltay)
 
-        # # Enforce PEC condition
-        # for (px, py) in pec_pt:
-        #     Ez[px, py] = 0
-
-        Ez_out[:, :, t - 1] = Ez[ix_min:ix_max + 1, iy_min:iy_max + 1]
+        Ez_out[:, :, t - 1] = Ez
 
     fdtd_time2 = time.time()
 
