@@ -809,6 +809,7 @@ class FBPINNTrainer(_Trainer):
         start_time_solution = time.time()
         u_test, wp_test_, us_test_, ws_test_, us_raw_test_ = FBPINN_model_jit(all_params_cut, x_batch_test, takes, model_fns, verbose=False)
         elapsed_time_solution = time.time() - start_time_solution
+        self._save_time(i, elapsed_time_solution)
         if all_params["static"]["problem"]["dims"][1] == 1:# 1D plots require full lines, not just hist stats
 
             m, ud, n = all_params["static"]["decomposition"]["m"], all_params["static"]["problem"]["dims"][0], x_batch_test.shape[0]
@@ -835,7 +836,6 @@ class FBPINNTrainer(_Trainer):
         # get losses over test data
         l1 = jnp.mean(jnp.abs(u_exact - u_test[:, 2].reshape(-1, 1))).item()
         self._save_loss(i, l1)
-        self._save_time(i, elapsed_time_solution)
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)

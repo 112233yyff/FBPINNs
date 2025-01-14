@@ -40,8 +40,8 @@ class _Trainer:
             file.write("i,loss\n")  # Write the header
 
         # Initialize the file for saving i and time
-        self.test_time_path = self.c.summary_out_dir + "test_time.txt"
-        with open(self.test_time_path, "w") as file:
+        self.fbpinn_test_time_path = "fbpinn_test_time.txt"
+        with open(self.fbpinn_test_time_path, "w") as file:
             file.write("i,time\n")  # Write the header
 
         # Initialize the file for saving i and lossval
@@ -76,7 +76,7 @@ class _Trainer:
 
     def _save_time(self, i, time):
         # Append i and time to the file
-        with open(self.test_time_path, "a") as file:
+        with open(self.fbpinn_test_time_path, "a") as file:
             file.write(f"{i},{time}\n")
 
     def _print_summary(self, i, loss, rate, start):

@@ -6,6 +6,7 @@ Each problem class must define the NotImplemented methods.
 
 This module is used by constants.py (and subsequently trainers.py)
 """
+import os
 
 import jax.nn
 import jax.numpy as jnp
@@ -15,6 +16,7 @@ from fbpinns.util.logger import logger
 from fbpinns.traditional_solutions.analytical.burgers_solution import burgers_viscous_time_exact1
 from fbpinns.traditional_solutions.seismic_cpml.seismic_CPML_2D_pressure_second_order import seismicCPML2D
 from FDTD2DDD import FDTD2D
+import time
 
 class Problem:
     """Base problem class to be inherited by different problem classes.
@@ -161,6 +163,9 @@ class FDTD3D(Problem):
         boundary = boundary1 + boundary2 + boundary3
 
         return 1e1 * phys + 1e2 * start + 1e1 * boundary
+
+    def summary_out_dir(self):
+        return f"results/summaries/{self.run}/"
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
         params = all_params["static"]["problem"]
@@ -191,6 +196,7 @@ class FDTD3D(Problem):
             velocity = velocity.reshape((2 * NX, 2 * NY))
         else:
             velocity = velocity * np.ones_like(xx)
+
         Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, velocity, )
         Ez = Ez[::dx, ::dy, ::dt]
         Ez = jnp.ravel(Ez)

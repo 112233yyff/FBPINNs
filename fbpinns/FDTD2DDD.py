@@ -1,4 +1,5 @@
 import numpy as np
+import time
 # PEC
 def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, c):
     f0 = 10
@@ -108,7 +109,8 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
             x = new_xmin + (new_xmax - new_xmin) * j / (new_xdim - 1)
             y = new_ymin + (new_ymax - new_ymin) * i / (new_ydim - 1)
             Ez[j, i] = np.exp(-0.5 * ((x - 0.5) ** 2 + (y - 0.5) ** 2) / sd ** 2)
-
+    # 获取精确解（如果存在）
+    fdtd_time1 = time.time()
     # Simulation loop
     for t in range(1, time_tot + 1):
         # Magnetic field update
@@ -127,5 +129,13 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
         #     Ez[px, py] = 0
 
         Ez_out[:, :, t - 1] = Ez[ix_min:ix_max + 1, iy_min:iy_max + 1]
+
+    fdtd_time2 = time.time()
+
+    # 计算时间差
+    time_diff = fdtd_time2 - fdtd_time1
+    # 将时间差写入文件
+    with open('fdtd_test_time.txt', 'w') as f:
+        f.write(f"FDTD_TIME: {time_diff}\n")
 
     return Ez_out
