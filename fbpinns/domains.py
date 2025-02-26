@@ -79,11 +79,6 @@ class RectangularDomainND(Domain):
         return RectangularDomainND._rectangle_samplerND(key, sampler, xmin, xmax, batch_shape)
 
     @staticmethod
-    def sample_interior_de(all_params, key, sampler, batch_shape):
-        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-        return RectangularDomainND._rectangle_samplerND_de(key, sampler, xmin, xmax, batch_shape)
-
-    @staticmethod
     def sample_start(all_params, key, sampler, batch_shape):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape)
@@ -108,8 +103,8 @@ class RectangularDomainND(Domain):
             raise ValueError("ERROR: unexpected sampler")
 
         if sampler == "grid":
-            xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
-            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
+            xs = [jnp.linspace(xmin, xmax, b) for xmin,xmax,b in zip(xmin, xmax, batch_shape)]
+            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)# (batch_shape, xd)
             x_batch = xx.reshape((-1, xd))
         else:
             if sampler == "halton":
@@ -122,60 +117,10 @@ class RectangularDomainND(Domain):
             elif sampler == "uniform":
                 s = jax.random.uniform(key, (np.prod(batch_shape), xd))
 
-            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-            x_batch = xmin + (xmax - xmin) * s
+            xmin, xmax = xmin.reshape((1,-1)), xmax.reshape((1,-1))
+            x_batch = xmin + (xmax - xmin)*s
 
         return jnp.array(x_batch)
-    @staticmethod
-    def _rectangle_samplerND_de(key, sampler, xmin, xmax, batch_shape):
-        "Get flattened samples of x in a rectangle, either on mesh or random"
-
-        assert xmin.shape == xmax.shape
-        assert xmin.ndim == 1
-        xd = len(xmin)
-        assert len(batch_shape) == xd
-
-        if not sampler in ["grid", "uniform", "sobol", "halton"]:
-            raise ValueError("ERROR: unexpected sampler")
-
-        if sampler == "grid":
-            xs = [jnp.linspace(xmin, xmax, b) for xmin, xmax, b in zip(xmin, xmax, batch_shape)]
-            xx = jnp.stack(jnp.meshgrid(*xs, indexing="ij"), -1)  # (batch_shape, xd)
-            x_batch = xx.reshape((-1, xd))
-        else:
-            if sampler == "halton":
-                # use scipy as not implemented in jax (!)
-                r = scipy.stats.qmc.Halton(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "sobol":
-                r = scipy.stats.qmc.Sobol(xd)
-                s = r.random(np.prod(batch_shape))
-            elif sampler == "uniform":
-                s = jax.random.uniform(key, (np.prod(batch_shape), xd))
-
-            xmin, xmax = xmin.reshape((1, -1)), xmax.reshape((1, -1))
-            x_batch = xmin + (xmax - xmin) * s
-
-        # 圆心、最小半径和最大半径
-        center = jnp.array([-0.5, 0.5])  # 圆心
-        radius_min = 0.23  # 圆环的最小半径
-        radius_max = 0.27  # 圆环的最大半径
-
-        # 提取 x 和 y 坐标
-        xy_coords = x_batch[:, :2]
-
-        # 计算每个点到圆心的距离
-        distances = jnp.linalg.norm(xy_coords - center, axis=1)
-
-        # 找到落在圆环内的点
-        mask_ring = (distances >= radius_min) & (distances <= radius_max)
-        mask_outside_ring = ~mask_ring
-
-        # 获取圆环内的点和圆环外的点
-        x_ring = x_batch[mask_ring]
-        x_outside_ring = x_batch[mask_outside_ring]
-
-        return jnp.array(x_outside_ring), jnp.array(x_ring)
 
     def _rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape):
         "Get flattened samples of x in a rectangle, either on mesh or random"

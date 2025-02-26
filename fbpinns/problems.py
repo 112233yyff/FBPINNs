@@ -60,7 +60,12 @@ class Problem:
     def exact_solution(all_params, x_batch, batch_shape=None):
         """Defines exact solution, if it exists"""
         raise NotImplementedError
+def sigmoid(x, alpha):
+    return 1 / (1 + jnp.exp(-alpha * x))
 
+def sigmoid_derivative(x, alpha):
+    s = sigmoid(x, alpha)
+    return alpha * s * (1 - s)
 class Maxwell2DTE(Problem):
     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 
@@ -105,17 +110,8 @@ class Maxwell2DTE(Problem):
         params = all_params["static"]["problem"]
         pulse_sd = params["pulse_sd"]
         # physics loss
-        x_batch_out, x_batch_circle = domain.sample_interior_de(all_params, key, sampler, batch_shapes[0])
-        required_ujs_phys_out = (
-            (0, (1,)),  # dHx / dy
-            (0, (2,)),  # dHx / dt
-            (1, (0,)),  # dHy / dx
-            (1, (2,)),  # dHy / dt
-            (2, (0,)),  # dE / dx
-            (2, (1,)),  # dE / dy
-            (2, (2,)),  # dE / dt
-        )
-        required_ujs_phys_circle = (
+        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
+        required_ujs_phys = (
             (0, (1,)),  # dHx / dy
             (0, (2,)),  # dHx / dt
             (1, (0,)),  # dHy / dx
@@ -138,32 +134,24 @@ class Maxwell2DTE(Problem):
             (1, ()),
             (2, ()),
         )
-        return [[x_batch_out, required_ujs_phys_out], [x_batch_circle, required_ujs_phys_circle], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
     @staticmethod
     def loss_fn(all_params, constraints):
 
         epsilon_fn = all_params["static"]["problem"]["epsilon_fn"]
-        # physics loss out
-        x_batch_out, dHxdy_out, dHxdt_out, dHydx_out, dHydt_out, dEdx_out, dEdy_out, dEdt_out= constraints[0]
-        phys1_out = jnp.mean((dHxdt_out + dEdy_out) ** 2)
-        phys2_out = jnp.mean((dHydt_out - dEdx_out) ** 2)
-        phys3_out = jnp.mean((epsilon_fn(all_params, x_batch_out) * dEdt_out - (dHydx_out - dHxdy_out)) ** 2)
-        phys_out = phys1_out + phys2_out + phys3_out
+        # physics loss
+        x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt, dHxdx, dHydy = constraints[0]
 
-        # physics loss circle
-        x_batch_circle, dHxdy_circle, dHxdt_circle, dHydx_circle, dHydt_circle, dEdx_circle, dEdy_circle, dEdt_circle, dHxdx_circle, dHydy_circle = \
-        constraints[1]
-        phys1_circle = jnp.mean((dHxdt_circle + dEdy_circle) ** 2)
-        phys2_circle = jnp.mean((dHydt_circle - dEdx_circle) ** 2)
-        phys3_circle = jnp.mean((epsilon_fn(all_params, x_batch_circle) * dEdt_circle - (dHydx_circle - dHxdy_circle)) ** 2)
-        phys4_circle = jnp.mean((dHxdx_circle + dHydy_circle) **2)
-        phys_circle = phys1_circle + phys2_circle + phys3_circle + 0.3 * phys4_circle
-
-        phys = phys_circle + phys_out
+        phys1 = jnp.mean((dHxdt + dEdy) ** 2)
+        phys2 = jnp.mean((dHydt - dEdx) ** 2)
+        phys3 = jnp.mean((epsilon_fn(all_params, x_batch) * dEdt - (dHydx - dHxdy)) ** 2)
+        phys4 = jnp.mean((dHxdx + dHydy) ** 2)
+        phys = phys1 + phys2 + phys3 + 0.3 * phys4
 
         # start loss
-        x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[2]
+        x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[1]
         start = jnp.mean((E - Ec) ** 2) + jnp.mean((Hx - Hxc) ** 2) + jnp.mean((Hy - Hyc) ** 2)
+
         return 1e1 * phys + 1e2 * start
 
     @staticmethod
@@ -172,7 +160,7 @@ class Maxwell2DTE(Problem):
         pulse_sd = params["pulse_sd"]
         epsilon_fn = params["epsilon_fn"]
 
-        (xmin, ymin, tmin), (xmax, ymax, tmax) = jnp.array(x_batch.min(0)), jnp.array(x_batch.max(0))
+        (xmin, ymin, tmin), (xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
         # get grid spacing
         deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (
                     tmax - tmin) / (batch_shape[2] - 1)
@@ -203,13 +191,11 @@ class Maxwell2DTE(Problem):
 
         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
         return Ez
-
-    @staticmethod
     def epsilon_fn(all_params, x_batch):
         "Computes the velocity model"
         # 提取 x_batch 中的坐标
-        x = x_batch[:, 0]
-        y = x_batch[:, 1]
+        x = x_batch[:, 0]  # x 坐标
+        y = x_batch[:, 1]  # y 坐标
 
         # 初始化 c，默认值为 1
         c = jnp.ones_like(x)
@@ -230,7 +216,37 @@ class Maxwell2DTE(Problem):
         # 将在任何形状内的区域设为 2
         c = jnp.where(circle_c, 2, c)
 
-        return jnp.expand_dims(c, axis=1)
+        # 将 c 重新调整为预期的输出形状 (n, 1)
+        c = jnp.expand_dims(c, axis=1)
+
+        return c
+    # @staticmethod
+    # def epsilon_fn_x(all_params, x_batch):
+    #     # 提取参数
+    #     ebs_bg = all_params["static"]["problem"]["eps_bg"]
+    #     ebs_obj = all_params["static"]["problem"]["eps_obj"]
+    #     interface_params = all_params["static"]["problem"]["interface"]
+    #     x0, y0 = interface_params["circle_center"]
+    #     r = interface_params["radius"]
+    #     alpha = interface_params["alpha"]
+    #
+    #     # 参数解析
+    #     x = x_batch[0]
+    #     y = x_batch[1]
+    #
+    #     # Define the level set function F
+    #     def level_set_function_circle(x, y):
+    #         return r - jnp.sqrt((x - x0) ** 2 + (y - y0) ** 2)  # Signed distance to a circle of radius 1
+    #
+    #     # 计算 level set function F
+    #     F_circle = level_set_function_circle(x, y)
+    #     # 计算近似的 Heaviside 函数
+    #     H_hat = 1 / (1 + jnp.exp(-alpha * F_circle))
+    #
+    #     # 计算物理量 mu
+    #     epsilon = ebs_bg * (1 - H_hat) + ebs_obj * H_hat
+    #
+    #     return jnp.array([x_batch[0], x_batch[1], x_batch[2], epsilon])
     # @staticmethod
     # def epsilon_fn(all_params, x_batch):
     #     # 提取参数

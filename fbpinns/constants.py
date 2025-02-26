@@ -38,7 +38,7 @@ class Constants(ConstantsBase):
         )
         self.problem = problems.Maxwell2DTE
         self.problem_init_kwargs = dict(
-            eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=100.0, beta=40.0, gamma=40.0
+            eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=50.0, beta=40.0, gamma=40.0,
         )
         subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
         subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
