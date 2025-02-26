@@ -438,7 +438,7 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get global constraints (training points)
     key, subkey = random.split(key)
-    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.n_s, start_batch_shapes=c.n_start, boundary_batch_shapes=c.n_boundary)
+    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.n_s, start_batch_shapes=c.n_start)
     for constraint_ in constraints_global:
         for c_ in constraint_[:-1]:
             assert c_.shape[0] == constraint_[0].shape[0]
@@ -651,8 +651,7 @@ class FBPINNTrainer(_Trainer):
                 ###*******SHARDING START*********###
                 nDevices = jax.local_device_count()
                 sharding = PositionalSharding(mesh_utils.create_device_mesh((nDevices, )))
-                logger.debug("111111111111111111111111111111111111111111111111111111111")
-                logger.debug((nDevices))
+
 
                 def pad_array(arr):
                     pad_width = nDevices - (arr.shape[0] % nDevices)
@@ -734,13 +733,7 @@ class FBPINNTrainer(_Trainer):
                                          active_params, fixed_params, static_params_dynamic,
                                          takess, constraints)# note compiled function only accepts dynamic arguments
             pstep, fstep = pstep+p, fstep+f
-            # Check and save memory usage of x_batch
-            if isinstance(x_batch, (jnp.ndarray, np.ndarray)):
-                memory_size = x_batch.nbytes
-                memory_size_mb = memory_size / (1024 ** 2)
-                self.array_save_memory(i, memory_size_mb)
-            else:
-                logger.warning(f"x_batch is not a valid array. Type: {type(x_batch)}")
+
             # report
             u_test_losses, start1, report_time = \
             self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
@@ -806,10 +799,7 @@ class FBPINNTrainer(_Trainer):
         takes, all_ims, cut_all = test_inputs
         all_params_cut = {"static":cut_all(all_params["static"]),
                           "trainable":cut_all(all_params["trainable"])}
-        start_time_solution = time.time()
         u_test, wp_test_, us_test_, ws_test_, us_raw_test_ = FBPINN_model_jit(all_params_cut, x_batch_test, takes, model_fns, verbose=False)
-        elapsed_time_solution = time.time() - start_time_solution
-        self._save_time(i, elapsed_time_solution)
         if all_params["static"]["problem"]["dims"][1] == 1:# 1D plots require full lines, not just hist stats
 
             m, ud, n = all_params["static"]["decomposition"]["m"], all_params["static"]["problem"]["dims"][0], x_batch_test.shape[0]
@@ -834,16 +824,13 @@ class FBPINNTrainer(_Trainer):
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
 
         # get losses over test data
-        # a= u_exact
-        # b = u_test[:, 2].reshape(-1, 1)
-        l1 = jnp.mean(jnp.abs(u_exact - u_test[:, 2].reshape(-1, 1))).item()
-        self._save_loss(i, l1)
+        l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)
 
         # create figures
-        if i % (c.test_freq * 10) == 0:
+        if i % (c.test_freq * 5) == 0:
             fs = plot_trainer.plot("FBPINN", all_params["static"]["problem"]["dims"],
                 x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test)
             if fs is not None:
@@ -1007,7 +994,7 @@ class PINNTrainer(_Trainer):
         u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
 
         # get losses over test data
-        l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
+        l1 = jnp.mean(jnp.abs(u_exact-u_test[:, 2].reshape(-1, 1))).item()
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)
@@ -1026,21 +1013,16 @@ class PINNTrainer(_Trainer):
 if __name__ == "__main__":
 
     from fbpinns.constants import Constants
-    from fbpinns.problems import HarmonicOscillator1D, HarmonicOscillator1DHardBC, HarmonicOscillator1DInverse, FDTD3D
-
+    from fbpinns.problems import Maxwell2DTE
     logger.setLevel("DEBUG")
 
     c = Constants(
         run="test",
-        #problem=HarmonicOscillator1D,
-        #problem=HarmonicOscillator1DHardBC,
-        # problem=HarmonicOscillator1DInverse,
-        # network_init_kwargs = dict(layer_sizes=[1, 32, 32, 1]),
-        problem=FDTD3D,
-        )
+        problem=Maxwell2DTE,
+    )
 
-    run = FBPINNTrainer(c)
-    #run = PINNTrainer(c)
+    # run = FBPINNTrainer(c)
+    run = PINNTrainer(c)
 
     all_params = run.train()
     print(all_params["static"]["problem"])

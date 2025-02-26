@@ -6,7 +6,6 @@ Each problem class must define the NotImplemented methods.
 
 This module is used by constants.py (and subsequently trainers.py)
 """
-import os
 
 import jax.nn
 import jax.numpy as jnp
@@ -15,8 +14,7 @@ import numpy as np
 from fbpinns.util.logger import logger
 from fbpinns.traditional_solutions.analytical.burgers_solution import burgers_viscous_time_exact1
 from fbpinns.traditional_solutions.seismic_cpml.seismic_CPML_2D_pressure_second_order import seismicCPML2D
-from FDTD2DDD import FDTD2D
-import time
+from FDTD import FDTD2D
 
 class Problem:
     """Base problem class to be inherited by different problem classes.
@@ -63,10 +61,7 @@ class Problem:
         """Defines exact solution, if it exists"""
         raise NotImplementedError
 
-
-
-
-class FDTD3D(Problem):
+class Maxwell2DTE(Problem):
     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 
         u = [Hx, Hy, Ez]
@@ -78,30 +73,40 @@ class FDTD3D(Problem):
         ---- - -----  =  0
         dt      dx
 
-        dEz     dHy    dHx
-        ---- - ---- - ----   =  0
-        dt      dx     dy
+        dEz     1    dHy    dHx
+        ---- - -- ( ---- - ----)   =  0
+        dt      Σ    dx     dy
 
         Boundary conditions:
 
     """
 
     @staticmethod
-    def init_params(c=1, sd=0.1):
+    def init_params(eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=200.0, beta=50.0, gamma=100.0):
         static_params = {
             "dims": (3, 3),
-            "c": c,
-            "sd": sd,
-            "c_fn": FDTD3D.c_fn,  # velocity function
+            "eps_bg": eps_bg,
+            "eps_obj": eps_obj,
+            "pulse_sd": pulse_sd,
+            "epsilon_fn": Maxwell2DTE.epsilon_fn,
+            # 新增界面参数
+            "interface": {
+                "circle_center": (-0.5, 0.5),  # 圆心坐标（与epsilon_fn一致）
+                "radius": 0.25,  # 半径
+                "alpha": alpha,
+                "beta": beta,  # Sigmoid陡度参数
+                "gamma": gamma,  # 法向量场局部性参数
+            }
         }
         return static_params, {}
 
     @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
-        sd = all_params["static"]["problem"]["sd"]
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes):
+        params = all_params["static"]["problem"]
+        pulse_sd = params["pulse_sd"]
         # physics loss
-        x_batch_phys = domain.sample_interior(all_params, key, sampler, batch_shapes[0])
-        required_ujs_phys = (
+        x_batch_out, x_batch_circle = domain.sample_interior_de(all_params, key, sampler, batch_shapes[0])
+        required_ujs_phys_out = (
             (0, (1,)),  # dHx / dy
             (0, (2,)),  # dHx / dt
             (1, (0,)),  # dHy / dx
@@ -110,11 +115,22 @@ class FDTD3D(Problem):
             (2, (1,)),  # dE / dy
             (2, (2,)),  # dE / dt
         )
+        required_ujs_phys_circle = (
+            (0, (1,)),  # dHx / dy
+            (0, (2,)),  # dHx / dt
+            (1, (0,)),  # dHy / dx
+            (1, (2,)),  # dHy / dt
+            (2, (0,)),  # dE / dx
+            (2, (1,)),  # dE / dy
+            (2, (2,)),  # dE / dt
+            (0, (0,)),  # dHx / dx
+            (1, (1,)),  # dHy / dy
+        )
         # start loss
-        x_batch_start = domain.sample_start(all_params, key, sampler, start_batch_shapes[0])
+        x_batch_start = domain.sample_start(all_params, key, "grid", start_batch_shapes[0])
         x = x_batch_start[:, 0:1] # 提取 x 坐标
         y = x_batch_start[:, 1:2]
-        E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (sd ** 2))
+        E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (pulse_sd ** 2))
         Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
         Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
         required_ujs_start = (
@@ -122,173 +138,168 @@ class FDTD3D(Problem):
             (1, ()),
             (2, ()),
         )
-        # boundary loss
-        x_batch_boundary = domain.sample_boundary_pec(all_params, key, sampler, boundary_batch_shapes[0])
-        required_ujs_boundary = (
-            (0, (1,)),  # dHx / dy
-            (0, (2,)),  # dHx / dt
-            (1, (0,)),  # dHy / dx
-            (1, (2,)),  # dHy / dt
-            (2, (0,)),  # dE / dx
-            (2, (1,)),  # dE / dy
-            (2, (2,)),  # dE / dt
-        )
-        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start], [x_batch_boundary,  required_ujs_boundary]]
-
+        return [[x_batch_out, required_ujs_phys_out], [x_batch_circle, required_ujs_phys_circle], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
     @staticmethod
     def loss_fn(all_params, constraints):
 
-        c_fn = all_params["static"]["problem"]["c_fn"]
-        # physics loss
-        x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
+        epsilon_fn = all_params["static"]["problem"]["epsilon_fn"]
+        # physics loss out
+        x_batch_out, dHxdy_out, dHxdt_out, dHydx_out, dHydt_out, dEdx_out, dEdy_out, dEdt_out= constraints[0]
+        phys1_out = jnp.mean((dHxdt_out + dEdy_out) ** 2)
+        phys2_out = jnp.mean((dHydt_out - dEdx_out) ** 2)
+        phys3_out = jnp.mean((epsilon_fn(all_params, x_batch_out) * dEdt_out - (dHydx_out - dHxdy_out)) ** 2)
+        phys_out = phys1_out + phys2_out + phys3_out
 
-        phys1 = jnp.mean((dHxdt + dEdy) ** 2)
-        phys2 = jnp.mean((dHydt - dEdx) ** 2)
-        phys3 = jnp.mean((dEdt - (1/c_fn(all_params, x_batch))*(dHydx - dHxdy)) ** 2)
-        phys = phys1 + phys2 + phys3
+        # physics loss circle
+        x_batch_circle, dHxdy_circle, dHxdt_circle, dHydx_circle, dHydt_circle, dEdx_circle, dEdy_circle, dEdt_circle, dHxdx_circle, dHydy_circle = \
+        constraints[1]
+        phys1_circle = jnp.mean((dHxdt_circle + dEdy_circle) ** 2)
+        phys2_circle = jnp.mean((dHydt_circle - dEdx_circle) ** 2)
+        phys3_circle = jnp.mean((epsilon_fn(all_params, x_batch_circle) * dEdt_circle - (dHydx_circle - dHxdy_circle)) ** 2)
+        phys4_circle = jnp.mean((dHxdx_circle + dHydy_circle) **2)
+        phys_circle = phys1_circle + phys2_circle + phys3_circle + 0.3 * phys4_circle
+
+        phys = phys_circle + phys_out
 
         # start loss
-        x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[1]
-        if len(Ec):
-            start = jnp.mean((E - Ec) ** 2) + jnp.mean((Hx - Hxc) ** 2) + jnp.mean((Hy - Hyc) ** 2)
-        else:
-            start = 0
+        x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[2]
+        start = jnp.mean((E - Ec) ** 2) + jnp.mean((Hx - Hxc) ** 2) + jnp.mean((Hy - Hyc) ** 2)
+        return 1e1 * phys + 1e2 * start
 
-        # boundary loss
-        x_batch_boundary, dHxdy_boundary, dHxdt_boundary, dHydx_boundary, dHydt_boundary, dEdx_boundary, dEdy_boundary, dEdt_boundary = constraints[0]
-
-        boundary1 = jnp.mean((dHxdt_boundary + dEdy_boundary) ** 2)
-        boundary2 = jnp.mean((dHydt_boundary - dEdx_boundary) ** 2)
-        boundary3 = jnp.mean((dEdt_boundary - (1 / c_fn(all_params, x_batch_boundary)) * (dHydx_boundary - dHxdy_boundary)) ** 2)
-        boundary = boundary1 + boundary2 + boundary3
-
-        return 1e1 * phys + 1e2 * start + 1e1 * boundary
-
-    def summary_out_dir(self):
-        return f"results/summaries/{self.run}/"
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
         params = all_params["static"]["problem"]
-        c, sd= params["c"], params["sd"]
-        c_fn = params["c_fn"]
+        pulse_sd = params["pulse_sd"]
+        epsilon_fn = params["epsilon_fn"]
 
-        (xmin, ymin, tmin),(xmax, ymax, tmax) = np.array(x_batch.min(0)), np.array(x_batch.max(0))
-
+        (xmin, ymin, tmin), (xmax, ymax, tmax) = jnp.array(x_batch.min(0)), jnp.array(x_batch.max(0))
         # get grid spacing
-        deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (tmax - tmin) / (batch_shape[2] - 1)
+        deltax, deltay, deltat = (xmax - xmin) / (batch_shape[0] - 1), (ymax - ymin) / (batch_shape[1] - 1), (
+                    tmax - tmin) / (batch_shape[2] - 1)
 
         # get f0, target deltas of FD simulation
-        f0 = c / sd  # approximate frequency of wave
-        DELTAX = 1 / (f0 * 10)
-        DELTAY = 1 / (f0 * 10)# target fine sampled deltas
-        DELTAT = DELTAX / (4 * np.sqrt(2) * c)  # target fine sampled deltas
-        dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
-        # DELTAX, DELTAY, DELTAT = deltax / dx,deltay / dy, deltat / dt
-        # NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1),  batch_shape[2] * dt - (dt - 1)
-        # xx, yy = np.meshgrid(np.linspace(2 * xmin, 2 * xmax, 2 * NX), np.linspace(2 * ymin, 2 * ymax, 2 * NY),
-        #                      indexing="ij")
-        DELTAX, DELTAY, DELTAT = deltax, deltay, deltat
-        NX, NY, NSTEPS = batch_shape[0] , batch_shape[1], batch_shape[2]
-        xx, yy = np.meshgrid(np.linspace(xmin, xmax, NX), np.linspace(ymin, ymax, NY),
+        f0 = 1 / pulse_sd  # approximate frequency of wave
+        DELTAX = DELTAY = 1 / (f0 * 10)  # target fine sampled deltas
+        DELTAT = DELTAX / (4 * np.sqrt(2) * 1)  # target fine sampled deltas
+        dx, dy, dt = int(np.ceil(deltax / DELTAX)), int(np.ceil(deltay / DELTAY)), int(
+            np.ceil(deltat / DELTAT))  # make sure deltas are a multiple of test deltas
+        DELTAX, DELTAY, DELTAT = deltax / dx, deltay / dy, deltat / dt
+        NX, NY, NSTEPS = batch_shape[0] * dx - (dx - 1), batch_shape[1] * dy - (dy - 1), batch_shape[2] * dt - (dt - 1)
+
+        xx, yy = np.meshgrid(np.linspace(2 * xmin, 2 * xmax, 2 * NX), np.linspace(2 * ymin, 2 * ymax, 2 * NY),
                              indexing="ij")
 
         # get velocity model
         x = np.stack([xx.ravel(), yy.ravel()], axis=1)  # (n, 2)
-        velocity = np.array(c_fn(all_params, x))
+        velocity = np.array(epsilon_fn(all_params, x))
         if velocity.shape[0] > 1:
-            velocity = velocity.reshape((NX, NY))
+            velocity = velocity.reshape((2 * NX, 2 * NY))
         else:
             velocity = velocity * np.ones_like(xx)
-
-        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, velocity, )
+        Ez = FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, pulse_sd, velocity, )
+        Ez = Ez[::dx, ::dy, ::dt]
         Ez = jnp.ravel(Ez)
         Ez = jnp.reshape(Ez, (-1, 1))
 
         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
         return Ez
+
     @staticmethod
-    def c_fn(all_params, x_batch):
+    def epsilon_fn(all_params, x_batch):
         "Computes the velocity model"
         # 提取 x_batch 中的坐标
-        x = x_batch[:, 0]  # x 坐标
-        y = x_batch[:, 1]  # y 坐标
+        x = x_batch[:, 0]
+        y = x_batch[:, 1]
 
         # 初始化 c，默认值为 1
         c = jnp.ones_like(x)
 
         # 圆形区域
-        def circle_transition(x, y, center, radius, transition_width):
+        def circle_transition(x, y, center, radius):
             distance = jnp.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
-            sigmoid_transition = 1 / (1 + jnp.exp(-(distance - radius) / transition_width))
-            return sigmoid_transition
-
-        # 矩形区域
-        def rectangle_transition(x, y, center, half_width, half_height, transition_width):
-            left = center[0] - half_width
-            right = center[0] + half_width
-            bottom = center[1] - half_height
-            top = center[1] + half_height
-
-            dx = jnp.maximum(jnp.maximum(left - x, x - right), 0)
-            dy = jnp.maximum(jnp.maximum(bottom - y, y - top), 0)
-            distance = jnp.sqrt(dx ** 2 + dy ** 2)
-
-            sigmoid_transition = 1 / (1 + jnp.exp(-(transition_width - distance) / transition_width))
-            return sigmoid_transition
-
-        # 三角形区域
-        def triangle_transition(x, y, center, side_length, transition_width):
-            # 计算等边三角形的三个顶点
-            height = (jnp.sqrt(3) / 2) * side_length
-            vertices = jnp.array([
-                [center[0], center[1] + 2 * height / 3],
-                [center[0] - side_length / 2, center[1] - height / 3],
-                [center[0] + side_length / 2, center[1] - height / 3]
-            ])
-
-            # 使用叉积法计算点是否在三角形内
-            def sign(p1, p2, p3):
-                return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
-
-            b1 = sign([x, y], vertices[0], vertices[1]) < 0.0
-            b2 = sign([x, y], vertices[1], vertices[2]) < 0.0
-            b3 = sign([x, y], vertices[2], vertices[0]) < 0.0
-
-            inside_triangle = (b1 == b2) & (b2 == b3)
-
-            # 使用sigmoid过渡以获得平滑效果
-            sigmoid_transition = jnp.where(inside_triangle, 1 / (1 + jnp.exp(-transition_width)), 0)
-            return sigmoid_transition
+            inside_circle = distance <= radius
+            return inside_circle
 
         # 圆形参数
-        circle_center = (-0.7, 0.5)
+        circle_center = (-0.5, 0.5)
         circle_radius = 0.25
-        circle_transition_width = 0.001
+
+        # 应用转换，判断各点是否在形状内
+        circle_c = circle_transition(x, y, circle_center, circle_radius)
+
+        # 将在任何形状内的区域设为 2
+        c = jnp.where(circle_c, 2, c)
+
+        return jnp.expand_dims(c, axis=1)
+    # @staticmethod
+    # def epsilon_fn(all_params, x_batch):
+    #     # 提取参数
+    #     ebs_bg = all_params["static"]["problem"]["eps_bg"]
+    #     ebs_obj = all_params["static"]["problem"]["eps_obj"]
+    #     interface_params = all_params["static"]["problem"]["interface"]
+    #     x0, y0 = interface_params["circle_center"]
+    #     r = interface_params["radius"]
+    #     alpha = interface_params["alpha"]
+    #
+    #     # 参数解析
+    #     x = x_batch[:, 0]
+    #     y = x_batch[:, 1]
+    #
+    #     # Define the level set function F
+    #     def level_set_function_circle(x, y):
+    #         return r - jnp.sqrt((x - x0) ** 2 + (y - y0) ** 2)  # Signed distance to a circle of radius 1
+    #
+    #     # 计算 level set function F
+    #     F_circle = level_set_function_circle(x, y)
+    #     # 计算近似的 Heaviside 函数
+    #     H_hat = 1 / (1 + jnp.exp(-alpha * F_circle))
+    #
+    #     # 计算物理量 mu
+    #     epsilon = ebs_bg * (1 - H_hat) + ebs_obj * H_hat
+    #
+    #     return jnp.expand_dims(epsilon, axis=1)
+    # @staticmethod
+    # def compute_interface_features_x(x_batch, interface_params):
+    #     x0, y0 = interface_params["circle_center"]
+    #     r = interface_params["radius"]
+    #     beta = interface_params["beta"]
+    #     gamma = interface_params["gamma"]
+    #
+    #     # 提取x_batch中的x, y, t分量（假设x_batch为一个批次，格式为 [n, 3]，包含每个点的x, y, t坐标）
+    #     x = x_batch[0]  # x坐标
+    #     y = x_batch[1]  # y坐标
+    #
+    #     # 定义水平集函数 F
+    #     def level_set_function_circle(x, y):
+    #         return r - jnp.sqrt((x - x0) ** 2 + (y - y0) ** 2)
+    #
+    #     # 定义水平集梯度函数 ∇F(x, y)
+    #     def level_set_gradient_circle(x, y):
+    #         r_squared = (x - x0) ** 2 + (y - y0) ** 2
+    #         r = jnp.sqrt(r_squared)
+    #
+    #         # 避免除零错误
+    #         dFdx = jnp.where(r != 0, -(x - x0) / r, 0)
+    #         dFdy = jnp.where(r != 0, -(y - y0) / r, 0)
+    #
+    #         return dFdx, dFdy
+    #
+    #     # 计算批次中每个点的 level set function F
+    #     F_circle = level_set_function_circle(x, y)
+    #
+    #     # 计算 sigmoid 函数 H
+    #     S_betaF = 1 / (1 + jnp.exp(-beta * F_circle))
+    #
+    #     # 计算梯度
+    #     dFdx, dFdy = level_set_gradient_circle(x, y)
+    #     dH_hat_dx = gamma * 1 / (1 + jnp.exp(-gamma * F_circle)) * (1 - 1 / (1 + jnp.exp(-gamma * F_circle))) * dFdx
+    #     dH_hat_dy = gamma * 1 / (1 + jnp.exp(-gamma * F_circle)) * (1 - 1 / (1 + jnp.exp(-gamma * F_circle))) * dFdy
+    #
+    #     # 返回一个包含三个均值的数组
+    #     return jnp.array([x_batch[0], x_batch[1], x_batch[2], S_betaF, dH_hat_dx, dH_hat_dy])
 
 
-        # 矩形参数
-        rectangle_center = (-0.7, -0.5)
-        rectangle_half_width = 0.2
-        rectangle_half_height = 0.2
-        rectangle_transition_width = 0.001
 
-        # 三角形参数
-        triangle_center = (0, -0.5)
-        triangle_side_length = 0.5
-        triangle_transition_width = 0.001
-
-        # 应用转换
-        circle_c = circle_transition(x, y, circle_center, circle_radius, circle_transition_width)
-        rectangle_c = rectangle_transition(x, y, rectangle_center, rectangle_half_width, rectangle_half_height,
-                                           rectangle_transition_width)
-        triangle_c = triangle_transition(x, y, triangle_center, triangle_side_length, triangle_transition_width)
-        #
-        c = 1 + circle_c + rectangle_c + triangle_c
-        # c = 1 + circle_c + rectangle_c
-        # 将 c 重新调整为预期的输出形状 (n, 1)
-        c = jnp.expand_dims(c, axis=1)
-
-        return c
 class HarmonicOscillator1D(Problem):
     """Solves the time-dependent damped harmonic oscillator
           d^2 u      du

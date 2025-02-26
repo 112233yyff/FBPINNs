@@ -31,40 +31,15 @@ class Constants(ConstantsBase):
 
         # Define run
         self.run = "test"
-
-        # Define domain
-        # self.domain = domains.RectangularDomainND
-        # self.domain_init_kwargs = dict(
-        #     xmin=np.array([0.]),
-        #     xmax=np.array([1.])
-        #     )
         self.domain = domains.RectangularDomainND
         self.domain_init_kwargs = dict(
             xmin=np.array([-1, -1, 0]),
             xmax=np.array([1, 1, 2]),
         )
-
-        # Define problem
-        # self.problem = problems.HarmonicOscillator1D
-        # #self.problem = problems.HarmonicOscillator1DInverse
-        # self.problem_init_kwargs = dict(
-        #     d=2,
-        #     w0=20,
-        #     )
-        self.problem = problems.FDTD3D
-        # self.problem = problems.HarmonicOscillator1DInverse
+        self.problem = problems.Maxwell2DTE
         self.problem_init_kwargs = dict(
-            c=1, sd=0.1,
+            eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=100.0, beta=40.0, gamma=40.0
         )
-        ###################################2 * 2 * 1 = 4 subdomains
-        # subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([1])]
-        # subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([2.1])]
-
-        ###################################2 * 2 * 2 = 8 subdomains
-        # subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.5, 1.5])]
-        # subdomain_ws = [np.array([1.1, 1.1]), np.array([1.1, 1.1]), np.array([1.1, 1.1])]
-
-        ##################################2 * 2 * 3 = 12 subdomains
         subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
         subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
         self.decomposition = decompositions.RectangularDecompositionND
@@ -75,18 +50,18 @@ class Constants(ConstantsBase):
         )
 
         # Define neural network
-        # self.network = networks.FCN
-        # self.network_init_kwargs = dict(
-        #     layer_sizes=[1, 32, 1],
-        #     )
-        self.network = networks.FCN
+        self.network = networks.AdaptiveSIREN
         self.network_init_kwargs = dict(
-            layer_sizes=[3, 64, 64, 64, 64, 64, 3],
+            # mu=0.0,
+            # sd=1.0,
+            # n_features=100,
+            layer_sizes=[3, 128, 128, 128, 128, 128, 3],
         )
+
         # Define scheduler
         self.n_steps = 120000
-        # self.scheduler = schedulers.AllActiveSchedulerND
-        # self.scheduler_kwargs = dict()
+        self.scheduler = schedulers.AllActiveSchedulerND
+        self.scheduler_kwargs = dict()
         # self.scheduler = schedulers.PointSchedulerRectangularND
         # self.scheduler_kwargs = dict(
         #    point=np.array([0.5, 0.5, 0]),
@@ -96,15 +71,14 @@ class Constants(ConstantsBase):
         #     point=np.array([0]),
         #     iaxes=[0, 1],
         # )
-        self.scheduler = schedulers.PlanePointScheduler
-        self.scheduler_kwargs = dict(
-            start_point=np.array([0.5, 0.5]),
-        )
+        # self.scheduler = schedulers.PlanePointScheduler
+        # self.scheduler_kwargs = dict(
+        #     start_point=np.array([0.5, 0.5]),
+        # )
 
         # Define optimisation parameters
         self.n_s = ((60, 60, 60),)  # batch_shape for each training constraint
         self.n_start = ((60, 60, 1),)
-        self.n_boundary = ((40, 40, 40),)
         self.n_test = (100, 100, 20)  # batch_shape for test data
         self.sampler = "grid"  # one of ["grid", "uniform", "sobol", "halton"]
         self.optimiser = optax.adam
@@ -114,18 +88,18 @@ class Constants(ConstantsBase):
         self.seed = 0
 
         # Define summary output parameters
-        self.summary_freq = 1000  # outputs train stats to command line
-        self.test_freq = 100  # outputs test stats to plot / file / command line
+        self.summary_freq    = 1000# outputs train stats to command line
+        self.test_freq       = 1000# outputs test stats to plot / file / command line
         self.model_save_freq = 10000
-        self.show_figures = False  # whether to show figures
-        self.save_figures = True  # whether to save figures
-        self.clear_output = True  # whether to clear ipython output periodically
+        self.show_figures = False# whether to show figures
+        self.save_figures = True# whether to save figures
+        self.clear_output = False# whether to clear ipython output periodically
 
         # other constants
         self.hostname = socket.gethostname().lower()
 
         # overwrite with input arguments
-        for key in kwargs.keys(): self[key] = kwargs[key]  # invokes __setitem__ in ConstantsBase
+        for key in kwargs.keys(): self[key] = kwargs[key]# invokes __setitem__ in ConstantsBase
 
 
 
