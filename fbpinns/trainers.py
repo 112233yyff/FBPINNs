@@ -25,7 +25,7 @@ from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition,
 
 from jax.sharding import PositionalSharding
 from jax.experimental import mesh_utils
-from fbpinns.problems import Maxwell2DTE
+
 # LABELLING CONVENTIONS
 
 # xd = dimensionality of point
@@ -120,20 +120,12 @@ def FBPINN_model_inner(params, x, norm_fn, network_fn, unnorm_fn, window_fn):
     w = window_fn(params, x)# window
     return u*w, w, u_raw
 
-# def PINN_model_inner(all_params, x, norm_fn, network_fn, unnorm_fn):
-#     x_norm = norm_fn(all_params, x)# normalise
-#     u_raw = network_fn(all_params, x_norm)# network
-#     u = unnorm_fn(u_raw)# unnormalise
-#     return u, u_raw
 def PINN_model_inner(all_params, x, norm_fn, network_fn, unnorm_fn):
-    # problem_params = all_params["static"]["problem"]
-    # interface_params = problem_params["interface"]  # 获取界面参数
-    # 计算界面特征并拼接
-    x_input = Maxwell2DTE.compute_interface_features_x(x, all_params)
-    x_norm = norm_fn(all_params, x_input)# normalise
+    x_norm = norm_fn(all_params, x)# normalise
     u_raw = network_fn(all_params, x_norm)# network
     u = unnorm_fn(u_raw)# unnormalise
     return u, u_raw
+
 def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     "Defines FBPINN model"
 
@@ -446,7 +438,7 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get global constraints (training points)
     key, subkey = random.split(key)
-    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.n_s, start_batch_shapes=c.n_start, boundary_batch_shapes=c.n_boundary)
+    constraints_global = problem.sample_constraints(all_params=all_params, domain=domain, key=subkey, sampler=c.sampler, batch_shapes=c.n_s, start_batch_shapes=c.n_start)
     for constraint_ in constraints_global:
         for c_ in constraint_[:-1]:
             assert c_.shape[0] == constraint_[0].shape[0]
@@ -473,16 +465,6 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get test points - for now, just use global interior points
     x_batch_test = domain.sample_interior(all_params=all_params, key=None, sampler="grid", batch_shape=c.n_test)
-    x_batch_all =jnp.concatenate([x_batch_global, x_batch_test], axis=0)
-    interface_params = all_params["static"]["problem"]["interface"]
-    result = Maxwell2DTE.compute_interface_features_x_batch(x_batch_all, interface_params)
-
-    # 更新 interface_params 中的值
-    interface_params["interface_max"] = result[3:]
-    interface_params["interface_min"] = result[:3]
-
-    # 将更新后的 interface_params 放回到 all_params 中
-    all_params["static"]["problem"]["interface"] = interface_params
     logger.debug("x_batch_test")
     logger.debug(str_tensor(x_batch_test))
 
