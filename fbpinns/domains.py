@@ -82,14 +82,87 @@ class RectangularDomainND(Domain):
     def sample_start(all_params, key, sampler, batch_shape):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
         return RectangularDomainND._rectangle_sampler_start(key, sampler, xmin, xmax, batch_shape)
+    @staticmethod
+    def sample_boundaries(all_params, key, sampler, batch_shapes):
+        """
+        在xyt三维空间中生成圆形边界附近的采样点
+        batch_shapes: (x_samples, y_samples, t_samples) 各维度采样数
+        """
+        # 解析域参数
+        domain = all_params["static"]["domain"]
+        xmin, xmax = domain["xmin"], domain["xmax"]
+        xd = domain["xd"]
+        assert xd == 3, "当前仅支持xyt三维空间"
+
+        # 硬编码圆形参数
+        CIRCLE_CENTER = (-0.5, 0.5)  # 圆心 (x,y)
+        CIRCLE_RADIUS = 0.25  # 半径
+        DELTA = 0.05  # 边界扰动范围
+        TIME_RANGE = (0.0, 1.0)  # 时间范围
+
+        # 解析采样数量
+        x_samples, y_samples, t_samples = batch_shapes
+
+        # ==================== 生成圆形边界采样 ====================
+        # 1. 生成极坐标扰动
+        key, angle_key, radius_key, t_key = jax.random.split(key, 4)
+
+        # 角度采样 (x_samples*y_samples个点)
+        angles = jax.random.uniform(
+            angle_key, (x_samples * y_samples,),
+            minval=0,
+            maxval=2 * jnp.pi
+        )
+
+        # 半径扰动 (在半径±DELTA范围内)
+        radii = CIRCLE_RADIUS + jax.random.uniform(
+            radius_key, (x_samples * y_samples,),
+            minval=-DELTA,
+            maxval=DELTA
+        )
+
+        # 2. 转换为笛卡尔坐标
+        x = CIRCLE_CENTER[0] + radii * jnp.cos(angles)
+        y = CIRCLE_CENTER[1] + radii * jnp.sin(angles)
+
+        # 3. 生成时间采样 (每个空间点对应t_samples个时间点)
+        t = jax.random.uniform(
+            t_key, (x_samples * y_samples, t_samples),
+            minval=TIME_RANGE[0],
+            maxval=TIME_RANGE[1]
+        )
+
+        # 4. 组合三维坐标
+        x = jnp.repeat(x, t_samples)
+        y = jnp.repeat(y, t_samples)
+        t = t.reshape(-1)
+        points = jnp.stack([x, y, t], axis=1)
+
+        # ==================== 边界剪裁 ====================
+        points = jnp.clip(
+            points,
+            jnp.array([xmin[0], xmin[1], TIME_RANGE[0]]),
+            jnp.array([xmax[0], xmax[1], TIME_RANGE[1]])
+        )
+        return points
 
     @staticmethod
     def norm_fn(all_params, x):
-        xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-        mu, sd = (xmax+xmin)/2, (xmax-xmin)/2
-        x = networks.norm(mu, sd, x)
-        return x
+        xmin1, xmax1 = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+        xmin2, xmax2 = all_params["static"]["problem"]["interface"]['interface_min'], all_params["static"]["problem"]["interface"]['interface_max']
+        mu1, sd1 = (xmax1+xmin1)/2, (xmax1-xmin1)/2
+        mu2, sd2 = (xmax2 + xmin2) / 2, (xmax2 - xmin2) / 2
+        x_norm = networks.norm(mu1, sd1, x[:3])
+        interface_norm = networks.norm(mu2, sd2, x[3:])
+        x_combined = jnp.concatenate([x_norm, interface_norm])
+        return x_combined
 
+    # @staticmethod
+    # def norm_fn(all_params, x):
+    #     xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
+    #     mu, sd = (xmax + xmin) / 2, (xmax - xmin) / 2
+    #     x = networks.norm(mu, sd, x)
+    #     return x
     @staticmethod
     def _rectangle_samplerND(key, sampler, xmin, xmax, batch_shape):
         "Get flattened samples of x in a rectangle, either on mesh or random"

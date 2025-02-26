@@ -38,7 +38,7 @@ class Constants(ConstantsBase):
         )
         self.problem = problems.Maxwell2DTE
         self.problem_init_kwargs = dict(
-            eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=50.0, beta=40.0, gamma=40.0,
+            eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=100.0, beta=40.0, gamma=40.0,
         )
         subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
         subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
@@ -50,12 +50,12 @@ class Constants(ConstantsBase):
         )
 
         # Define neural network
-        self.network = networks.AdaptiveSIREN
+        self.network = networks.FCN
         self.network_init_kwargs = dict(
             # mu=0.0,
             # sd=1.0,
             # n_features=100,
-            layer_sizes=[3, 128, 128, 128, 128, 128, 3],
+            layer_sizes=[6, 64, 64, 128, 128, 128, 3],
         )
 
         # Define scheduler
@@ -77,8 +77,9 @@ class Constants(ConstantsBase):
         # )
 
         # Define optimisation parameters
-        self.n_s = ((60, 60, 60),)  # batch_shape for each training constraint
+        self.n_s = ((50, 50, 50),)  # batch_shape for each training constraint
         self.n_start = ((60, 60, 1),)
+        self.n_boundary = ((40, 40, 40),)
         self.n_test = (100, 100, 20)  # batch_shape for test data
         self.sampler = "grid"  # one of ["grid", "uniform", "sobol", "halton"]
         self.optimiser = optax.adam
