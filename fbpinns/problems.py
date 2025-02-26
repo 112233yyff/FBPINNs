@@ -87,7 +87,7 @@ class Maxwell2DTE(Problem):
     """
 
     @staticmethod
-    def init_params(eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=100.0, beta=40.0, gamma=40.0):
+    def init_params(eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=80.0, beta=50.0, gamma=80.0):
         static_params = {
             "dims": (3, 3),
             "eps_bg": eps_bg,
@@ -97,7 +97,7 @@ class Maxwell2DTE(Problem):
             # 新增界面参数
             "interface": {
                 "circle_center": (-0.5, 0.5),  # 圆心坐标（与epsilon_fn一致）
-                "radius": 0.4,  # 半径
+                "radius": 0.25,  # 半径
                 "alpha": alpha,
                 "beta": beta,  # Sigmoid陡度参数
                 "gamma": gamma,  # 法向量场局部性参数
@@ -117,7 +117,7 @@ class Maxwell2DTE(Problem):
             (1, (0,)),  # dHy / dx
             (1, (2,)),  # dHy / dt
             (2, (0,)),  # dE / dx
-            (2, (1,)),  # dE / dy+
+            (2, (1,)),  # dE / dy
             (2, (2,)),  # dE / dt
         )
         # start loss
@@ -240,62 +240,6 @@ class Maxwell2DTE(Problem):
     #     c = jnp.expand_dims(c, axis=1)
     #
     #     return c
-    @staticmethod
-    def epsilon_fn_x(all_params, x_batch):
-        # 提取参数
-        ebs_bg = all_params["static"]["problem"]["eps_bg"]
-        ebs_obj = all_params["static"]["problem"]["eps_obj"]
-        interface_params = all_params["static"]["problem"]["interface"]
-        x0, y0 = interface_params["circle_center"]
-        r = interface_params["radius"]
-        alpha = interface_params["alpha"]
-
-        # 参数解析
-        x = x_batch[0]
-        y = x_batch[1]
-
-        # X, Y = np.meshgrid(np.unique(x), np.unique(y))  # 生成二维网格
-
-        # Define the level set function F
-        def level_set_function_circle(x, y):
-            return r - jnp.sqrt((x - x0) ** 2 + (y - y0) ** 2)  # Signed distance to a circle of radius 1
-
-        # 计算 level set function F
-        F_circle = level_set_function_circle(x, y)
-        # 计算近似的 Heaviside 函数
-        H_hat = sigmoid(F_circle, alpha)
-
-        # 计算物理量 mu
-        epsilon = ebs_bg * (1 - H_hat) + ebs_obj * H_hat
-
-        # # 绘图
-        # plt.figure(figsize=(18, 10))
-        #
-        # # 绘制 level set 函数
-        # plt.contourf(X, Y, F_circle, cmap='viridis')
-        # plt.colorbar(label='F_circle value')
-        # plt.title('Level Set Function F_circle')
-        # plt.xlabel('x')
-        # plt.ylabel('y')
-        # plt.show()
-        #
-        # # 绘制近似的 Heaviside 函数
-        # plt.contourf(X, Y, H_hat, levels=50, cmap='plasma')
-        # plt.colorbar(label='Approximated Heaviside Function H_hat')
-        # plt.title('Approximated Heaviside Function H_hat')
-        # plt.xlabel('x')
-        # plt.ylabel('y')
-        # plt.show()
-        #
-        # # 绘制物理量 epsilon
-        # plt.contourf(X, Y, epsilon, levels=50, cmap='inferno')
-        # plt.colorbar(label='Physical Quantity epsilon')
-        # plt.title('Physical Quantity μ')
-        # plt.xlabel('x')
-        # plt.ylabel('y')
-        # plt.show()
-
-        return epsilon
     @staticmethod
     def epsilon_fn(all_params, x_batch):
         # 提取参数

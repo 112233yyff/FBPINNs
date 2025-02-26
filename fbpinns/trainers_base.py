@@ -34,50 +34,6 @@ class _Trainer:
         writer.add_text("constants", str(c).replace("\n","  \n"))# uses markdown
 
         self.c, self.writer = c, writer
-        # Initialize the file for saving i and loss
-        self.training_log_path = self.c.summary_out_dir + "training_log.txt"
-        with open(self.training_log_path, "w") as file:
-            file.write("i,loss\n")  # Write the header
-
-        # Initialize the file for saving i and time
-        self.fbpinn_test_time_path = "fbpinn_test_time.txt"
-        with open(self.fbpinn_test_time_path, "w") as file:
-            file.write("i,time\n")  # Write the header
-
-        # Initialize the file for saving i and lossval
-        self.save_lossval_path = self.c.summary_out_dir + "save_lossval.txt"
-        with open(self.save_lossval_path, "w") as file:
-            file.write("i,lossval\n")  # Write the header
-
-
-        # Initialize the file for saving i and array memory usage
-        self.array_memory_usage_path = self.c.summary_out_dir + "array_memory_usage.txt"
-        with open(self.array_memory_usage_path, "w") as file:
-            file.write("i,array_memory_usage_KB\n")  # Write the header
-
-    def array_save_memory(self, i, array_memory_usage):
-        """
-        保存内存使用情况到文件
-        :param i: 当前训练步骤
-        :param memory_usage: 当前内存使用量（单位：MB）
-        """
-        with open(self.array_memory_usage_path, "a") as file:
-            file.write(f"{i},{array_memory_usage}\n")
-
-    def _save_loss(self, i, l1):
-        # Append i and loss to the file
-        with open(self.training_log_path, "a") as file:
-            file.write(f"{i},{l1}\n")
-
-    def _save_lossval(self, i, lossval):
-        # Append i and loss to the file
-        with open(self.save_lossval_path, "a") as file:
-            file.write(f"{i},{lossval}\n")
-
-    def _save_time(self, i, time):
-        # Append i and time to the file
-        with open(self.fbpinn_test_time_path, "a") as file:
-            file.write(f"{i},{time}\n")
 
     def _print_summary(self, i, loss, rate, start):
         "Prints training summary"

@@ -1,27 +1,27 @@
 run: test
 domain: <class 'fbpinns.domains.RectangularDomainND'>
 domain_init_kwargs: {'xmin': array([-1, -1,  0]), 'xmax': array([1, 1, 2])}
-problem: <class 'fbpinns.problems.FDTD3D'>
-problem_init_kwargs: {'c': 1, 'sd': 0.1}
+problem: <class 'fbpinns.problems.Maxwell2DTE'>
+problem_init_kwargs: {'eps_bg': 1.0, 'eps_obj': 2.0, 'pulse_sd': 0.1, 'alpha': 100.0, 'beta': 40.0, 'gamma': 40.0}
 decomposition: <class 'fbpinns.decompositions.RectangularDecompositionND'>
-decomposition_init_kwargs: {'subdomain_xs': [array([-0.65,  0.  ,  0.65]), array([-0.45,  0.45]), array([0.55, 1.45])], 'subdomain_ws': [array([0.8125, 0.8125, 0.8125]), array([1.125, 1.125]), array([1.125, 1.125])], 'unnorm': (0.0, 1.0)}
+decomposition_init_kwargs: {'subdomain_xs': [array([-0.45,  0.45]), array([-0.45,  0.45]), array([0.35, 1.  , 1.65])], 'subdomain_ws': [array([1.125, 1.125]), array([1.125, 1.125]), array([0.8125, 0.8125, 0.8125])], 'unnorm': (0.0, 1.0)}
 network: <class 'fbpinns.networks.FCN'>
-network_init_kwargs: {'layer_sizes': [3, 64, 64, 64, 64, 3]}
-n_steps: 100000
+network_init_kwargs: {'layer_sizes': [6, 64, 64, 128, 128, 128, 3]}
+n_steps: 120000
 scheduler: <class 'fbpinns.schedulers.AllActiveSchedulerND'>
 scheduler_kwargs: {}
-ns: ((60, 60, 60),)
+n_s: ((50, 50, 50),)
 n_start: ((60, 60, 1),)
-n_boundary: ((50, 50, 50),)
+n_boundary: ((40, 40, 40),)
 n_test: (100, 100, 20)
 sampler: grid
-optimiser: <function adam at 0x7efbec3fed40>
+optimiser: <function adam at 0x7f906460f1a0>
 optimiser_kwargs: {'learning_rate': 0.001}
 seed: 0
-summary_freq: 2000
-test_freq: 2000
-model_save_freq: 15000
+summary_freq: 1000
+test_freq: 1000
+model_save_freq: 10000
 show_figures: False
 save_figures: True
-clear_output: True
+clear_output: False
 hostname: desktop-29p5efh
