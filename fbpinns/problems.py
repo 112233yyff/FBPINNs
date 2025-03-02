@@ -70,13 +70,13 @@ class Maxwell2DTE(Problem):
     """Solves the time-dependent (1+1)D Maxwell equation with constant velocity
 
         u = [Hx, Hy, Ez]
-        dHx     dEz
-        ---- + -----  =  0
-        dt      dy
+        dHx     1    dEz
+        ---- + ---  -----  =  0
+        dt      μ     dy
 
-        dHy     dEz
-        ---- - -----  =  0
-        dt      dx
+        dHy     1    dEz
+        ---- - ---- ----  =  0
+        dt      μ    dx
 
         dEz     1    dHy    dHx
         ---- - -- ( ---- - ----)   =  0
@@ -137,10 +137,8 @@ class Maxwell2DTE(Problem):
 
         # 对x求偏导，结果保存在Hx_start
         Hx_start = (y - 0.5) / (pulse_sd ** 2) * E_start
-
         # 对y求偏导，结果保存在Hy_start
         Hy_start = -(x - 0.5) / (pulse_sd ** 2) * E_start
-
         required_ujs_start = (
             (0, ()),
             (1, ()),
@@ -165,10 +163,10 @@ class Maxwell2DTE(Problem):
         epsilon_fn = all_params["static"]["problem"]["epsilon_fn"]
         # physics loss
         x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
-
-        phys1 = jnp.mean((dHxdt + dEdy) ** 2)
-        phys2 = jnp.mean((dHydt - dEdx) ** 2)
-        phys3 = jnp.mean((epsilon_fn(all_params, x_batch) * dEdt - (dHydx - dHxdy)) ** 2)
+        miu = epsilon_fn(all_params, x_batch)
+        phys1 = jnp.mean(((miu * dHxdt) + dEdy) ** 2)
+        phys2 = jnp.mean(((miu * dHydt) - dEdx) ** 2)
+        phys3 = jnp.mean((dEdt - (dHydx - dHxdy)) ** 2)
         phys = phys1 + phys2 + phys3
 
         # start loss
@@ -177,11 +175,10 @@ class Maxwell2DTE(Problem):
 
         # boundary loss
         x_batch_boundary, dHxdy_boundary, dHxdt_boundary, dHydx_boundary, dHydt_boundary, dEdx_boundary, dEdy_boundary, dEdt_boundary = constraints[2]
-
-        boundary1 = jnp.mean((dHxdt_boundary + dEdy_boundary) ** 2)
-        boundary2 = jnp.mean((dHydt_boundary - dEdx_boundary) ** 2)
-        boundary3 = jnp.mean(
-            (dEdt_boundary - (1 / epsilon_fn(all_params, x_batch_boundary)) * (dHydx_boundary - dHxdy_boundary)) ** 2)
+        miu_boundary = epsilon_fn(all_params, x_batch_boundary)
+        boundary1 = jnp.mean((( miu_boundary * dHxdt_boundary) + dEdy_boundary) ** 2)
+        boundary2 = jnp.mean(((miu_boundary * dHydt_boundary) - dEdx_boundary) ** 2)
+        boundary3 = jnp.mean((dEdt_boundary - (dHydx_boundary - dHxdy_boundary)) ** 2)
         boundary = boundary1 + boundary2 + boundary3
 
         return 1e1 * phys + 1e2 * start + 1e1 * boundary
@@ -224,7 +221,6 @@ class Maxwell2DTE(Problem):
         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
         return Ez
 
-    @staticmethod
     def epsilon_fn(all_params, x_batch):
         # 提取参数
         ebs_bg = all_params["static"]["problem"]["eps_bg"]

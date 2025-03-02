@@ -40,8 +40,8 @@ class Constants(ConstantsBase):
         self.problem_init_kwargs = dict(
             eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=100.0, beta=100.0, gamma=100.0,
         )
-        subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.2, 1])]
-        subdomain_ws =  [np.array([1.2, 1.2]), np.array([1.2, 1.2]), np.array([0.6, 0.8])]
+        subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.37, 1.13])]
+        subdomain_ws = [np.array([1.125, 1.125]), np.array([1.125, 1.125]), np.array([0.8, 0.8])]
         self.decomposition = decompositions.RectangularDecompositionND
         self.decomposition_init_kwargs = dict(
             subdomain_xs=subdomain_xs,

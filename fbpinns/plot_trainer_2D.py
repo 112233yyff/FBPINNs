@@ -30,8 +30,8 @@ def _plot_test_im(u_test, xlim, ulim, n_test, it=None):
                    extent=(xlim[0][0], xlim[1][0], xlim[0][1], xlim[1][1]),
                    origin='lower',
                    cmap="bwr",
-                   vmin=((ulim[0] / 6) + 0.1),
-                   vmax=(ulim[1]))
+                   vmin=((ulim[0] / 3) + 0.5),
+                   vmax=((ulim[1] / 3) - 0.5))
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cbar = plt.colorbar(im, cax=cax)
