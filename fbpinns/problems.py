@@ -87,7 +87,7 @@ class Maxwell2DTE(Problem):
     """
 
     @staticmethod
-    def init_params(eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=200.0, beta=50.0, gamma=100.0):
+    def init_params(eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=50.0, beta=50.0, gamma=50.0):
         static_params = {
             "dims": (3, 3),
             "eps_bg": eps_bg,
@@ -96,8 +96,16 @@ class Maxwell2DTE(Problem):
             "epsilon_fn": Maxwell2DTE.epsilon_fn,
             # 新增界面参数
             "interface": {
-                "circle_center": (-0.5, 0.5),  # 圆心坐标（与epsilon_fn一致）
-                "radius": 0.25,  # 半径
+                "circle": {
+                    "center": (-0.5, 0.5),
+                    "radius": 0.45,
+                },
+                "triangle": {
+                    "v1":(0.2, -0.4),
+                    "v2": (0, -0.8),
+                    "v3": (0.4, -0.8),
+                },
+                # 圆心坐标（与epsilon_fn一致）
                 "alpha": alpha,
                 "beta": beta,  # Sigmoid陡度参数
                 "gamma": gamma,  # 法向量场局部性参数
@@ -106,7 +114,7 @@ class Maxwell2DTE(Problem):
         return static_params, {}
 
     @staticmethod
-    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes):
+    def sample_constraints(all_params, domain, key, sampler, batch_shapes, start_batch_shapes, boundary_batch_shapes):
         params = all_params["static"]["problem"]
         pulse_sd = params["pulse_sd"]
         # physics loss
@@ -119,40 +127,64 @@ class Maxwell2DTE(Problem):
             (2, (0,)),  # dE / dx
             (2, (1,)),  # dE / dy
             (2, (2,)),  # dE / dt
-            (0, (0,)),  # dHx / dx
-            (1, (1,)),  # dHy / dy
         )
         # start loss
         x_batch_start = domain.sample_start(all_params, key, "grid", start_batch_shapes[0])
         x = x_batch_start[:, 0:1] # 提取 x 坐标
         y = x_batch_start[:, 1:2]
-        E_start = jnp.exp(-0.5 * ((x-0.5) ** 2 + (y-0.5) ** 2 ) / (pulse_sd ** 2))
-        Hx_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
-        Hy_start = jnp.zeros_like(E_start, dtype=jnp.float32).reshape(E_start.shape)
+        # 计算E_start
+        E_start = jnp.exp(-0.5 * ((x - 0.5) ** 2 + (y - 0.5) ** 2) / (pulse_sd ** 2))
+
+        # 对x求偏导，结果保存在Hx_start
+        Hx_start = (y - 0.5) / (pulse_sd ** 2) * E_start
+
+        # 对y求偏导，结果保存在Hy_start
+        Hy_start = -(x - 0.5) / (pulse_sd ** 2) * E_start
+
         required_ujs_start = (
             (0, ()),
             (1, ()),
             (2, ()),
         )
-        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start]]
+        # boundary loss
+        x_batch_boundary = domain.sample_boundaries(all_params, key, sampler, boundary_batch_shapes[0])
+        required_ujs_boundary = (
+            (0, (1,)),  # dHx / dy
+            (0, (2,)),  # dHx / dt
+            (1, (0,)),  # dHy / dx
+            (1, (2,)),  # dHy / dt
+            (2, (0,)),  # dE / dx
+            (2, (1,)),  # dE / dy
+            (2, (2,)),  # dE / dt
+        )
+        return [[x_batch_phys, required_ujs_phys], [x_batch_start, Hx_start, Hy_start, E_start, required_ujs_start],
+                [x_batch_boundary, required_ujs_boundary]]
     @staticmethod
     def loss_fn(all_params, constraints):
 
         epsilon_fn = all_params["static"]["problem"]["epsilon_fn"]
         # physics loss
-        x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt, dHxdx, dHydy = constraints[0]
+        x_batch, dHxdy, dHxdt, dHydx, dHydt, dEdx, dEdy, dEdt = constraints[0]
 
         phys1 = jnp.mean((dHxdt + dEdy) ** 2)
         phys2 = jnp.mean((dHydt - dEdx) ** 2)
         phys3 = jnp.mean((epsilon_fn(all_params, x_batch) * dEdt - (dHydx - dHxdy)) ** 2)
-        phys4 = jnp.mean((dHxdx + dHydy) ** 2)
-        phys = phys1 + phys2 + phys3 + 0.3 * phys4
+        phys = phys1 + phys2 + phys3
 
         # start loss
         x_batch_start, Hxc, Hyc, Ec, Hx, Hy, E = constraints[1]
         start = jnp.mean((E - Ec) ** 2) + jnp.mean((Hx - Hxc) ** 2) + jnp.mean((Hy - Hyc) ** 2)
 
-        return 1e1 * phys + 1e2 * start
+        # boundary loss
+        x_batch_boundary, dHxdy_boundary, dHxdt_boundary, dHydx_boundary, dHydt_boundary, dEdx_boundary, dEdy_boundary, dEdt_boundary = constraints[2]
+
+        boundary1 = jnp.mean((dHxdt_boundary + dEdy_boundary) ** 2)
+        boundary2 = jnp.mean((dHydt_boundary - dEdx_boundary) ** 2)
+        boundary3 = jnp.mean(
+            (dEdt_boundary - (1 / epsilon_fn(all_params, x_batch_boundary)) * (dHydx_boundary - dHxdy_boundary)) ** 2)
+        boundary = boundary1 + boundary2 + boundary3
+
+        return 1e1 * phys + 1e2 * start + 1e1 * boundary
 
     @staticmethod
     def exact_solution(all_params, x_batch, batch_shape):
@@ -191,62 +223,168 @@ class Maxwell2DTE(Problem):
 
         # 拼接 Hy 和 Ex，沿着列方向（dim=1）进行拼接
         return Ez
+
+    @staticmethod
     def epsilon_fn(all_params, x_batch):
-        "Computes the velocity model"
-        # 提取 x_batch 中的坐标
-        x = x_batch[:, 0]  # x 坐标
-        y = x_batch[:, 1]  # y 坐标
+        # 提取参数
+        ebs_bg = all_params["static"]["problem"]["eps_bg"]
+        ebs_obj = all_params["static"]["problem"]["eps_obj"]
+        interface_params = all_params["static"]["problem"]["interface"]
+        circle_params = interface_params["circle"]
+        triangle_params = interface_params["triangle"]
 
-        # 初始化 c，默认值为 1
-        c = jnp.ones_like(x)
+        x0, y0 = circle_params["center"]
+        r = circle_params["radius"]
+        alpha = interface_params["alpha"]
 
-        # 圆形区域
-        def circle_transition(x, y, center, radius):
-            distance = jnp.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2)
-            inside_circle = distance <= radius
-            return inside_circle
+        # 新增三角形参数
+        triangle_vertices = triangle_params["v1"],triangle_params["v2"],triangle_params["v3"]
 
-        # 圆形参数
-        circle_center = (-0.5, 0.5)
-        circle_radius = 0.25
+        # 参数解析
+        x = x_batch[:, 0]
+        y = x_batch[:, 1]
 
-        # 应用转换，判断各点是否在形状内
-        circle_c = circle_transition(x, y, circle_center, circle_radius)
+        # 定义圆形的 level set 函数
+        def level_set_function_circle(x, y):
+            return r - jnp.sqrt((x - x0) ** 2 + (y - y0) ** 2)  # 与圆心的距离减去半径
 
-        # 将在任何形状内的区域设为 2
-        c = jnp.where(circle_c, 2, c)
+            # 定义三角形的 level set 函数
+            # 定义三角形的 level set 函数
 
-        # 将 c 重新调整为预期的输出形状 (n, 1)
-        c = jnp.expand_dims(c, axis=1)
+        def level_set_function_triangle(x, y, vertices):
+            # 三角形的三个顶点
+            (x1, y1), (x2, y2), (x3, y3) = vertices
 
-        return c
+            # 计算点到三角形的最小距离
+            def point_to_segment_distance(px, py, x1, y1, x2, y2):
+                # 计算点到线段的最小距离
+                dx, dy = x2 - x1, y2 - y1
+                t = ((px - x1) * dx + (py - y1) * dy) / (dx ** 2 + dy ** 2 + 1e-10)
+                t = jnp.clip(t, 0.0, 1.0)
+                closest_x = x1 + t * dx
+                closest_y = y1 + t * dy
+                return jnp.sqrt((px - closest_x) ** 2 + (py - closest_y) ** 2)
+
+            # 计算点到三角形的最小距离
+            d1 = point_to_segment_distance(x, y, x1, y1, x2, y2)
+            d2 = point_to_segment_distance(x, y, x2, y2, x3, y3)
+            d3 = point_to_segment_distance(x, y, x3, y3, x1, y1)
+            min_distance = jnp.minimum(jnp.minimum(d1, d2), d3)
+
+            # 判断点是否在三角形内部
+            def cross_product(a, b):
+                return a[0] * b[1] - a[1] * b[0]
+
+            def point_in_triangle(px, py):
+                # 向量 AB, BC, CA
+                AB = (x2 - x1, y2 - y1)
+                BC = (x3 - x2, y3 - y2)
+                CA = (x1 - x3, y1 - y3)
+
+                # 向量 AP, BP, CP
+                AP = (px - x1, py - y1)
+                BP = (px - x2, py - y2)
+                CP = (px - x3, py - y3)
+
+                # 计算叉积
+                cross0 = cross_product(AB, AP)
+                cross1 = cross_product(BC, BP)
+                cross2 = cross_product(CA, CP)
+
+                # 判断点是否在三角形内部
+                inside = (cross0 >= 0) & (cross1 >= 0) & (cross2 >= 0) | (cross0 <= 0) & (cross1 <= 0) & (cross2 <= 0)
+                return ~inside
+
+            # 有符号距离函数
+            sign = jnp.where(point_in_triangle(x, y), -1.0, 1.0)
+            return sign * min_distance
+
+            # 计算圆形和三角形的 level set 函数
+
+        F_circle = level_set_function_circle(x, y)
+        F_triangle = level_set_function_triangle(x, y, triangle_vertices)
+
+        # 计算 Heaviside 函数
+        H_hat_circle = 1 / (1 + jnp.exp(-alpha * F_circle))
+        H_hat_triangle = 1 / (1 + jnp.exp(-alpha * F_triangle))
+
+        # 调整逻辑：如果三角形内的点使用 ebs_obj，否则使用 ebs_bg
+        epsilon = ebs_bg * (1 - jnp.maximum(H_hat_circle, H_hat_triangle)) + ebs_obj * jnp.maximum(H_hat_circle, H_hat_triangle)
+
+        # 返回 epsilon 值
+        return jnp.expand_dims(epsilon, axis=1)
+
     # @staticmethod
-    # def epsilon_fn_x(all_params, x_batch):
+    # def epsilon_fn(all_params, x_batch):
     #     # 提取参数
-    #     ebs_bg = all_params["static"]["problem"]["eps_bg"]
-    #     ebs_obj = all_params["static"]["problem"]["eps_obj"]
     #     interface_params = all_params["static"]["problem"]["interface"]
-    #     x0, y0 = interface_params["circle_center"]
-    #     r = interface_params["radius"]
-    #     alpha = interface_params["alpha"]
+    #     circle_params = interface_params["circle"]
+    #     triangle_params = interface_params["triangle"]
+    #
+    #     # 圆形的参数
+    #     x0, y0 = circle_params["center"]
+    #     r = circle_params["radius"]
+    #
+    #     # 三角形的三个顶点
+    #     triangle_vertices = [
+    #         triangle_params["v1"],
+    #         triangle_params["v2"],
+    #         triangle_params["v3"]
+    #     ]
     #
     #     # 参数解析
-    #     x = x_batch[0]
-    #     y = x_batch[1]
+    #     x = x_batch[:, 0]
+    #     y = x_batch[:, 1]
     #
-    #     # Define the level set function F
-    #     def level_set_function_circle(x, y):
-    #         return r - jnp.sqrt((x - x0) ** 2 + (y - y0) ** 2)  # Signed distance to a circle of radius 1
+    #     # 初始化介电常数，默认值为 1
+    #     epsilon = jnp.ones_like(x)
     #
-    #     # 计算 level set function F
-    #     F_circle = level_set_function_circle(x, y)
-    #     # 计算近似的 Heaviside 函数
-    #     H_hat = 1 / (1 + jnp.exp(-alpha * F_circle))
+    #     # 判断点是否在圆形内部
+    #     def point_in_circle(px, py, x0, y0, radius):
+    #         distance = jnp.sqrt((px - x0) ** 2 + (py - y0) ** 2)
+    #         return distance <= radius
     #
-    #     # 计算物理量 mu
-    #     epsilon = ebs_bg * (1 - H_hat) + ebs_obj * H_hat
+    #     # 判断点是否在三角形内部
+    #     def point_in_triangle(px, py, vertices):
+    #         # 三角形的三个顶点
+    #         (x1, y1), (x2, y2), (x3, y3) = vertices
     #
-    #     return jnp.array([x_batch[0], x_batch[1], x_batch[2], epsilon])
+    #         # 计算叉积
+    #         def cross_product(a, b):
+    #             return a[0] * b[1] - a[1] * b[0]
+    #
+    #         # 向量 AB, BC, CA
+    #         AB = (x2 - x1, y2 - y1)
+    #         BC = (x3 - x2, y3 - y2)
+    #         CA = (x1 - x3, y1 - y3)
+    #
+    #         # 向量 AP, BP, CP
+    #         AP = (px - x1, py - y1)
+    #         BP = (px - x2, py - y2)
+    #         CP = (px - x3, py - y3)
+    #
+    #         # 计算叉积
+    #         cross0 = cross_product(AB, AP)
+    #         cross1 = cross_product(BC, BP)
+    #         cross2 = cross_product(CA, CP)
+    #
+    #         # 判断点是否在三角形内部
+    #         inside = (cross0 >= 0) & (cross1 >= 0) & (cross2 >= 0) | (cross0 <= 0) & (cross1 <= 0) & (cross2 <= 0)
+    #         return inside
+    #
+    #     # 判断每个点是否在圆形内部
+    #     in_circle = point_in_circle(x, y, x0, y0, r)
+    #
+    #     # 判断每个点是否在三角形内部
+    #     in_triangle = point_in_triangle(x, y, triangle_vertices)
+    #
+    #     # 设置圆形和三角形内部的介电常数为 2
+    #     epsilon = jnp.where(in_circle | in_triangle, 2.0, epsilon)
+    #
+    #     # 将 epsilon 重新调整为预期的输出形状 (n, 1)
+    #     epsilon = jnp.expand_dims(epsilon, axis=1)
+    #
+    #     return epsilon
     # @staticmethod
     # def epsilon_fn(all_params, x_batch):
     #     # 提取参数
@@ -275,7 +413,8 @@ class Maxwell2DTE(Problem):
     #
     #     return jnp.expand_dims(epsilon, axis=1)
     # @staticmethod
-    # def compute_interface_features_x(x_batch, interface_params):
+    # def compute_interface_features_x(x_batch, all_params):
+    #     interface_params = all_params["static"]["problem"]["interface"]
     #     x0, y0 = interface_params["circle_center"]
     #     r = interface_params["radius"]
     #     beta = interface_params["beta"]
@@ -300,20 +439,62 @@ class Maxwell2DTE(Problem):
     #
     #         return dFdx, dFdy
     #
-    #     # 计算批次中每个点的 level set function F
+    #     # 计算水平集函数 F
     #     F_circle = level_set_function_circle(x, y)
+    #     # 计算近似的 Heaviside 函数 S_betaF
+    #     S_betaF = sigmoid(F_circle, beta)
     #
-    #     # 计算 sigmoid 函数 H
-    #     S_betaF = 1 / (1 + jnp.exp(-beta * F_circle))
-    #
-    #     # 计算梯度
+    #     # 计算梯度 dH_hat_dx 和 dH_hat_dy
     #     dFdx, dFdy = level_set_gradient_circle(x, y)
-    #     dH_hat_dx = gamma * 1 / (1 + jnp.exp(-gamma * F_circle)) * (1 - 1 / (1 + jnp.exp(-gamma * F_circle))) * dFdx
-    #     dH_hat_dy = gamma * 1 / (1 + jnp.exp(-gamma * F_circle)) * (1 - 1 / (1 + jnp.exp(-gamma * F_circle))) * dFdy
+    #     dH_hat_dx = sigmoid_derivative(F_circle, gamma) * dFdx
+    #     dH_hat_dy = sigmoid_derivative(F_circle, gamma) * dFdy
     #
-    #     # 返回一个包含三个均值的数组
     #     return jnp.array([x_batch[0], x_batch[1], x_batch[2], S_betaF, dH_hat_dx, dH_hat_dy])
-
+    #
+    # @staticmethod
+    # def compute_interface_features_x_batch(x_batch, interface_params):
+    #     x0, y0 = interface_params["circle_center"]
+    #     r = interface_params["radius"]
+    #     beta = interface_params["beta"]
+    #     gamma = interface_params["gamma"]
+    #
+    #     # 提取x_batch中的x, y坐标，假设x_batch为一个批次，格式为 [n, 3]，包含每个点的x, y, t坐标
+    #     x = x_batch[:, 0]  # x坐标
+    #     y = x_batch[:, 1]  # y坐标
+    #
+    #     # 定义水平集函数 F
+    #     def level_set_function_circle(x, y):
+    #         return r - jnp.sqrt((x - x0) ** 2 + (y - y0) ** 2)
+    #
+    #     # 定义水平集梯度函数 ∇F(x, y)
+    #     def level_set_gradient_circle(x, y):
+    #         r_squared = (x - x0) ** 2 + (y - y0) ** 2
+    #         r = jnp.sqrt(r_squared)
+    #
+    #         # 避免除零错误
+    #         dFdx = jnp.where(r != 0, -(x - x0) / r, 0)
+    #         dFdy = jnp.where(r != 0, -(y - y0) / r, 0)
+    #
+    #         return dFdx, dFdy
+    #
+    #     # 计算水平集函数 F
+    #     F_circle = level_set_function_circle(x, y)
+    #     # 计算近似的 Heaviside 函数 S_betaF
+    #     S_betaF = sigmoid(F_circle, beta)
+    #
+    #     # 计算梯度 dH_hat_dx 和 dH_hat_dy
+    #     dFdx, dFdy = level_set_gradient_circle(x, y)
+    #     dH_hat_dx = sigmoid_derivative(F_circle, gamma) * dFdx
+    #     dH_hat_dy = sigmoid_derivative(F_circle, gamma) * dFdy
+    #
+    #     # # 获取这一批点的 S_betaF, dH_hat_dx, dH_hat_dy 的最大值和最小值
+    #     # result = {
+    #     #     "S_betaF": {"min": jnp.min(S_betaF), "max": jnp.max(S_betaF)},
+    #     #     "dH_hat_dx": {"min": jnp.min(dH_hat_dx), "max": jnp.max(dH_hat_dx)},
+    #     #     "dH_hat_dy": {"min": jnp.min(dH_hat_dy), "max": jnp.max(dH_hat_dy)},
+    #     # }
+    #
+    #     return jnp.array([jnp.min(S_betaF), jnp.min(dH_hat_dx),  jnp.min(dH_hat_dy), jnp.max(S_betaF), jnp.max(dH_hat_dx), jnp.max(dH_hat_dy)])
 
 
 class HarmonicOscillator1D(Problem):
@@ -776,62 +957,81 @@ class WaveEquationGaussianVelocity3D(WaveEquationConstantVelocity3D):
 
 
 if __name__ == "__main__":
-
     import matplotlib.pyplot as plt
+    from fbpinns.problems import Maxwell2DTE
 
-    from fbpinns.domains import RectangularDomainND
+    # 生成测试网格
+    x = jnp.linspace(-1, 1, 100)
+    y = jnp.linspace(-1, 1, 100)
+    xx, yy = jnp.meshgrid(x, y, indexing="ij")
+    x_batch = jnp.stack([xx.ravel(), yy.ravel()], axis=1)
 
-    np.random.seed(0)
+    # 计算 epsilon
+    epsilon = Maxwell2DTE.epsilon_fn(x_batch).reshape(xx.shape)
 
-    mixture=np.concatenate([
-        np.random.uniform(-3, 3, (100,2)),# location
-        0.4*np.ones((100,1)),# width
-        0.3*np.random.uniform(-1, 1, (100,1)),# amplitude
-        ], axis=1)
+    # 绘制 epsilon 的分布
+    plt.imshow(epsilon, extent=[-1, 1, -1, 1], origin="lower", cmap="viridis")
+    plt.colorbar(label="Epsilon")
+    plt.title("Epsilon Distribution")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
 
-    source=np.array([# multiscale sources
-        [0,0,0.1,1],
-        [1,1,0.2,0.5],
-        [-1.1,-0.5,0.4,0.25],
-        ])
-
-    # test wave equation
-    for problem, kwargs in [(WaveEquationConstantVelocity3D, dict()),
-                            (WaveEquationGaussianVelocity3D, dict(source=source, mixture=mixture))]:
-
-        ps_ = problem.init_params(**kwargs)
-        all_params = {"static":{"problem":ps_[0]}, "trainable":{"problem":ps_[1]}}
-
-        batch_shape = (80,80,50)
-        x_batch = RectangularDomainND._rectangle_samplerND(None, "grid", np.array([-3, -3, 0]), np.array([3, 3, 3]), batch_shape)
-
-        plt.figure()
-        c = np.array(problem.c_fn(all_params, x_batch))
-        if c.shape[0]>1: c = c.reshape(batch_shape)
-        else: c = c*np.ones(batch_shape)
-        plt.imshow(c[:,:,0])
-        plt.colorbar()
-        plt.show()
-
-        u = problem.exact_solution(all_params, x_batch, batch_shape).reshape(batch_shape)
-        uc = np.zeros_like(x_batch)[:,0:1]
-        uc = problem.constraining_fn(all_params, x_batch, uc).reshape(batch_shape)
-
-        its = range(0,50,3)
-        for u_ in [u, uc]:
-            vmin, vmax = np.quantile(u, 0.05), np.quantile(u, 0.95)
-            plt.figure(figsize=(2*len(its),5))
-            for iplot,i in enumerate(its):
-                plt.subplot(1,len(its),1+iplot)
-                plt.imshow(u_[:,:,i], vmin=vmin, vmax=vmax)
-            plt.show()
-        plt.figure()
-        plt.plot(u[40,40,:], label="u")
-        plt.plot(uc[40,40,:], label="uc")
-        t = np.linspace(0,1,50)
-        plt.plot(np.tanh(2.5*t/(all_params["static"]["problem"]["source"][:,2].min()/all_params["static"]["problem"]["c0"]))**2)
-        plt.legend()
-        plt.show()
+    # import matplotlib.pyplot as plt
+    #
+    # from fbpinns.domains import RectangularDomainND
+    #
+    # np.random.seed(0)
+    #
+    # mixture=np.concatenate([
+    #     np.random.uniform(-3, 3, (100,2)),# location
+    #     0.4*np.ones((100,1)),# width
+    #     0.3*np.random.uniform(-1, 1, (100,1)),# amplitude
+    #     ], axis=1)
+    #
+    # source=np.array([# multiscale sources
+    #     [0,0,0.1,1],
+    #     [1,1,0.2,0.5],
+    #     [-1.1,-0.5,0.4,0.25],
+    #     ])
+    #
+    # # test wave equation
+    # for problem, kwargs in [(WaveEquationConstantVelocity3D, dict()),
+    #                         (WaveEquationGaussianVelocity3D, dict(source=source, mixture=mixture))]:
+    #
+    #     ps_ = problem.init_params(**kwargs)
+    #     all_params = {"static":{"problem":ps_[0]}, "trainable":{"problem":ps_[1]}}
+    #
+    #     batch_shape = (80,80,50)
+    #     x_batch = RectangularDomainND._rectangle_samplerND(None, "grid", np.array([-3, -3, 0]), np.array([3, 3, 3]), batch_shape)
+    #
+    #     plt.figure()
+    #     c = np.array(problem.c_fn(all_params, x_batch))
+    #     if c.shape[0]>1: c = c.reshape(batch_shape)
+    #     else: c = c*np.ones(batch_shape)
+    #     plt.imshow(c[:,:,0])
+    #     plt.colorbar()
+    #     plt.show()
+    #
+    #     u = problem.exact_solution(all_params, x_batch, batch_shape).reshape(batch_shape)
+    #     uc = np.zeros_like(x_batch)[:,0:1]
+    #     uc = problem.constraining_fn(all_params, x_batch, uc).reshape(batch_shape)
+    #
+    #     its = range(0,50,3)
+    #     for u_ in [u, uc]:
+    #         vmin, vmax = np.quantile(u, 0.05), np.quantile(u, 0.95)
+    #         plt.figure(figsize=(2*len(its),5))
+    #         for iplot,i in enumerate(its):
+    #             plt.subplot(1,len(its),1+iplot)
+    #             plt.imshow(u_[:,:,i], vmin=vmin, vmax=vmax)
+    #         plt.show()
+    #     plt.figure()
+    #     plt.plot(u[40,40,:], label="u")
+    #     plt.plot(uc[40,40,:], label="uc")
+    #     t = np.linspace(0,1,50)
+    #     plt.plot(np.tanh(2.5*t/(all_params["static"]["problem"]["source"][:,2].min()/all_params["static"]["problem"]["c0"]))**2)
+    #     plt.legend()
+    #     plt.show()
 
 
 
