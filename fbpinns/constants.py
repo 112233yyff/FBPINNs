@@ -34,14 +34,21 @@ class Constants(ConstantsBase):
         self.domain = domains.RectangularDomainND
         self.domain_init_kwargs = dict(
             xmin=np.array([-1, -1, 0]),
-            xmax=np.array([1, 1, 1.5]),
+            xmax=np.array([1, 1, 2]),
         )
         self.problem = problems.Maxwell2DTE
         self.problem_init_kwargs = dict(
-            eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=100.0, beta=100.0, gamma=100.0,
+            eps_bg=1.0, eps_obj=2.0, pulse_sd=0.1, alpha=110.0,
         )
-        subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.37, 1.13])]
-        subdomain_ws = [np.array([1.125, 1.125]), np.array([1.125, 1.125]), np.array([0.8, 0.8])]
+        # subdomain_xs = [np.array([-0.5, 0.5]), np.array([-0.5, 0.5]), np.array([0.4, 1])]
+        # subdomain_ws =  [np.array([1.3, 1.3]), np.array([1.3, 1.3]), np.array([0.8, 1.2])]
+        # subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.4125, 1.0875])]
+        # subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
+        # subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.15, 0.65, 1.3])]
+        # subdomain_ws = [np.array([1.2, 1.2]), np.array([1.2, 1.2]), np.array([0.4, 0.8, 0.6])]
+        subdomain_xs = [np.array([-0.45, 0.45]), np.array([-0.45, 0.45]), np.array([0.35, 1, 1.65])]
+        subdomain_ws = get_subdomain_ws(subdomain_xs, 1.25)
+
         self.decomposition = decompositions.RectangularDecompositionND
         self.decomposition_init_kwargs = dict(
             subdomain_xs=subdomain_xs,
@@ -52,36 +59,33 @@ class Constants(ConstantsBase):
         # Define neural network
         self.network = networks.FCN
         self.network_init_kwargs = dict(
-            # mu=0.0,
-            # sd=1.0,
-            # n_features=100,
-            layer_sizes=[3, 128, 128, 128, 128, 128, 3],
+            layer_sizes=[3, 64, 64, 64, 64, 64, 3],
         )
 
         # Define scheduler
-        self.n_steps = 120000
+        self.n_steps = 150000
         # self.scheduler = schedulers.AllActiveSchedulerND
         # self.scheduler_kwargs = dict()
+        # self.scheduler = schedulers.PlaneSchedulerRectangularND
+        # self.scheduler_kwargs = dict(
+        #     point=np.array([0]),
+        #     iaxes=[0, 1],
+        # )
+        self.scheduler = schedulers.PlanePointScheduler
+        self.scheduler_kwargs = dict(
+            start_point=np.array([0.5, 0.5]),
+        )
         # self.scheduler = schedulers.PointSchedulerRectangularND
         # self.scheduler_kwargs = dict(
         #    point=np.array([0.5, 0.5, 0]),
         #    )
-        self.scheduler = schedulers.PlaneSchedulerRectangularND
-        self.scheduler_kwargs = dict(
-            point=np.array([0]),
-            iaxes=[0, 1],
-        )
-        # self.scheduler = schedulers.PlanePointScheduler
-        # self.scheduler_kwargs = dict(
-        #     start_point=np.array([0.5, 0.5]),
-        # )
 
         # Define optimisation parameters
         self.n_s = ((60, 60, 60),)  # batch_shape for each training constraint
         self.n_start = ((50, 50, 1),)
         self.n_boundary = ((40, 40, 40),)
         self.n_test = (100, 100, 20)  # batch_shape for test data
-        self.sampler = "sobol"  # one of ["grid", "uniform", "sobol", "halton"]
+        self.sampler = "grid"  # one of ["grid", "uniform", "sobol", "halton"]
         self.optimiser = optax.adam
         self.optimiser_kwargs = dict(
             learning_rate=1e-3
@@ -102,14 +106,5 @@ class Constants(ConstantsBase):
         # overwrite with input arguments
         for key in kwargs.keys(): self[key] = kwargs[key]# invokes __setitem__ in ConstantsBase
 
-
-
-if __name__ == "__main__":
-
-    c = Constants(seed=2)
-    print(c)
-
-    c.get_outdirs()
-    c.save_constants_file()
 
 

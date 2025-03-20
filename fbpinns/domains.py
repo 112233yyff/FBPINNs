@@ -214,17 +214,6 @@ class RectangularDomainND(Domain):
         )
         return points
 
-    # @staticmethod
-    # def norm_fn(all_params, x):
-    #     xmin1, xmax1 = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
-    #     xmin2, xmax2 = all_params["static"]["problem"]["interface"]['interface_min'], all_params["static"]["problem"]["interface"]['interface_max']
-    #     mu1, sd1 = (xmax1+xmin1)/2, (xmax1-xmin1)/2
-    #     mu2, sd2 = (xmax2 + xmin2) / 2, (xmax2 - xmin2) / 2
-    #     x_norm = networks.norm(mu1, sd1, x[:3])
-    #     interface_norm = networks.norm(mu2, sd2, x[3:])
-    #     x_combined = jnp.concatenate([x_norm, interface_norm])
-    #     return x_combined
-
     @staticmethod
     def norm_fn(all_params, x):
         xmin, xmax = all_params["static"]["domain"]["xmin"], all_params["static"]["domain"]["xmax"]
@@ -298,54 +287,6 @@ class RectangularDomainND(Domain):
             x_batch = xmin + (xmax - xmin) * s
 
         return jnp.array(x_batch)
-
-if __name__ == "__main__":
-
-    import matplotlib.pyplot as plt
-
-    key = jax.random.PRNGKey(0)
-
-
-    domain = RectangularDomainND
-    sampler = "halton"
-
-
-    # 1D
-
-    xmin, xmax = jnp.array([-1,]), jnp.array([2,])
-    batch_shape = (10,)
-    batch_shapes = ((3,),(4,))
-
-    ps_ = domain.init_params(xmin, xmax)
-    all_params = {"static":{"domain":ps_[0]}, "trainable":{"domain":ps_[1]}}
-    x_batch = domain.sample_interior(all_params, key, sampler, batch_shape)
-    x_batches = domain.sample_boundaries(all_params, key, sampler, batch_shapes)
-
-    plt.figure()
-    plt.scatter(x_batch, jnp.zeros_like(x_batch))
-    for x_batch in x_batches:
-        print(x_batch.shape)
-        plt.scatter(x_batch, jnp.zeros_like(x_batch))
-    plt.show()
-
-
-    # 2D
-
-    xmin, xmax = jnp.array([0,1]), jnp.array([1,2])
-    batch_shape = (10,20)
-    batch_shapes = ((3,),(4,),(5,),(6,))
-
-    ps_ = domain.init_params(xmin, xmax)
-    all_params = {"static":{"domain":ps_[0]}, "trainable":{"domain":ps_[1]}}
-    x_batch = domain.sample_interior(all_params, key, sampler, batch_shape)
-    x_batches = domain.sample_boundaries(all_params, key, sampler, batch_shapes)
-
-    plt.figure()
-    plt.scatter(x_batch[:,0], x_batch[:,1])
-    for x_batch in x_batches:
-        print(x_batch.shape)
-        plt.scatter(x_batch[:,0], x_batch[:,1])
-    plt.show()
 
 
 

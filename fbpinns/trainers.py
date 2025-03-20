@@ -23,9 +23,6 @@ from fbpinns.util.logger import logger
 from fbpinns.util.jax_util import tree_index, total_size, str_tensor, partition, combine
 
 
-from jax.sharding import PositionalSharding
-from jax.experimental import mesh_utils
-from fbpinns.problems import Maxwell2DTE
 # LABELLING CONVENTIONS
 
 # xd = dimensionality of point
@@ -120,20 +117,12 @@ def FBPINN_model_inner(params, x, norm_fn, network_fn, unnorm_fn, window_fn):
     w = window_fn(params, x)# window
     return u*w, w, u_raw
 
-# def PINN_model_inner(all_params, x, norm_fn, network_fn, unnorm_fn):
-#     x_norm = norm_fn(all_params, x)# normalise
-#     u_raw = network_fn(all_params, x_norm)# network
-#     u = unnorm_fn(u_raw)# unnormalise
-#     return u, u_raw
 def PINN_model_inner(all_params, x, norm_fn, network_fn, unnorm_fn):
-    # problem_params = all_params["static"]["problem"]
-    # interface_params = problem_params["interface"]  # 获取界面参数
-    # 计算界面特征并拼接
-    # x_input = Maxwell2DTE.compute_interface_features_x(x, all_params)
     x_norm = norm_fn(all_params, x)# normalise
     u_raw = network_fn(all_params, x_norm)# network
     u = unnorm_fn(u_raw)# unnormalise
     return u, u_raw
+
 def FBPINN_model(all_params, x_batch, takes, model_fns, verbose=True):
     "Defines FBPINN model"
 
@@ -319,7 +308,6 @@ def PINN_update(optimiser_fn, active_opt_states,
     active_params = optax.apply_updates(active_params, updates)
     return lossval, active_opt_states, active_params
 
-
 # For fast test inference only
 
 @partial(jax.jit, static_argnums=(1,4,5))
@@ -473,16 +461,6 @@ def _common_train_initialisation(c, key, all_params, problem, domain):
 
     # get test points - for now, just use global interior points
     x_batch_test = domain.sample_interior(all_params=all_params, key=None, sampler="grid", batch_shape=c.n_test)
-    # x_batch_all =jnp.concatenate([x_batch_global, x_batch_test], axis=0)
-    # interface_params = all_params["static"]["problem"]["interface"]
-    # result = Maxwell2DTE.compute_interface_features_x_batch(x_batch_all, interface_params)
-    #
-    # # 更新 interface_params 中的值
-    # interface_params["interface_max"] = result[3:]
-    # interface_params["interface_min"] = result[:3]
-    #
-    # # 将更新后的 interface_params 放回到 all_params 中
-    # all_params["static"]["problem"]["interface"] = interface_params
     logger.debug("x_batch_test")
     logger.debug(str_tensor(x_batch_test))
 
@@ -663,68 +641,7 @@ class FBPINNTrainer(_Trainer):
                 # then get new inputs to update step
                 active, merge_active, active_opt_states, active_params, fixed_params, static_params, takess, constraints, x_batch = \
                      self._get_update_inputs(i, active, all_params, all_opt_states, x_batch_global, constraints_global, constraint_fs_global, constraint_offsets_global, decomposition, problem)
-                
-                
-                
-                ###*******SHARDING START*********###
-                nDevices = jax.local_device_count()
-                sharding = PositionalSharding(mesh_utils.create_device_mesh((nDevices, )))
 
-
-                def pad_array(arr):
-                    pad_width = nDevices - (arr.shape[0] % nDevices)
-                    if pad_width == nDevices:
-                        pad_width = 0
-                    return jnp.pad(arr, (0, pad_width), mode='constant') 
-                
-                def shard_layer_params(layer, sharding):
-                    weights, biases = layer
-                    # pad_width = nDevices - (weights.shape[0] % nDevices)
-                    # if pad_width != nDevices:
-                    #     weights = jnp.pad(weights, ((0,pad_width),(0,0),(0,0)), mode='constant')
-                    #     biases = jnp.pad(biases, ((0,pad_width),(0,0)), mode='constant')
-                    sharded_weights = jax.device_put(weights, sharding.reshape((nDevices,1,1 )))
-                    sharded_biases  = jax.device_put(biases, sharding.reshape((nDevices, 1)))
-                    return (sharded_weights, sharded_biases)
-
-                
-
-                for i, takes in enumerate(takess):
-                    m_take, n_take, p_take, np_take, npou   = takes 
-                    
-                    n_take         = jax.device_put(pad_array(n_take), sharding.reshape((nDevices,)))
-                    m_take         = jax.device_put(pad_array(m_take), sharding.reshape((nDevices,)))
-                    p_take         = jax.device_put(pad_array(p_take), sharding.reshape((nDevices,)))
-                    np_take        = jax.device_put(np_take, sharding.replicate())
-                    npou           = jax.device_put(npou, sharding.replicate())
-                    
-                    takess[i] = (m_take, n_take, p_take, np_take, npou)
-
-                
-                static_params["decomposition"]["subdomain"]["params"] = jax.device_put(static_params["decomposition"]["subdomain"]["params"], sharding.replicate())
-                
-                
-                active_layers = active_params["network"]["subdomain"]["layers"]
-                sharded_layers = [shard_layer_params(layer, sharding) for layer in active_layers]
-                active_params["network"]["subdomain"]["layers"] = sharded_layers
-                
-
-                opt_layers = active_opt_states[0][1]["network"]["subdomain"]["layers"]
-                sharded_opt = [shard_layer_params(layer, sharding) for layer in opt_layers]
-                active_opt_states[0][1]["network"]["subdomain"]["layers"] = sharded_opt
-
-                opt_layers = active_opt_states[0][2]["network"]["subdomain"]["layers"]
-                sharded_opt = [shard_layer_params(layer, sharding) for layer in opt_layers]
-                active_opt_states[0][2]["network"]["subdomain"]["layers"] = sharded_opt
-                ###*******SHARDING END*********###
-                
-                
-                
-                
-                
-                
-                
-                
                 # AOT compile update function
                 startc = time.time()
                 logger.info(f"[i: {i}/{self.c.n_steps}] Compiling update step..")
@@ -751,7 +668,13 @@ class FBPINNTrainer(_Trainer):
                                          active_params, fixed_params, static_params_dynamic,
                                          takess, constraints)# note compiled function only accepts dynamic arguments
             pstep, fstep = pstep+p, fstep+f
-
+            # Check and save memory usage of x_batch
+            if isinstance(x_batch, (jnp.ndarray, np.ndarray)):
+                memory_size = x_batch.nbytes
+                memory_size_mb = memory_size / (1024 ** 2)
+                self.array_save_memory(i, memory_size_mb)
+            else:
+                logger.warning(f"x_batch is not a valid array. Type: {type(x_batch)}")
             # report
             u_test_losses, start1, report_time = \
             self._report(i + 1, pstep, fstep, u_test_losses, start0, start1, report_time,
@@ -778,6 +701,8 @@ class FBPINNTrainer(_Trainer):
         c = self.c
         summary_,test_,model_save_ = [(i % f == 0) for f in
                                       [c.summary_freq, c.test_freq, c.model_save_freq]]
+        if (i > 0):
+            self._save_lossval(i, lossval.item())
         if summary_ or test_ or model_save_:
 
             # print summary
@@ -817,7 +742,9 @@ class FBPINNTrainer(_Trainer):
         takes, all_ims, cut_all = test_inputs
         all_params_cut = {"static":cut_all(all_params["static"]),
                           "trainable":cut_all(all_params["trainable"])}
+        start_time_solution = time.time()
         u_test, wp_test_, us_test_, ws_test_, us_raw_test_ = FBPINN_model_jit(all_params_cut, x_batch_test, takes, model_fns, verbose=False)
+        elapsed_time_solution = time.time() - start_time_solution
         if all_params["static"]["problem"]["dims"][1] == 1:# 1D plots require full lines, not just hist stats
 
             m, ud, n = all_params["static"]["decomposition"]["m"], all_params["static"]["problem"]["dims"][0], x_batch_test.shape[0]
@@ -842,7 +769,9 @@ class FBPINNTrainer(_Trainer):
             us_test, ws_test, us_raw_test = us_test_, ws_test_, us_raw_test_
 
         # get losses over test data
-        l1 = jnp.mean(jnp.abs(u_exact-u_test)).item()
+        l1 = jnp.mean(jnp.abs(u_exact - u_test[:, 2].reshape(-1, 1))).item()
+        self._save_loss(i, l1)
+        self._save_time(i, elapsed_time_solution)
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)
@@ -873,7 +802,7 @@ class PINNTrainer(_Trainer):
         np.random.seed(c.seed)
 
         # define all_params
-        all_params = {"static": {},"trainable": {}}
+        all_params = {"static":{},"trainable":{}}
 
         # initialise domain, problem and decomposition params
         domain, problem = c.domain, c.problem
@@ -971,6 +900,8 @@ class PINNTrainer(_Trainer):
         "Report results"
 
         c = self.c
+        if (i > 0):
+            self._save_lossval(i, lossval.item())
         summary_,test_,model_save_ = [(i % f == 0) for f in
                                       [c.summary_freq, c.test_freq, c.model_save_freq]]
         if summary_ or test_ or model_save_:
@@ -1012,7 +943,8 @@ class PINNTrainer(_Trainer):
         u_test, u_raw_test = PINN_model_jit(all_params, x_batch_test, model_fns, verbose=False)
 
         # get losses over test data
-        l1 = jnp.mean(jnp.abs(u_exact-u_test[:, 2].reshape(-1, 1))).item()
+        l1 = jnp.mean(jnp.abs(u_exact - u_test[:, 2].reshape(-1, 1))).item()
+        self._save_loss(i, l1)
         l1n = l1 / u_exact.std().item()
         u_test_losses.append([i, pstep, fstep, time.time()-start0, l1, l1n])
         writer.add_scalar("loss/test/l1_istep", l1, i)
@@ -1032,6 +964,7 @@ if __name__ == "__main__":
 
     from fbpinns.constants import Constants
     from fbpinns.problems import Maxwell2DTE
+
     logger.setLevel("DEBUG")
 
     c = Constants(
@@ -1039,8 +972,8 @@ if __name__ == "__main__":
         problem=Maxwell2DTE,
     )
 
-    # run = FBPINNTrainer(c)
-    run = PINNTrainer(c)
+    run = FBPINNTrainer(c)
+    # run = PINNTrainer(c)
 
     all_params = run.train()
     print(all_params["static"]["problem"])

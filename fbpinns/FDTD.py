@@ -1,11 +1,7 @@
 import numpy as np
-from matplotlib import pyplot as plt
 
-
-# PEC
 def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, DELTAT, sd, c):
-    f0 = 10
-    Lf = 1
+
     xdim, ydim, time_tot = NX, NY, NSTEPS
     deltax, deltay, deltat = DELTAX, DELTAY, DELTAT
 
@@ -16,12 +12,9 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
     new_ydim = 2 * NY
 
     Ez_out = np.zeros((xdim, ydim, time_tot))
-    divergence_out = np.zeros((xdim, ydim, time_tot))  # 存储所有时间步的磁场散度
-    # Initialize magnetic and electric fields for the extended domain
     Hx = np.zeros((new_xdim, new_ydim))
     Hy = np.zeros((new_xdim, new_ydim))
     Ez = np.zeros((new_xdim, new_ydim))
-    divergence = np.zeros((xdim, ydim, time_tot))
 
     # Permittivity of vacuum [farad/meter]
     e0 = 1
@@ -98,33 +91,5 @@ def FDTD2D(xmin, xmax, ymin, ymax, tmin, tmax, NX, NY, NSTEPS, DELTAX, DELTAY, D
         iy_min, iy_max = int((ymin - new_ymin) / deltay), int((ymax - new_ymin) / deltay)
 
         Ez_out[:, :, t - 1] = Ez[ix_min:ix_max + 1, iy_min:iy_max + 1]
-        # # 计算磁场的散度
-        # div_Hx = np.gradient(Hx, axis=0) / deltax  # ∂Hx/∂x
-        # div_Hy = np.gradient(Hy, axis=1) / deltay  # ∂Hy/∂y
-        # divergence = div_Hx + div_Hy  # 散度 = ∂Hx/∂x + ∂Hy/∂y
-        #
-        # # 存储每个时间步的磁场散度
-        # divergence_out[:, :, t-1] = divergence[ix_min:ix_max + 1, iy_min:iy_max + 1]
-        #
-        # # 每个时间步绘制磁场的散度
-        # if t % 100 == 0:  # 每100步绘制一次
-        #
-        #     # 绘制散度图
-        #     plt.figure(figsize=(6, 6))
-        #     plt.imshow(divergence, cmap='jet', origin='lower', interpolation='none', aspect='auto',
-        #                extent=[xmin, xmax, ymin, ymax])
-        #     plt.colorbar(label='Divergence')
-        #     plt.title(f'Magnetic Field Divergence at time step {t * deltat}')
-        #
-        #     # 限制横纵坐标的范围（例如您希望限制范围）
-        #     plt.xlim(xmin, xmax)
-        #     plt.ylim(ymin, ymax)
-        #
-        #     # 添加坐标标签
-        #     plt.xlabel('x (m)')
-        #     plt.ylabel('y (m)')
-        #
-        #     # 显示图像
-        #     plt.show()
 
     return Ez_out

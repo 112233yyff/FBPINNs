@@ -1,153 +1,3 @@
-# """
-# Defines plotting functions for 3D FBPINN / PINN problems
-#
-# This module is used by plot_trainer.py (and subsequently trainers.py)
-# """
-#
-# import matplotlib.pyplot as plt
-#
-# from fbpinns.plot_trainer_1D import _plot_setup, _to_numpy
-# from fbpinns.plot_trainer_2D import _plot_test_im, _plot_test_im_H, _plot_test_im_HH
-# import jax
-# import jax.numpy as jnp
-#
-# @_to_numpy
-# def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test):
-#
-#     xlim, ulim = _plot_setup(x_batch_test, u_exact)
-#     xlim0 = x_batch_test.min(0), x_batch_test.max(0)
-#
-#     nt = n_test[-1]# slice across last dimension
-#     shape = (1+nt+1, 3)# nrows, ncols
-#     f = plt.figure(figsize=(8,8*shape[0]/3))
-#
-#     # plot domain + x_batch
-#     for iplot, (a,b) in enumerate([[0,1],[0,2],[1,2]]):
-#         plt.subplot2grid(shape,(0,iplot))
-#         plt.title(f"[{i}] Domain decomposition")
-#         plt.scatter(x_batch[:,a], x_batch[:,b], alpha=0.5, color="k", s=1)
-#         decomposition.plot(all_params, active=active, create_fig=False, iaxes=[a,b])
-#         plt.xlim(xlim[0][a], xlim[1][a])
-#         plt.ylim(xlim[0][b], xlim[1][b])
-#         plt.gca().set_aspect("equal")
-#
-#     # plot full solutions
-#     for it in range(nt):
-#         plt.subplot2grid(shape,(1+it,0))
-#         plt.title(f"[{i}] Full solution")
-#         _plot_test_im(u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-#
-#         plt.subplot2grid(shape,(1+it,1))
-#         plt.title(f"[{i}] Ground truth")
-#         _plot_test_im(u_exact, xlim0, ulim, n_test, it=it)
-#
-#         plt.subplot2grid(shape,(1+it,2))
-#         plt.title(f"[{i}] Difference")
-#         _plot_test_im(u_exact - u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-#
-#     # plot raw hist
-#     plt.subplot2grid(shape,(1+nt,0))
-#     plt.title(f"[{i}] Raw solutions")
-#     plt.hist(us_raw_test.flatten(), bins=100, label=f"{us_raw_test.min():.1f}, {us_raw_test.max():.1f}")
-#     plt.legend(loc=1)
-#     plt.xlim(-5,5)
-#
-#     plt.tight_layout()
-#
-#     return (("test",f),)
-#
-# @_to_numpy
-# def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params, i, n_test):
-#     xlim, ulim = _plot_setup(x_batch_test, u_exact[:, 2])
-#     xlim0 = x_batch.min(0), x_batch.max(0)
-#     # 计算 dHy/dx - dHx/dy
-#     Hx_exact = u_exact[:, 0].reshape(n_test)  # Hx
-#     Hy_exact = u_exact[:, 1].reshape(n_test)  # Hy
-#
-#     # 计算偏导数
-#     dHx_dy_exact, dHx_dx_exact = jnp.gradient(Hx_exact, axis=(0, 1))
-#     dHy_dy_exact, dHy_dx_exact = jnp.gradient(Hy_exact, axis=(0, 1))
-#     # 计算 dHy/dx - dHx/dy
-#     dHy_dx_exact_minus_dHx_dy_exact = dHy_dx_exact - dHx_dy_exact
-#
-#     xlimm, curllim = _plot_setup(x_batch_test, jnp.ravel(dHy_dx_exact_minus_dHx_dy_exact))
-#
-#     # 计算 dHy/dx - dHx/dy
-#     Hx = u_test[:, 0].reshape(n_test)  # Hx
-#     Hy = u_test[:, 1].reshape(n_test)  # Hy
-#
-#     # 计算偏导数
-#     dHx_dy, dHx_dx = jnp.gradient(Hx, axis=(0, 1))
-#     dHy_dy, dHy_dx = jnp.gradient(Hy, axis=(0, 1))
-#
-#     # 计算 dHy/dx - dHx/dy
-#     dHy_dx_minus_dHx_dy = dHy_dx - dHx_dy
-#
-#
-#     nt = n_test[-1]  # slice across last dimension
-#     shape = (1 + nt + 1, 6)  # 增加一列用于绘制 dHy/dx - dHx/dy
-#     f = plt.figure(figsize=(10, 8 * shape[0] / 3))
-#
-#     # plot x_batch
-#     for iplot, (a, b) in enumerate([[0, 1], [0, 2], [1, 2]]):
-#         plt.subplot2grid(shape, (0, iplot))
-#         plt.title(f"[{i}] Training points")
-#         plt.scatter(x_batch[:, a], x_batch[:, b], alpha=0.5, color="k", s=1)
-#         plt.xlim(xlim[0][a], xlim[1][a])
-#         plt.ylim(xlim[0][b], xlim[1][b])
-#         plt.gca().set_aspect("equal")
-#
-#     # plot full solution
-#     for it in range(nt):
-#         plt.subplot2grid(shape, (1 + it, 0))
-#         plt.title(f"[{i}] PINN")
-#         _plot_test_im(u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-#
-#         plt.subplot2grid(shape, (1 + it, 1))
-#         plt.title(f"[{i}] FDTD")
-#         _plot_test_im(u_exact[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-#
-#         plt.subplot2grid(shape, (1 + it, 2))
-#         plt.title(f"[{i}] Difference")
-#         _plot_test_im(u_exact[:, 2].reshape(-1, 1) - u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
-#
-#         # 绘制 dHy/dx - dHx/dy
-#         plt.subplot2grid(shape, (1 + it, 3))  # 新增一列
-#         plt.title(f"FDTD_curl")
-#         _plot_test_im_H(dHy_dx_exact_minus_dHx_dy_exact, xlim0, curllim, n_test, it=it)
-#
-#         # 绘制 dHy/dx - dHx/dy
-#         plt.subplot2grid(shape, (1 + it, 4))  # 新增一列
-#         plt.title(f"PINN_curl")
-#         _plot_test_im_H(dHy_dx_minus_dHx_dy, xlim0, curllim, n_test, it=it)
-#
-#         # 绘制 dHy/dx - dHx/dy
-#         plt.subplot2grid(shape, (1 + it, 5))  # 新增一列
-#         plt.title(f"PINN_curl_raw")
-#         _plot_test_im_HH(dHy_dx_minus_dHx_dy, xlim0, ulim, n_test, it=it)
-#
-#     # plot raw hist
-#     plt.subplot2grid(shape, (1 + nt, 0))
-#     plt.title(f"[{i}] Raw solution")
-#     plt.hist(u_raw_test.flatten(), bins=100, label=f"{u_raw_test.min():.1f}, {u_raw_test.max():.1f}")
-#     plt.legend(loc=1)
-#     plt.xlim(-5, 5)
-#
-#     plt.tight_layout()
-#
-#     return (("test", f),)
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
 """
 Defines plotting functions for 3D FBPINN / PINN problems
 
@@ -158,6 +8,7 @@ import matplotlib.pyplot as plt
 
 from fbpinns.plot_trainer_1D import _plot_setup, _to_numpy
 from fbpinns.plot_trainer_2D import _plot_test_im
+import matplotlib.ticker as ticker
 
 @_to_numpy
 def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test, x_batch, all_params, i, active, decomposition, n_test):
@@ -169,28 +20,34 @@ def plot_3D_FBPINN(x_batch_test, u_exact, u_test, us_test, ws_test, us_raw_test,
     shape = (1+nt+1, 3)# nrows, ncols
     f = plt.figure(figsize=(8,8*shape[0]/3))
 
-    # plot domain + x_batch
-    for iplot, (a,b) in enumerate([[0,1],[0,2],[1,2]]):
-        plt.subplot2grid(shape,(0,iplot))
-        plt.title(f"[{i}] Domain decomposition")
-        plt.scatter(x_batch[:,a], x_batch[:,b], alpha=0.5, color="k", s=1)
-        decomposition.plot(all_params, active=active, create_fig=False, iaxes=[a,b])
+    # Assuming the rest of your code is correct
+    for iplot, (a, b) in enumerate([[0, 1], [0, 2], [1, 2]]):
+        plt.subplot2grid(shape, (0, iplot))
+        # plt.title(f"[{i}] Domain decomposition")
+        plt.scatter(x_batch[:, a], x_batch[:, b], alpha=0.5, color="pink", s=1)  # Set color to pink
+        decomposition.plot(all_params, active=active, create_fig=False, iaxes=[a, b])
         plt.xlim(xlim[0][a], xlim[1][a])
         plt.ylim(xlim[0][b], xlim[1][b])
+
+        # Ensure that both x and y axes have the same scale
         plt.gca().set_aspect("equal")
+
+        # Set the number of ticks for both axes to be the same
+        plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(nbins=2))  # Set x-axis ticks to 2
+        plt.gca().yaxis.set_major_locator(ticker.MaxNLocator(nbins=2))  # Set y-axis ticks to 2
 
     # plot full solutions
     for it in range(nt):
         plt.subplot2grid(shape,(1+it,0))
-        plt.title(f"[{i}] Full solution")
+        # plt.title(f"[{i}] FBPINN")
         _plot_test_im(u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
 
         plt.subplot2grid(shape,(1+it,1))
-        plt.title(f"[{i}] Ground truth")
+        # plt.title(f"[{i}] FDTD")
         _plot_test_im(u_exact, xlim0, ulim, n_test, it=it)
 
         plt.subplot2grid(shape,(1+it,2))
-        plt.title(f"[{i}] Difference")
+        # plt.title(f"[{i}] Difference")
         _plot_test_im(u_exact - u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
 
     # plot raw hist
@@ -221,21 +78,27 @@ def plot_3D_PINN(x_batch_test, u_exact, u_test, u_raw_test, x_batch, all_params,
         plt.scatter(x_batch[:,a], x_batch[:,b], alpha=0.5, color="k", s=1)
         plt.xlim(xlim[0][a], xlim[1][a])
         plt.ylim(xlim[0][b], xlim[1][b])
+
+        # Ensure that both x and y axes have the same scale
         plt.gca().set_aspect("equal")
+
+        # Set the number of ticks for both axes to be the same
+        plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(nbins=2))  # Set x-axis ticks to 2
+        plt.gca().yaxis.set_major_locator(ticker.MaxNLocator(nbins=2))  # Set y-axis ticks to 2
 
     # plot full solution
     for it in range(nt):
         plt.subplot2grid(shape,(1+it,0))
-        plt.title(f"[{i}] Full solution")
-        _plot_test_im(u_test[:, 0].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+        # plt.title(f"[{i}] PINN")
+        _plot_test_im(u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
 
         plt.subplot2grid(shape,(1+it,1))
-        plt.title(f"[{i}] Ground truth")
+        # plt.title(f"[{i}] FDTD")
         _plot_test_im(u_exact, xlim0, ulim, n_test, it=it)
 
         plt.subplot2grid(shape,(1+it,2))
-        plt.title(f"[{i}] Difference")
-        _plot_test_im(u_exact - u_test[:, 0].reshape(-1, 1), xlim0, ulim, n_test, it=it)
+        # plt.title(f"[{i}] Difference")
+        _plot_test_im(u_exact - u_test[:, 2].reshape(-1, 1), xlim0, ulim, n_test, it=it)
 
     # plot raw hist
     plt.subplot2grid(shape,(1+nt,0))

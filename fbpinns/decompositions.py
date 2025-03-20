@@ -328,6 +328,20 @@ class RectangularDecompositionND(Decomposition):
             xmin, xmax = xmins.min(0), xmaxs.max(0)
             mi, ma = xmin-0.05*(xmax-xmin), xmax+0.05*(xmax-xmin)
             plt.xlim(mi[a], ma[a]); plt.ylim(mi[b], ma[b])
+            if a==0:
+                a = 'x'
+            elif a==1:
+                a = 'y'
+            elif a==2:
+                a = ''
+            if b == 0:
+                b = 'x'
+            elif b == 1:
+                b = 'y'
+            elif b == 2:
+                b = ''
+            plt.xlabel(a); plt.ylabel(b)
+            plt.gca().set_aspect("equal")
             plt.xlabel(a); plt.ylabel(b)
             plt.gca().set_aspect("equal")
 
